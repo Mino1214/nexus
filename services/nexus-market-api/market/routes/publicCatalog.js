@@ -11,12 +11,66 @@ const router = express.Router();
 router.get('/catalog/modules', async (_req, res) => {
   try {
     const [rows] = await db.pool.query(
-      `SELECT slug, name, description, sort_order, admin_entry_url, ops_entry_url
+      `SELECT slug, name, description, sort_order, admin_entry_url, ops_entry_url,
+              thumbnail_url, detail_markdown, gallery_json
        FROM master_catalog_modules
        WHERE is_active = 1
        ORDER BY sort_order ASC, id ASC`,
     );
     res.json({ modules: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /catalog/modules/:slug — 상세(팝업용) */
+router.get('/catalog/modules/:slug', async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '')
+      .trim()
+      .toLowerCase();
+    const [[row]] = await db.pool.query(
+      `SELECT slug, name, description, sort_order, admin_entry_url, ops_entry_url,
+              thumbnail_url, detail_markdown, gallery_json
+       FROM master_catalog_modules
+       WHERE slug = ? AND is_active = 1
+       LIMIT 1`,
+      [slug],
+    );
+    if (!row) return res.status(404).json({ error: '모듈 없음' });
+    res.json({ module: row });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /videos/featured — 추천(승인·홈·추천 플래그) */
+router.get('/videos/featured', async (_req, res) => {
+  try {
+    const [rows] = await db.pool.query(
+      `SELECT id, title, file_url, thumbnail_url, created_at
+       FROM market_videos
+       WHERE status = 'approved' AND show_on_home = 1 AND is_featured = 1
+       ORDER BY featured_sort ASC, id DESC
+       LIMIT 40`,
+    );
+    res.json({ videos: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /videos/latest — 최신 승인 영상 */
+router.get('/videos/latest', async (_req, res) => {
+  try {
+    const [rows] = await db.pool.query(
+      `SELECT id, title, file_url, thumbnail_url, created_at
+       FROM market_videos
+       WHERE status = 'approved' AND show_on_home = 1
+       ORDER BY id DESC
+       LIMIT 40`,
+    );
+    res.json({ videos: rows });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

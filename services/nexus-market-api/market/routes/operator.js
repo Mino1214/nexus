@@ -85,16 +85,30 @@ router.get('/products', async (req, res) => {
 router.post('/products', async (req, res) => {
   try {
     const oid = myOpId(req);
-    const { name, description, category, price_cash, stock, is_visible } = req.body || {};
+    const { name, description, category, price_cash, price_points, payment_mode, stock, is_visible } = req.body || {};
     if (!name?.trim()) return res.status(400).json({ error: '상품명 필요' });
     const price = parseInt(price_cash, 10);
     if (Number.isNaN(price) || price < 0) return res.status(400).json({ error: '가격 필요' });
+    const pp = price_points != null ? parseInt(price_points, 10) : 0;
+    const pm = ['cash_only', 'points_only', 'both'].includes(String(payment_mode || '').trim())
+      ? String(payment_mode).trim()
+      : 'both';
     const st = stock !== undefined ? parseInt(stock, 10) : -1;
     const vis = is_visible !== false && is_visible !== 0 ? 1 : 0;
     const [r] = await db.pool.query(
-      `INSERT INTO market_products (name, description, category, operator_mu_user_id, price_cash, stock, is_visible)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name.trim(), description || null, category || null, oid, price, st, vis],
+      `INSERT INTO market_products (name, description, category, operator_mu_user_id, price_cash, price_points, payment_mode, stock, is_visible)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name.trim(),
+        description || null,
+        category || null,
+        oid,
+        price,
+        Number.isNaN(pp) ? 0 : Math.max(0, pp),
+        pm,
+        st,
+        vis,
+      ],
     );
     res.status(201).json({ ok: true, id: r.insertId });
   } catch (e) {
@@ -111,7 +125,7 @@ router.patch('/products/:id', async (req, res) => {
       [id, oid],
     );
     if (!p) return res.status(404).json({ error: '상품 없음' });
-    const { name, description, category, price_cash, stock, is_visible } = req.body || {};
+    const { name, description, category, price_cash, price_points, payment_mode, stock, is_visible } = req.body || {};
     const fields = [];
     const vals = [];
     if (name?.trim()) {
@@ -129,6 +143,14 @@ router.patch('/products/:id', async (req, res) => {
     if (price_cash != null && !Number.isNaN(parseInt(price_cash, 10))) {
       fields.push('price_cash = ?');
       vals.push(parseInt(price_cash, 10));
+    }
+    if (price_points != null && !Number.isNaN(parseInt(price_points, 10))) {
+      fields.push('price_points = ?');
+      vals.push(Math.max(0, parseInt(price_points, 10)));
+    }
+    if (payment_mode !== undefined && ['cash_only', 'points_only', 'both'].includes(String(payment_mode).trim())) {
+      fields.push('payment_mode = ?');
+      vals.push(String(payment_mode).trim());
     }
     if (stock != null && !Number.isNaN(parseInt(stock, 10))) {
       fields.push('stock = ?');

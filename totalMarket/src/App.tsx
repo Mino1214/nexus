@@ -5,7 +5,13 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { ModulesPage } from './pages/ModulesPage';
-import { RewardsHub } from './pages/RewardsHub';
+import { RewardsLayout } from './pages/rewards/RewardsLayout';
+import { RewardsOverview } from './pages/rewards/Overview';
+import { AttendancePage } from './pages/rewards/Attendance';
+import { ConvertPage } from './pages/rewards/Convert';
+import { MiniGamePage } from './pages/rewards/MiniGame';
+import { VideosPage } from './pages/rewards/Videos';
+import { PredictionsPage } from './pages/rewards/Predictions';
 import { Shop } from './pages/Shop';
 import './index.css';
 
@@ -29,10 +35,17 @@ export default function App() {
               path="rewards"
               element={
                 <Private>
-                  <RewardsHub />
+                  <RewardsLayout />
                 </Private>
               }
-            />
+            >
+              <Route index element={<RewardsOverview />} />
+              <Route path="attendance" element={<AttendancePage />} />
+              <Route path="convert" element={<ConvertPage />} />
+              <Route path="minigame" element={<MiniGamePage />} />
+              <Route path="videos" element={<VideosPage />} />
+              <Route path="predictions" element={<PredictionsPage />} />
+            </Route>
             <Route
               path="shop"
               element={

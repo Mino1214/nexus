@@ -321,6 +321,93 @@ async function runMarketMigrations(pool) {
   }
 
   try {
+    if (!(await columnExists(pool, 'master_catalog_modules', 'thumbnail_url'))) {
+      await pool.query(
+        'ALTER TABLE master_catalog_modules ADD COLUMN thumbnail_url VARCHAR(500) DEFAULT NULL COMMENT \'카드 썸네일\'',
+      );
+      console.log('[market DB] master_catalog_modules.thumbnail_url 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] thumbnail_url:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'master_catalog_modules', 'detail_markdown'))) {
+      await pool.query(
+        'ALTER TABLE master_catalog_modules ADD COLUMN detail_markdown MEDIUMTEXT DEFAULT NULL COMMENT \'상세 설명(마크다운)\'',
+      );
+      console.log('[market DB] master_catalog_modules.detail_markdown 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] detail_markdown:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'master_catalog_modules', 'gallery_json'))) {
+      await pool.query(
+        "ALTER TABLE master_catalog_modules ADD COLUMN gallery_json MEDIUMTEXT DEFAULT NULL COMMENT '[{type,url}] JSON'",
+      );
+      console.log('[market DB] master_catalog_modules.gallery_json 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] gallery_json:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'market_products', 'price_points'))) {
+      await pool.query(
+        'ALTER TABLE market_products ADD COLUMN price_points INT NOT NULL DEFAULT 0 COMMENT \'포인트 가격\'',
+      );
+      console.log('[market DB] market_products.price_points 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] price_points:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'market_products', 'payment_mode'))) {
+      await pool.query(
+        "ALTER TABLE market_products ADD COLUMN payment_mode VARCHAR(20) NOT NULL DEFAULT 'both' COMMENT 'cash_only|points_only|both'",
+      );
+      console.log('[market DB] market_products.payment_mode 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] payment_mode:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'market_orders', 'payment_kind'))) {
+      await pool.query(
+        "ALTER TABLE market_orders ADD COLUMN payment_kind VARCHAR(20) NOT NULL DEFAULT 'cash' COMMENT 'cash|points'",
+      );
+      console.log('[market DB] market_orders.payment_kind 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] payment_kind:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'market_orders', 'total_points'))) {
+      await pool.query(
+        'ALTER TABLE market_orders ADD COLUMN total_points INT NOT NULL DEFAULT 0',
+      );
+      console.log('[market DB] market_orders.total_points 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] total_points:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'market_videos', 'is_featured'))) {
+      await pool.query(
+        'ALTER TABLE market_videos ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0',
+      );
+      await pool.query(
+        'ALTER TABLE market_videos ADD COLUMN featured_sort INT NOT NULL DEFAULT 0',
+      );
+      await pool.query(
+        'ALTER TABLE market_videos ADD COLUMN show_on_home TINYINT(1) NOT NULL DEFAULT 1 COMMENT \'홈 노출\'',
+      );
+      console.log('[market DB] market_videos 포털 컬럼 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] market_videos portal:', e.message);
+  }
+
+  try {
     await pool.query(
       `INSERT IGNORE INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active)
        VALUES

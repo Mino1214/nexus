@@ -122,6 +122,14 @@ export function Layout() {
             <span className="nav-text">포인트·캐쉬·검수</span>
           </NavLink>
           <NavLink
+            to="/store-products"
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <span className="nav-icon">🛒</span>
+            <span className="nav-text">스토어 상품</span>
+          </NavLink>
+          <NavLink
             to="/operators"
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
             onClick={closeSidebar}

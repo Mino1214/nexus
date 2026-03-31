@@ -8,10 +8,13 @@ const operatorRoutes = require('./routes/operator');
 const userRoutes = require('./routes/user');
 
 const videoUploadDir = path.join(__dirname, '..', 'uploads', 'market-videos');
+const catalogUploadDir = path.join(__dirname, '..', 'uploads', 'market-catalog');
 
 function mountMarketApi(app) {
   fsEnsureDir(videoUploadDir);
+  fsEnsureDir(catalogUploadDir);
   app.use('/market-static/videos', express.static(videoUploadDir));
+  app.use('/market-static/catalog', express.static(catalogUploadDir));
 
   app.use('/api/market/public', publicCatalogRoutes);
   app.use('/market/public', publicCatalogRoutes);

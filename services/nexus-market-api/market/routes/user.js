@@ -383,11 +383,13 @@ router.post('/orders', async (req, res) => {
     const uid = userId(req);
     const productId = parseInt(req.body?.product_id, 10);
     const qty = Math.max(1, parseInt(req.body?.quantity, 10) || 1);
+    const payWithRaw = String(req.body?.pay_with || '').trim().toLowerCase();
     if (Number.isNaN(productId)) return res.status(400).json({ error: 'product_id 필요' });
 
     const opId = req.marketAuth.operatorMuUserId;
 
     await conn.beginTransaction();
+    await conn.query(`SELECT id FROM users WHERE id = ? FOR UPDATE`, [uid]);
     const [[p]] = await conn.query(`SELECT * FROM market_products WHERE id = ? FOR UPDATE`, [productId]);
     if (!p || !p.is_visible) {
       await conn.rollback();
@@ -397,40 +399,96 @@ router.post('/orders', async (req, res) => {
       await conn.rollback();
       return res.status(403).json({ error: '이 사이트에서 구매할 수 없는 상품입니다.' });
     }
-    const total = Number(p.price_cash) * qty;
     const stock = Number(p.stock);
     if (stock >= 0 && stock < qty) {
       await conn.rollback();
       return res.status(400).json({ error: '재고가 부족합니다.' });
     }
 
-    await conn.query(
-      `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0) ON DUPLICATE KEY UPDATE user_id = user_id`,
-      [uid],
-    );
-    const [[cb]] = await conn.query(`SELECT balance FROM market_cash_balance WHERE user_id = ? FOR UPDATE`, [uid]);
-    const bal = Number(cb?.balance ?? 0);
-    if (bal < total) {
-      await conn.rollback();
-      return res.status(400).json({ error: '캐쉬 잔액이 부족합니다.' });
+    const mode = String(p.payment_mode || 'both').trim();
+    const priceCash = Number(p.price_cash);
+    const pricePoints = Number(p.price_points != null ? p.price_points : 0);
+
+    let payWith = payWithRaw;
+    if (mode === 'cash_only') {
+      if (payWith === 'points') {
+        await conn.rollback();
+        return res.status(400).json({ error: '이 상품은 캐쉬로만 구매할 수 있습니다.' });
+      }
+      payWith = 'cash';
+    } else if (mode === 'points_only') {
+      if (payWith === 'cash') {
+        await conn.rollback();
+        return res.status(400).json({ error: '이 상품은 포인트로만 구매할 수 있습니다.' });
+      }
+      payWith = 'points';
+    } else {
+      if (!['cash', 'points'].includes(payWith)) {
+        await conn.rollback();
+        return res.status(400).json({ error: 'pay_with 에 cash 또는 points 를 지정하세요.' });
+      }
     }
 
-    await conn.query(`UPDATE market_cash_balance SET balance = balance - ? WHERE user_id = ?`, [total, uid]);
-    await conn.query(
-      `INSERT INTO market_cash_transactions (user_id, amount, type, description) VALUES (?, ?, 'purchase', ?)`,
-      [uid, -total, `product ${productId} x${qty}`],
-    );
     const ordOp = p.operator_mu_user_id != null ? p.operator_mu_user_id : opId;
+
+    if (payWith === 'cash') {
+      const total = priceCash * qty;
+      await conn.query(
+        `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0) ON DUPLICATE KEY UPDATE user_id = user_id`,
+        [uid],
+      );
+      const [[cb]] = await conn.query(`SELECT balance FROM market_cash_balance WHERE user_id = ? FOR UPDATE`, [uid]);
+      const bal = Number(cb?.balance ?? 0);
+      if (bal < total) {
+        await conn.rollback();
+        return res.status(400).json({ error: '캐쉬 잔액이 부족합니다.' });
+      }
+
+      await conn.query(`UPDATE market_cash_balance SET balance = balance - ? WHERE user_id = ?`, [total, uid]);
+      await conn.query(
+        `INSERT INTO market_cash_transactions (user_id, amount, type, description) VALUES (?, ?, 'purchase', ?)`,
+        [uid, -total, `product ${productId} x${qty}`],
+      );
+      const [ins] = await conn.query(
+        `INSERT INTO market_orders (user_id, product_id, operator_mu_user_id, quantity, total_cash, total_points, payment_kind, status)
+         VALUES (?, ?, ?, ?, ?, 0, 'cash', 'confirmed')`,
+        [uid, productId, ordOp, qty, total],
+      );
+      if (stock >= 0) {
+        await conn.query(`UPDATE market_products SET stock = stock - ? WHERE id = ?`, [qty, productId]);
+      }
+      await conn.commit();
+      return res.status(201).json({ ok: true, orderId: ins.insertId, totalCash: total, paymentKind: 'cash' });
+    }
+
+    const totalPoints = pricePoints * qty;
+    if (totalPoints <= 0) {
+      await conn.rollback();
+      return res.status(400).json({ error: '포인트 가격이 설정되지 않았습니다.' });
+    }
+    const [[sumRow]] = await conn.query(
+      `SELECT COALESCE(SUM(amount),0) AS s FROM market_points WHERE user_id = ?`,
+      [uid],
+    );
+    const ptBal = Number(sumRow?.s ?? 0);
+    if (ptBal < totalPoints) {
+      await conn.rollback();
+      return res.status(400).json({ error: '포인트가 부족합니다.' });
+    }
+    await conn.query(
+      `INSERT INTO market_points (user_id, amount, type, description) VALUES (?, ?, 'purchase', ?)`,
+      [uid, -totalPoints, `product ${productId} x${qty}`],
+    );
     const [ins] = await conn.query(
-      `INSERT INTO market_orders (user_id, product_id, operator_mu_user_id, quantity, total_cash, status)
-       VALUES (?, ?, ?, ?, ?, 'confirmed')`,
-      [uid, productId, ordOp, qty, total],
+      `INSERT INTO market_orders (user_id, product_id, operator_mu_user_id, quantity, total_cash, total_points, payment_kind, status)
+       VALUES (?, ?, ?, ?, 0, ?, 'points', 'confirmed')`,
+      [uid, productId, ordOp, qty, totalPoints],
     );
     if (stock >= 0) {
       await conn.query(`UPDATE market_products SET stock = stock - ? WHERE id = ?`, [qty, productId]);
     }
     await conn.commit();
-    res.status(201).json({ ok: true, orderId: ins.insertId, totalCash: total });
+    res.status(201).json({ ok: true, orderId: ins.insertId, totalPoints, paymentKind: 'points' });
   } catch (e) {
     try {
       await conn.rollback();

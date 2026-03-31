@@ -77,6 +77,15 @@ export async function api<T>(
 
 export { API_BASE };
 
+/** 상대 경로(/market-static/...) 또는 절대 URL → 브라우저용 전체 URL */
+export function assetUrl(rel: string | null | undefined): string {
+  if (!rel?.trim()) return '';
+  const u = rel.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  const base = API_BASE.replace(/\/$/, '');
+  return `${base}${u.startsWith('/') ? u : `/${u}`}`;
+}
+
 export async function fetchPublic<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${publicApiPath(path)}`);
   const text = await res.text();

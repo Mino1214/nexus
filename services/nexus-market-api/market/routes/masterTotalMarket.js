@@ -2,9 +2,24 @@
  * 총마켓(Master): 판매 모듈 카탈로그 · 마켓 고객 · 모듈별 권한(관리자/운영)
  * 경로: /api/market/master/* (master.js에서 mount, 이미 master JWT 적용됨)
  */
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const express = require('express');
 const db = require('../../db');
 const { hashPassword } = require('../password');
+
+const catalogUploadRoot = path.join(__dirname, '..', '..', 'uploads', 'market-catalog');
+fs.mkdirSync(catalogUploadRoot, { recursive: true });
+const thumbStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, catalogUploadRoot),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '') || '.jpg';
+    const base = `cat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    cb(null, base + ext);
+  },
+});
+const uploadThumb = multer({ storage: thumbStorage, limits: { fileSize: 8 * 1024 * 1024 } });
 
 const router = express.Router();
 
@@ -96,15 +111,24 @@ router.post('/catalog/modules', async (req, res) => {
       admin_entry_url,
       ops_entry_url,
       is_active,
+      thumbnail_url,
+      detail_markdown,
+      gallery_json,
     } = req.body || {};
     const s = String(slug || '')
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9_-]/g, '');
     if (!s || !name?.trim()) return res.status(400).json({ error: 'slug, name 필요' });
+    const gj =
+      gallery_json != null
+        ? typeof gallery_json === 'string'
+          ? gallery_json
+          : JSON.stringify(gallery_json)
+        : null;
     await db.pool.query(
-      `INSERT INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active, thumbnail_url, detail_markdown, gallery_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         s,
         name.trim(),
@@ -113,6 +137,9 @@ router.post('/catalog/modules', async (req, res) => {
         admin_entry_url?.trim() || null,
         ops_entry_url?.trim() || null,
         is_active === false || is_active === 0 ? 0 : 1,
+        thumbnail_url?.trim() || null,
+        detail_markdown ?? null,
+        gj,
       ],
     );
     res.status(201).json({ ok: true });
@@ -125,7 +152,17 @@ router.post('/catalog/modules', async (req, res) => {
 router.patch('/catalog/modules/:slug', async (req, res) => {
   try {
     const slug = String(req.params.slug || '').trim().toLowerCase();
-    const { name, description, sort_order, admin_entry_url, ops_entry_url, is_active } = req.body || {};
+    const {
+      name,
+      description,
+      sort_order,
+      admin_entry_url,
+      ops_entry_url,
+      is_active,
+      thumbnail_url,
+      detail_markdown,
+      gallery_json,
+    } = req.body || {};
     const fields = [];
     const vals = [];
     if (name?.trim()) {
@@ -152,11 +189,46 @@ router.patch('/catalog/modules/:slug', async (req, res) => {
       fields.push('is_active = ?');
       vals.push(is_active ? 1 : 0);
     }
+    if (thumbnail_url !== undefined) {
+      fields.push('thumbnail_url = ?');
+      vals.push(thumbnail_url?.trim() || null);
+    }
+    if (detail_markdown !== undefined) {
+      fields.push('detail_markdown = ?');
+      vals.push(detail_markdown);
+    }
+    if (gallery_json !== undefined) {
+      fields.push('gallery_json = ?');
+      vals.push(
+        typeof gallery_json === 'string' ? gallery_json : JSON.stringify(gallery_json),
+      );
+    }
     if (!fields.length) return res.status(400).json({ error: '수정 필드 없음' });
     vals.push(slug);
     const [r] = await db.pool.query(`UPDATE master_catalog_modules SET ${fields.join(', ')} WHERE slug = ?`, vals);
     if (r.affectedRows === 0) return res.status(404).json({ error: '모듈 없음' });
     res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST /catalog/modules/:slug/thumbnail — 카드 썸네일 파일 업로드 */
+router.post('/catalog/modules/:slug/thumbnail', uploadThumb.single('file'), async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim().toLowerCase();
+    if (!req.file) return res.status(400).json({ error: 'file 필드 필요' });
+    const relUrl = `/market-static/catalog/${req.file.filename}`;
+    const [r] = await db.pool.query(`UPDATE master_catalog_modules SET thumbnail_url = ? WHERE slug = ?`, [relUrl, slug]);
+    if (r.affectedRows === 0) {
+      try {
+        fs.unlinkSync(path.join(catalogUploadRoot, req.file.filename));
+      } catch (_e) {
+        /* */
+      }
+      return res.status(404).json({ error: '모듈 없음' });
+    }
+    res.json({ ok: true, thumbnail_url: relUrl });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -171,17 +171,41 @@ router.get('/products', async (_req, res) => {
 
 router.post('/products', async (req, res) => {
   try {
-    const { name, description, category, operator_mu_user_id, price_cash, stock, is_visible } = req.body || {};
+    const {
+      name,
+      description,
+      category,
+      operator_mu_user_id,
+      price_cash,
+      price_points,
+      payment_mode,
+      stock,
+      is_visible,
+    } = req.body || {};
     if (!name?.trim()) return res.status(400).json({ error: '상품명이 필요합니다.' });
     const op = operator_mu_user_id != null ? parseInt(operator_mu_user_id, 10) : null;
     const price = parseInt(price_cash, 10);
     if (Number.isNaN(price) || price < 0) return res.status(400).json({ error: '유효한 캐쉬 가격이 필요합니다.' });
+    const pp = price_points != null ? parseInt(price_points, 10) : 0;
+    const pm = ['cash_only', 'points_only', 'both'].includes(String(payment_mode || '').trim())
+      ? String(payment_mode).trim()
+      : 'both';
     const st = stock !== undefined ? parseInt(stock, 10) : -1;
     const vis = is_visible !== false && is_visible !== 0 ? 1 : 0;
     const [r] = await db.pool.query(
-      `INSERT INTO market_products (name, description, category, operator_mu_user_id, price_cash, stock, is_visible)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [name.trim(), description || null, category || null, Number.isNaN(op) ? null : op, price, st, vis],
+      `INSERT INTO market_products (name, description, category, operator_mu_user_id, price_cash, price_points, payment_mode, stock, is_visible)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name.trim(),
+        description || null,
+        category || null,
+        Number.isNaN(op) ? null : op,
+        price,
+        Number.isNaN(pp) ? 0 : Math.max(0, pp),
+        pm,
+        st,
+        vis,
+      ],
     );
     res.status(201).json({ ok: true, id: r.insertId });
   } catch (e) {
@@ -192,7 +216,17 @@ router.post('/products', async (req, res) => {
 router.patch('/products/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name, description, category, operator_mu_user_id, price_cash, stock, is_visible } = req.body || {};
+    const {
+      name,
+      description,
+      category,
+      operator_mu_user_id,
+      price_cash,
+      price_points,
+      payment_mode,
+      stock,
+      is_visible,
+    } = req.body || {};
     const fields = [];
     const vals = [];
     if (name?.trim()) {
@@ -214,6 +248,14 @@ router.patch('/products/:id', async (req, res) => {
     if (price_cash != null && !Number.isNaN(parseInt(price_cash, 10))) {
       fields.push('price_cash = ?');
       vals.push(parseInt(price_cash, 10));
+    }
+    if (price_points != null && !Number.isNaN(parseInt(price_points, 10))) {
+      fields.push('price_points = ?');
+      vals.push(Math.max(0, parseInt(price_points, 10)));
+    }
+    if (payment_mode !== undefined && ['cash_only', 'points_only', 'both'].includes(String(payment_mode).trim())) {
+      fields.push('payment_mode = ?');
+      vals.push(String(payment_mode).trim());
     }
     if (stock != null && !Number.isNaN(parseInt(stock, 10))) {
       fields.push('stock = ?');
@@ -313,6 +355,51 @@ router.patch('/policy/:operatorId', async (req, res) => {
         [operatorId, ml, cr],
       );
     }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** 승인된 동영상 — 홈 추천/노출 설정용 */
+router.get('/videos/approved-portal', async (_req, res) => {
+  try {
+    const [rows] = await db.pool.query(
+      `SELECT v.id, v.title, v.file_url, v.thumbnail_url, v.is_featured, v.featured_sort, v.show_on_home, v.created_at, u.telegram
+       FROM market_videos v
+       LEFT JOIN users u ON u.id = v.user_id
+       WHERE v.status = 'approved'
+       ORDER BY v.id DESC
+       LIMIT 500`,
+    );
+    res.json({ videos: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.patch('/videos/:id/portal', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { is_featured, featured_sort, show_on_home } = req.body || {};
+    const fields = [];
+    const vals = [];
+    if (typeof is_featured === 'boolean' || is_featured === 0 || is_featured === 1) {
+      fields.push('is_featured = ?');
+      vals.push(is_featured ? 1 : 0);
+    }
+    if (featured_sort != null && !Number.isNaN(parseInt(featured_sort, 10))) {
+      fields.push('featured_sort = ?');
+      vals.push(parseInt(featured_sort, 10));
+    }
+    if (typeof show_on_home === 'boolean' || show_on_home === 0 || show_on_home === 1) {
+      fields.push('show_on_home = ?');
+      vals.push(show_on_home ? 1 : 0);
+    }
+    if (!fields.length) return res.status(400).json({ error: '수정 필드 없음' });
+    vals.push(id);
+    const [r] = await db.pool.query(`UPDATE market_videos SET ${fields.join(', ')} WHERE id = ? AND status = 'approved'`, vals);
+    if (r.affectedRows === 0) return res.status(404).json({ error: '승인된 영상 없음' });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
