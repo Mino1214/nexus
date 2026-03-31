@@ -95,7 +95,7 @@ export function Layout() {
             onClick={closeSidebar}
           >
             <span className="nav-icon">🧩</span>
-            <span className="nav-text">판매 모듈</span>
+            <span className="nav-text">총마켓 상품</span>
           </NavLink>
           <NavLink
             to="/customers"

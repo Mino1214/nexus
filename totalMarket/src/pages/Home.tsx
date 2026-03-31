@@ -59,11 +59,11 @@ export function Home() {
           <h1>모듈을 연결하고, 포인트로 혜택을 쌓는 총마켓</h1>
           <p>
             출석·미니게임·동영상 검수 등으로 포인트를 모으고, 월 단위 한도 내에서 캐쉬로 전환할 수 있습니다. 스토어에서
-            캐쉬·포인트로 상품을 구매하거나, 발급된 모듈별 URL로 이동해 운영합니다.
+            캐쉬·포인트로 구매하거나, Master에 등록한 총마켓 상품·연결 URL을 확인합니다.
           </p>
           <div className="hero-actions">
             <Link to="/modules" className="btn secondary">
-              모듈 둘러보기
+              상품 둘러보기
             </Link>
             {authed ? (
               <Link to="/rewards" className="btn" style={{ background: '#fff', color: 'var(--primary)' }}>
@@ -146,7 +146,7 @@ export function Home() {
         </section>
 
         <h2 className="section-title" style={{ marginTop: 36 }}>
-          대표 모듈
+          대표 상품
         </h2>
         <div className="grid-modules">
           {(featuredMods.length ? featuredMods : mods).map((m) => (
@@ -158,7 +158,7 @@ export function Home() {
               ) : null}
               <span className="tag">{m.slug}</span>
               <h3>{m.name}</h3>
-              <p>{m.description || '총마켓 카탈로그에 등록된 모듈입니다.'}</p>
+              <p>{m.description || '총마켓에 등록된 상품입니다.'}</p>
               <Link to="/modules">자세히 →</Link>
             </article>
           ))}

@@ -490,6 +490,24 @@ table.data th {
 .mod-detail-body p {
   margin-bottom: 8px;
 }
+
+.portal-body-html {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  margin-bottom: 16px;
+}
+.portal-body-html p {
+  margin-bottom: 12px;
+}
+.portal-body-html img,
+.portal-body-html video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.portal-body-html a {
+  color: var(--accent);
+}
 .mod-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

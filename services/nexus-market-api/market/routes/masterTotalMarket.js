@@ -10,7 +10,9 @@ const db = require('../../db');
 const { hashPassword } = require('../password');
 
 const catalogUploadRoot = path.join(__dirname, '..', '..', 'uploads', 'market-catalog');
+const catalogAssetsDir = path.join(catalogUploadRoot, 'assets');
 fs.mkdirSync(catalogUploadRoot, { recursive: true });
+fs.mkdirSync(catalogAssetsDir, { recursive: true });
 const thumbStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, catalogUploadRoot),
   filename: (_req, file, cb) => {
@@ -20,6 +22,19 @@ const thumbStorage = multer.diskStorage({
   },
 });
 const uploadThumb = multer({ storage: thumbStorage, limits: { fileSize: 8 * 1024 * 1024 } });
+
+const assetStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, catalogAssetsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '') || '';
+    const base = `asset_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    cb(null, base + ext);
+  },
+});
+const uploadAsset = multer({
+  storage: assetStorage,
+  limits: { fileSize: 120 * 1024 * 1024 },
+});
 
 const router = express.Router();
 
@@ -114,6 +129,7 @@ router.post('/catalog/modules', async (req, res) => {
       thumbnail_url,
       detail_markdown,
       gallery_json,
+      body_html,
     } = req.body || {};
     const s = String(slug || '')
       .trim()
@@ -127,8 +143,8 @@ router.post('/catalog/modules', async (req, res) => {
           : JSON.stringify(gallery_json)
         : null;
     await db.pool.query(
-      `INSERT INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active, thumbnail_url, detail_markdown, gallery_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active, thumbnail_url, detail_markdown, gallery_json, body_html)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         s,
         name.trim(),
@@ -140,6 +156,7 @@ router.post('/catalog/modules', async (req, res) => {
         thumbnail_url?.trim() || null,
         detail_markdown ?? null,
         gj,
+        body_html ?? null,
       ],
     );
     res.status(201).json({ ok: true });
@@ -162,6 +179,7 @@ router.patch('/catalog/modules/:slug', async (req, res) => {
       thumbnail_url,
       detail_markdown,
       gallery_json,
+      body_html,
     } = req.body || {};
     const fields = [];
     const vals = [];
@@ -203,6 +221,10 @@ router.patch('/catalog/modules/:slug', async (req, res) => {
         typeof gallery_json === 'string' ? gallery_json : JSON.stringify(gallery_json),
       );
     }
+    if (body_html !== undefined) {
+      fields.push('body_html = ?');
+      vals.push(body_html);
+    }
     if (!fields.length) return res.status(400).json({ error: '수정 필드 없음' });
     vals.push(slug);
     const [r] = await db.pool.query(`UPDATE master_catalog_modules SET ${fields.join(', ')} WHERE slug = ?`, vals);
@@ -229,6 +251,31 @@ router.post('/catalog/modules/:slug/thumbnail', uploadThumb.single('file'), asyn
       return res.status(404).json({ error: '모듈 없음' });
     }
     res.json({ ok: true, thumbnail_url: relUrl });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST /catalog/modules/:slug/asset — 본문·갤러리용 이미지/영상 업로드 */
+router.post('/catalog/modules/:slug/asset', uploadAsset.single('file'), async (req, res) => {
+  try {
+    const slug = String(req.params.slug || '').trim().toLowerCase();
+    if (!req.file) return res.status(400).json({ error: 'file 필드 필요' });
+    const [[exists]] = await db.pool.query(`SELECT slug FROM master_catalog_modules WHERE slug = ? LIMIT 1`, [slug]);
+    if (!exists) {
+      try {
+        fs.unlinkSync(path.join(catalogAssetsDir, req.file.filename));
+      } catch (_e) {
+        /* */
+      }
+      return res.status(404).json({ error: '상품(slug) 없음' });
+    }
+    const relUrl = `/market-static/catalog/assets/${req.file.filename}`;
+    const mt = String(req.file.mimetype || '');
+    let kind = 'file';
+    if (mt.startsWith('image/')) kind = 'image';
+    else if (mt.startsWith('video/')) kind = 'video';
+    res.json({ ok: true, url: relUrl, kind });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -17,7 +17,7 @@ export function PortalLayout() {
               홈
             </NavLink>
             <NavLink to="/modules" className={({ isActive }) => (isActive ? 'active' : '')}>
-              판매 모듈
+              상품
             </NavLink>
             <NavLink to="/rewards" className={({ isActive }) => (isActive ? 'active' : '')}>
               포인트·리워드

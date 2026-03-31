@@ -351,6 +351,16 @@ async function runMarketMigrations(pool) {
     console.error('[market DB] gallery_json:', e.message);
   }
   try {
+    if (!(await columnExists(pool, 'master_catalog_modules', 'body_html'))) {
+      await pool.query(
+        'ALTER TABLE master_catalog_modules ADD COLUMN body_html MEDIUMTEXT DEFAULT NULL COMMENT \'총마켓 상품 본문 HTML\'',
+      );
+      console.log('[market DB] master_catalog_modules.body_html 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] body_html:', e.message);
+  }
+  try {
     if (!(await columnExists(pool, 'market_products', 'price_points'))) {
       await pool.query(
         'ALTER TABLE market_products ADD COLUMN price_points INT NOT NULL DEFAULT 0 COMMENT \'포인트 가격\'',
@@ -416,6 +426,53 @@ async function runMarketMigrations(pool) {
     );
   } catch (e) {
     console.warn('[market DB] master catalog seed:', e.message);
+  }
+
+  /** users.id 와 VARCHAR user_id 컬럼 collation 불일치 시 Illegal mix of collations 방지 */
+  try {
+    const [[urow]] = await pool.query(
+      `SELECT COLLATION_NAME AS c FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'id' LIMIT 1`,
+    );
+    const coll = urow?.c && /^utf8mb4_[a-z0-9_]+$/i.test(urow.c) ? urow.c : 'utf8mb4_unicode_ci';
+    const syncPairs = [
+      ['market_points', 'user_id'],
+      ['market_cash_balance', 'user_id'],
+      ['market_cash_transactions', 'user_id'],
+      ['market_videos', 'user_id'],
+      ['market_attendance', 'user_id'],
+      ['market_orders', 'user_id'],
+      ['market_mini_game_logs', 'user_id'],
+      ['market_refresh_tokens', 'users_id'],
+    ];
+    for (const [table, col] of syncPairs) {
+      const [[t]] = await pool.query(
+        `SELECT COUNT(*) AS n FROM INFORMATION_SCHEMA.TABLES
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+        [table],
+      );
+      if (!t || Number(t.n) === 0) continue;
+      const [[ci]] = await pool.query(
+        `SELECT IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH AS maxlen FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, col],
+      );
+      if (!ci) continue;
+      const [[ccol]] = await pool.query(
+        `SELECT COLLATION_NAME AS c FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, col],
+      );
+      if (String(ccol?.c || '').toLowerCase() === String(coll).toLowerCase()) continue;
+      const len = Math.min(191, Math.max(50, Number(ci.maxlen) || 50));
+      const nullSql = ci.IS_NULLABLE === 'YES' ? 'NULL' : 'NOT NULL';
+      await pool.query(
+        `ALTER TABLE \`${table}\` MODIFY COLUMN \`${col}\` VARCHAR(${len}) CHARACTER SET utf8mb4 COLLATE ${coll} ${nullSql}`,
+      );
+    }
+    console.log(`[market DB] user_id 계열 collation 동기화 (${coll})`);
+  } catch (e) {
+    console.warn('[market DB] user_id collation sync:', e.message);
   }
 
   console.log('[market DB] 마이그레이션 완료');

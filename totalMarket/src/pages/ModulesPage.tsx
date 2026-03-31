@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchPublic, getMacroOrigin, assetUrl } from '../api';
+import { fetchPublic, getMacroOrigin, assetUrl, API_BASE } from '../api';
 
 type GalleryItem = { type?: string; url?: string };
 
@@ -12,7 +12,17 @@ type Mod = {
   thumbnail_url?: string | null;
   detail_markdown?: string | null;
   gallery_json?: string | null;
+  body_html?: string | null;
 };
+
+/** 상대 경로 /market-static/... 가 저장된 기존 HTML 보정 */
+function rewriteHtmlUrls(html: string): string {
+  const base = API_BASE.replace(/\/$/, '');
+  return html.replace(
+    /(\s(?:src|href|poster)=")(\/)market-static([^"]*)"/gi,
+    (_, p, _slash, rest) => `${p}${base}/market-static${rest}"`,
+  );
+}
 
 function parseGallery(raw: string | null | undefined): GalleryItem[] {
   if (!raw?.trim()) return [];
@@ -57,9 +67,9 @@ export function ModulesPage() {
 
   return (
     <main className="main-max">
-      <h1 className="section-title">판매 모듈 카탈로그</h1>
+      <h1 className="section-title">총마켓 상품</h1>
       <p style={{ color: 'var(--muted)', marginBottom: 20, maxWidth: 720 }}>
-        masterAdmin에서 등록한 모듈입니다. 카드를 누르면 상세 설명·갤러리를 볼 수 있습니다. 웹 루트:{' '}
+        Master 총마켓에서 등록한 상품입니다. 카드를 누르면 본문·갤러리·연결 URL을 볼 수 있습니다. 웹 루트:{' '}
         <code>{macro}</code>
       </p>
       {err ? <p className="err">{err}</p> : null}
@@ -76,7 +86,7 @@ export function ModulesPage() {
                 <img src={assetUrl(m.thumbnail_url)} alt="" />
               </div>
             ) : (
-              <div className="mod-card-thumb mod-card-thumb-placeholder">모듈</div>
+              <div className="mod-card-thumb mod-card-thumb-placeholder">상품</div>
             )}
             <span className="tag">{m.slug}</span>
             <h3>{m.name}</h3>
@@ -105,7 +115,9 @@ export function ModulesPage() {
             ) : null}
             <h2 id="mod-detail-title">{openMod.name}</h2>
             <p style={{ color: 'var(--muted)', marginBottom: 12 }}>{openMod.description || ''}</p>
-            {openMod.detail_markdown ? (
+            {openMod.body_html?.trim() ? (
+              <div className="portal-body-html" dangerouslySetInnerHTML={{ __html: rewriteHtmlUrls(openMod.body_html) }} />
+            ) : openMod.detail_markdown?.trim() ? (
               <div className="mod-detail-body">
                 {openMod.detail_markdown.split('\n').map((line, i) => (
                   <p key={i}>{line}</p>
