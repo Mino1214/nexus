@@ -20,6 +20,9 @@ router.use(requireMarketRoles('user'));
 const uploadRoot = path.join(__dirname, '..', '..', 'uploads', 'market-videos');
 fs.mkdirSync(uploadRoot, { recursive: true });
 
+const MAX_VIDEO_MB = Math.max(1, parseInt(process.env.MARKET_VIDEO_MAX_MB || '', 10) || 500);
+const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadRoot),
   filename: (_req, file, cb) => {
@@ -28,7 +31,17 @@ const storage = multer.diskStorage({
     cb(null, base + ext);
   },
 });
-const upload = multer({ storage, limits: { fileSize: 200 * 1024 * 1024 } });
+const upload = multer({ storage, limits: { fileSize: MAX_VIDEO_BYTES } });
+
+function uploadVideoSingle(req, res, next) {
+  return upload.single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: `동영상이 너무 큽니다. 최대 ${MAX_VIDEO_MB}MB까지 업로드할 수 있습니다.` });
+    }
+    return next(err);
+  });
+}
 
 function userId(req) {
   return req.marketAuth.sub;
@@ -228,7 +241,7 @@ router.post('/mini-game/play', async (req, res) => {
   }
 });
 
-router.post('/videos', upload.single('file'), async (req, res) => {
+router.post('/videos', uploadVideoSingle, async (req, res) => {
   try {
     const uid = userId(req);
     if (!req.file) return res.status(400).json({ error: 'file 필드에 동영상을 올려주세요.' });
