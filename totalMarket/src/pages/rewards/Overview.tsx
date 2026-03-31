@@ -65,23 +65,23 @@ export function RewardsOverview() {
       </div>
 
       <div className="reward-quick-grid">
-        <Link to="/rewards/attendance" className="reward-quick-card">
+        <Link to="/me/attendance" className="reward-quick-card">
           <strong>출석</strong>
           <span>1일 1회 · KST 자정 기준</span>
         </Link>
-        <Link to="/rewards/convert" className="reward-quick-card">
+        <Link to="/me/convert" className="reward-quick-card">
           <strong>포인트 → 캐쉬</strong>
           <span>월 한도 내 전환</span>
         </Link>
-        <Link to="/rewards/minigame" className="reward-quick-card">
+        <Link to="/minigame" className="reward-quick-card">
           <strong>미니게임</strong>
           <span>포인트 적립</span>
         </Link>
-        <Link to="/rewards/videos" className="reward-quick-card">
+        <Link to="/me/videos" className="reward-quick-card">
           <strong>동영상</strong>
           <span>업로드 · 검수 후 포인트</span>
         </Link>
-        <Link to="/rewards/predictions" className="reward-quick-card">
+        <Link to="/me/predictions" className="reward-quick-card">
           <strong>예측·베팅</strong>
           <span>준비 중</span>
         </Link>

@@ -417,6 +417,29 @@ async function runMarketMigrations(pool) {
     console.error('[market DB] market_videos portal:', e.message);
   }
 
+  /** 총마켓 포털 팝업 */
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS market_portal_popups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        body_html MEDIUMTEXT DEFAULT NULL,
+        image_url VARCHAR(500) DEFAULT NULL,
+        link_url VARCHAR(500) DEFAULT NULL,
+        link_text VARCHAR(50) DEFAULT NULL,
+        start_at DATETIME DEFAULT NULL,
+        end_at DATETIME DEFAULT NULL,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_mpp_active (is_active),
+        INDEX idx_mpp_window (start_at, end_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  } catch (e) {
+    console.error('[market DB] market_portal_popups:', e.message);
+  }
+
   try {
     await pool.query(
       `INSERT IGNORE INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active)

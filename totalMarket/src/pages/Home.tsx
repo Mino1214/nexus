@@ -66,8 +66,8 @@ export function Home() {
               상품 둘러보기
             </Link>
             {authed ? (
-              <Link to="/rewards" className="btn" style={{ background: '#fff', color: 'var(--primary)' }}>
-                리워드 센터
+              <Link to="/me" className="btn" style={{ background: '#fff', color: 'var(--primary)' }}>
+                내 정보
               </Link>
             ) : (
               <Link to="/login" className="btn" style={{ background: '#fff', color: 'var(--primary)' }}>

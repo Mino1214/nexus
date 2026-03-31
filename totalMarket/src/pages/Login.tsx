@@ -11,7 +11,7 @@ export function Login() {
   const [err, setErr] = useState('');
   const logo = brandLogoUrl();
 
-  if (authed) return <Navigate to="/rewards" replace />;
+  if (authed) return <Navigate to="/me" replace />;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

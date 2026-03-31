@@ -114,12 +114,36 @@ export function Layout() {
             <span className="nav-text">구매·배포 기록</span>
           </NavLink>
           <NavLink
-            to="/rewards-hub"
+            to="/point-policy"
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
             onClick={closeSidebar}
           >
             <span className="nav-icon">💰</span>
-            <span className="nav-text">포인트·캐쉬·검수</span>
+            <span className="nav-text">포인트 정책</span>
+          </NavLink>
+          <NavLink
+            to="/video-review"
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <span className="nav-icon">🎬</span>
+            <span className="nav-text">동영상 검수</span>
+          </NavLink>
+          <NavLink
+            to="/home-videos"
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <span className="nav-icon">⭐</span>
+            <span className="nav-text">홈 영상 노출</span>
+          </NavLink>
+          <NavLink
+            to="/portal-popup"
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+            onClick={closeSidebar}
+          >
+            <span className="nav-icon">🪧</span>
+            <span className="nav-text">팝업 설정</span>
           </NavLink>
           <NavLink
             to="/store-products"

@@ -577,3 +577,26 @@ table.data th {
   gap: 8px;
   margin-top: 10px;
 }
+
+.wallet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.wallet-chip strong {
+  color: var(--primary);
+}
+.wallet-chip:hover {
+  border-color: var(--accent);
+}
+.wallet-chip:disabled {
+  cursor: default;
+}

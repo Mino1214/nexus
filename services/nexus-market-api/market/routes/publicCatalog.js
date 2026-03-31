@@ -4,6 +4,7 @@
  */
 const express = require('express');
 const db = require('../../db');
+const { kstTodayString } = require('../kst');
 
 const router = express.Router();
 
@@ -71,6 +72,27 @@ router.get('/videos/latest', async (_req, res) => {
        LIMIT 40`,
     );
     res.json({ videos: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /portal/popup — 현재 활성 팝업 (하루동안 보지않기: 클라이언트에서 KST 날짜로 처리) */
+router.get('/portal/popup', async (_req, res) => {
+  try {
+    const now = new Date();
+    const [rows] = await db.pool.query(
+      `SELECT id, title, body_html, image_url, link_url, link_text, start_at, end_at
+       FROM market_portal_popups
+       WHERE is_active = 1
+         AND (start_at IS NULL OR start_at <= ?)
+         AND (end_at IS NULL OR end_at >= ?)
+       ORDER BY id DESC
+       LIMIT 1`,
+      [now, now],
+    );
+    const popup = rows && rows.length ? rows[0] : null;
+    res.json({ popup, kstToday: kstTodayString() });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

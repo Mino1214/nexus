@@ -4,7 +4,6 @@ const tabs: { to: string; end?: boolean; label: string }[] = [
   { to: '/rewards', end: true, label: '개요' },
   { to: '/rewards/attendance', label: '출석' },
   { to: '/rewards/convert', label: '포인트→캐쉬' },
-  { to: '/rewards/minigame', label: '미니게임' },
   { to: '/rewards/videos', label: '동영상' },
   { to: '/rewards/predictions', label: '예측·베팅' },
 ];

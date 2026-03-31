@@ -474,6 +474,101 @@ router.patch('/videos/:id/review', async (req, res) => {
   }
 });
 
+/** --- portal popup --- */
+router.get('/portal/popup', async (_req, res) => {
+  try {
+    const [rows] = await db.pool.query(`SELECT * FROM market_portal_popups ORDER BY id DESC LIMIT 50`);
+    res.json({ popups: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/portal/popup', async (req, res) => {
+  try {
+    const { title, body_html, image_url, link_url, link_text, start_at, end_at, is_active } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: 'title 필요' });
+    const [r] = await db.pool.query(
+      `INSERT INTO market_portal_popups (title, body_html, image_url, link_url, link_text, start_at, end_at, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title.trim(),
+        body_html ?? null,
+        image_url?.trim() || null,
+        link_url?.trim() || null,
+        link_text?.trim() || null,
+        start_at ? new Date(start_at) : null,
+        end_at ? new Date(end_at) : null,
+        is_active === false || is_active === 0 ? 0 : 1,
+      ],
+    );
+    res.status(201).json({ ok: true, id: r.insertId });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.patch('/portal/popup/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'id 오류' });
+    const { title, body_html, image_url, link_url, link_text, start_at, end_at, is_active } = req.body || {};
+    const fields = [];
+    const vals = [];
+    if (title !== undefined) {
+      fields.push('title = ?');
+      vals.push(String(title || '').trim());
+    }
+    if (body_html !== undefined) {
+      fields.push('body_html = ?');
+      vals.push(body_html);
+    }
+    if (image_url !== undefined) {
+      fields.push('image_url = ?');
+      vals.push(image_url?.trim() || null);
+    }
+    if (link_url !== undefined) {
+      fields.push('link_url = ?');
+      vals.push(link_url?.trim() || null);
+    }
+    if (link_text !== undefined) {
+      fields.push('link_text = ?');
+      vals.push(link_text?.trim() || null);
+    }
+    if (start_at !== undefined) {
+      fields.push('start_at = ?');
+      vals.push(start_at ? new Date(start_at) : null);
+    }
+    if (end_at !== undefined) {
+      fields.push('end_at = ?');
+      vals.push(end_at ? new Date(end_at) : null);
+    }
+    if (typeof is_active === 'boolean' || is_active === 0 || is_active === 1) {
+      fields.push('is_active = ?');
+      vals.push(is_active ? 1 : 0);
+    }
+    if (!fields.length) return res.status(400).json({ error: '수정 필드 없음' });
+    vals.push(id);
+    const [r] = await db.pool.query(`UPDATE market_portal_popups SET ${fields.join(', ')} WHERE id = ?`, vals);
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'popup 없음' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/portal/popup/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'id 오류' });
+    const [r] = await db.pool.query(`DELETE FROM market_portal_popups WHERE id = ?`, [id]);
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'popup 없음' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /** GET /orders — 전체 주문 */
 router.get('/orders', async (_req, res) => {
   try {

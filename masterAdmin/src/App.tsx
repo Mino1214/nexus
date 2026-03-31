@@ -8,7 +8,10 @@ import { Customers } from './pages/Customers';
 import { CustomerDetail } from './pages/CustomerDetail';
 import { Operators } from './pages/Operators';
 import { ModuleDeployments } from './pages/ModuleDeployments';
-import { PointsCashHub } from './pages/PointsCashHub';
+import { PointPolicy } from './pages/PointPolicy';
+import { MasterVideoReview } from './pages/MasterVideoReview';
+import { HomeVideoPortal } from './pages/HomeVideoPortal';
+import { PortalPopup } from './pages/PortalPopup';
 import { StoreProducts } from './pages/StoreProducts';
 import { ModuleEmbed } from './pages/ModuleEmbed';
 import './index.css';
@@ -47,7 +50,10 @@ export default function App() {
             <Route path="customers/:id" element={<CustomerDetail />} />
             <Route path="operators" element={<Operators />} />
             <Route path="deployments" element={<ModuleDeployments />} />
-            <Route path="rewards-hub" element={<PointsCashHub />} />
+            <Route path="point-policy" element={<PointPolicy />} />
+            <Route path="video-review" element={<MasterVideoReview />} />
+            <Route path="home-videos" element={<HomeVideoPortal />} />
+            <Route path="portal-popup" element={<PortalPopup />} />
             <Route path="store-products" element={<StoreProducts />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

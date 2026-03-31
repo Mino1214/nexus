@@ -5,14 +5,15 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { ModulesPage } from './pages/ModulesPage';
-import { RewardsLayout } from './pages/rewards/RewardsLayout';
-import { RewardsOverview } from './pages/rewards/Overview';
 import { AttendancePage } from './pages/rewards/Attendance';
 import { ConvertPage } from './pages/rewards/Convert';
 import { MiniGamePage } from './pages/rewards/MiniGame';
 import { VideosPage } from './pages/rewards/Videos';
 import { PredictionsPage } from './pages/rewards/Predictions';
 import { Shop } from './pages/Shop';
+import { MeHub } from './pages/MeHub';
+import { MeOverview } from './pages/MeOverview';
+import { MeHistory } from './pages/MeHistory';
 import './index.css';
 
 function Private({ children }: { children: React.ReactNode }) {
@@ -32,20 +33,29 @@ export default function App() {
             <Route index element={<Home />} />
             <Route path="modules" element={<ModulesPage />} />
             <Route
-              path="rewards"
+              path="me"
               element={
                 <Private>
-                  <RewardsLayout />
+                  <MeHub />
                 </Private>
               }
             >
-              <Route index element={<RewardsOverview />} />
+              <Route index element={<MeOverview />} />
+              <Route path="history" element={<MeHistory />} />
               <Route path="attendance" element={<AttendancePage />} />
               <Route path="convert" element={<ConvertPage />} />
-              <Route path="minigame" element={<MiniGamePage />} />
               <Route path="videos" element={<VideosPage />} />
               <Route path="predictions" element={<PredictionsPage />} />
             </Route>
+            <Route
+              path="minigame"
+              element={
+                <Private>
+                  <MiniGamePage />
+                </Private>
+              }
+            />
+            <Route path="rewards/*" element={<Navigate to="/me" replace />} />
             <Route
               path="shop"
               element={
