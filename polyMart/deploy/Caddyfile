@@ -1,0 +1,31 @@
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	handle /api/* {
+		reverse_proxy api:43121
+	}
+
+	handle /health {
+		reverse_proxy api:43121
+	}
+
+	handle /ready {
+		reverse_proxy api:43121
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}

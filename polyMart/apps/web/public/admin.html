@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#061a1c" />
+  <title>PolyWatch Admin</title>
+  <style>
+    :root {
+      --bg-page: #050e11;
+      --surface-1: #0a1518;
+      --surface-2: #0f1c20;
+      --surface-3: #152428;
+      --surface-4: #1a2e34;
+      --border: rgba(92, 225, 230, 0.14);
+      --border-hover: rgba(92, 225, 230, 0.3);
+      --ac: #5ce1e6;
+      --ac-dim: rgba(92, 225, 230, 0.1);
+      --ac-soft: rgba(92, 225, 230, 0.16);
+      --text-primary: #ededff;
+      --text-secondary: #a2afc4;
+      --text-tertiary: #6d7891;
+      --ok: #4ade80;
+      --warn: #fb923c;
+      --err: #f87171;
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
+      --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.34);
+      --sidebar-w: 252px;
+      --topbar-h: 56px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100%;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-family: "SUIT", "Pretendard Variable", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(92, 225, 230, 0.1), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(92, 225, 230, 0.08), transparent 26%),
+        linear-gradient(180deg, #050e11 0%, #081114 100%);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    textarea { resize: vertical; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: rgba(92, 225, 230, 0.22); border-radius: 999px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    .hidden { display: none !important; }
+
+    #authView {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: radial-gradient(circle at top center, rgba(92, 225, 230, 0.08), transparent 46%);
+    }
+
+    .login-wrap { width: 100%; max-width: 390px; }
+    .login-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      padding: 36px 30px 30px;
+      box-shadow: var(--shadow-lg);
+    }
+    .login-title {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--ac);
+      text-align: center;
+    }
+    .login-sub {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      line-height: 1.5;
+    }
+    .helper-box, .error-box, .info-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      line-height: 1.55;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-secondary);
+    }
+    .error-box {
+      border-color: rgba(248, 113, 113, 0.25);
+      background: rgba(248, 113, 113, 0.08);
+      color: #ffd6dd;
+    }
+    .helper-box strong { color: var(--text-primary); }
+
+    form { display: grid; gap: 14px; }
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.02em;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface-3);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color .18s ease, box-shadow .18s ease;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--ac);
+      box-shadow: 0 0 0 3px rgba(92, 225, 230, 0.16);
+    }
+    .field textarea { min-height: 88px; }
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-primary);
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: var(--border-hover);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(92, 225, 230, 0.3), rgba(44, 184, 192, 0.44));
+      border-color: rgba(92, 225, 230, 0.4);
+      color: #fff;
+    }
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.08);
+      border-color: rgba(248, 113, 113, 0.2);
+      color: #ffdbe0;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    #dashboardView {
+      display: none;
+      min-height: 100vh;
+      grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+    }
+    #dashboardView.active { display: grid; }
+
+    .sidebar {
+      min-height: 100vh;
+      background: linear-gradient(180deg, rgba(92, 225, 230, 0.04), transparent 30%), var(--surface-1);
+      border-right: 1px solid var(--border);
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: sticky;
+      top: 0;
+    }
+    .sidebar-brand {
+      padding: 6px 8px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-kicker {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+    }
+    .brand-title {
+      margin-top: 8px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--ac);
+    }
+    .brand-body {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+    .nav-button {
+      width: 100%;
+      justify-content: flex-start;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-secondary);
+    }
+    .nav-button.active {
+      background: var(--ac-dim);
+      border-color: var(--border-hover);
+      color: var(--text-primary);
+      box-shadow: inset 0 0 0 1px rgba(92, 225, 230, 0.08);
+    }
+    .sidebar-meta {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+    }
+    .meta-card {
+      padding: 14px;
+      border-radius: var(--radius-md);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .meta-card .label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    .meta-card .value {
+      margin-top: 8px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+    }
+
+    .main {
+      min-width: 0;
+      padding: 20px;
+    }
+    .topbar {
+      min-height: var(--topbar-h);
+      border: 1px solid var(--border);
+      background: rgba(10, 21, 24, 0.88);
+      border-radius: 18px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 18px;
+      z-index: 20;
+    }
+    .topbar-title {
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    .topbar-value {
+      margin-top: 6px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 16px rgba(74, 222, 128, 0.55);
+    }
+
+    .hero {
+      margin-top: 18px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(92, 225, 230, 0.06), transparent 65%), var(--surface-1);
+      box-shadow: var(--shadow-sm);
+    }
+    .hero-eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    .hero-title {
+      margin-top: 10px;
+      font-size: clamp(26px, 4vw, 44px);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+    .hero-body {
+      margin-top: 14px;
+      max-width: 900px;
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      display: none;
+    }
+    .hero-foot {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    .stat-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .stat-card, .card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface-1);
+      box-shadow: var(--shadow-sm);
+    }
+    .stat-card { padding: 20px; }
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    .stat-value {
+      margin-top: 12px;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .stat-help {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    .panel-grid {
+      margin-top: 18px;
+      display: grid;
+      gap: 18px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: grid; gap: 18px; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+    }
+    .three-col {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .card {
+      padding: 20px;
+    }
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .card-copy {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+      display: none;
+    }
+
+    .quick-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .quick-button {
+      min-height: 84px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(92, 225, 230, 0.1), rgba(255, 255, 255, 0.02));
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      box-shadow: var(--shadow-sm);
+    }
+    .quick-button:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    .metric-list, .info-list {
+      display: grid;
+      gap: 10px;
+    }
+    .metric-row, .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(92, 225, 230, 0.08);
+      font-size: 13px;
+    }
+    .metric-row:last-child,
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .metric-row:first-child,
+    .info-row:first-child { padding-top: 0; }
+    .muted { color: var(--text-secondary); }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 14px;
+      border: 1px solid rgba(92, 225, 230, 0.08);
+      background: rgba(255, 255, 255, 0.015);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+    th, td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(92, 225, 230, 0.08);
+      font-size: 13px;
+      vertical-align: top;
+    }
+    th {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      background: rgba(255, 255, 255, 0.03);
+      position: sticky;
+      top: 0;
+    }
+    tr:last-child td { border-bottom: none; }
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+    .status-chip.active, .status-chip.ready { color: var(--ok); border-color: rgba(74, 222, 128, 0.22); background: rgba(74, 222, 128, 0.08); }
+    .status-chip.trial, .status-chip.warn, .status-chip.custom-only { color: #ffd48b; border-color: rgba(251, 146, 60, 0.2); background: rgba(251, 146, 60, 0.08); }
+    .status-chip.paused, .status-chip.expired, .status-chip.archived { color: #ffcad2; border-color: rgba(248, 113, 113, 0.2); background: rgba(248, 113, 113, 0.08); }
+
+    .pill-list {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      border: 1px solid rgba(92, 225, 230, 0.12);
+      background: rgba(92, 225, 230, 0.06);
+    }
+
+    .market-grid, .template-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mini-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(92, 225, 230, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .mini-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .mini-copy {
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+    .mini-meta {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .suggestion-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .suggestion-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(92, 225, 230, 0.12);
+      background: rgba(255, 255, 255, 0.03);
+      display: grid;
+      gap: 12px;
+    }
+    .suggestion-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tree-wrap {
+      display: grid;
+      gap: 12px;
+    }
+    .tree-node {
+      border: 1px solid rgba(92, 225, 230, 0.1);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 16px;
+    }
+    .tree-children {
+      margin-top: 12px;
+      padding-left: 18px;
+      border-left: 1px dashed rgba(92, 225, 230, 0.14);
+      display: grid;
+      gap: 12px;
+    }
+    .tree-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tree-title {
+      font-size: 15px;
+      font-weight: 800;
+    }
+    .tree-meta {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .trend-chart {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+      min-height: 220px;
+    }
+    .trend-column {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    .trend-bar {
+      border-radius: 14px 14px 10px 10px;
+      background: linear-gradient(180deg, rgba(92, 225, 230, 0.85), rgba(44, 184, 192, 0.34));
+      min-height: 12px;
+      box-shadow: inset 0 0 0 1px rgba(92, 225, 230, 0.12);
+    }
+    .trend-value {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    .trend-date {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      text-align: center;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(10, 21, 24, 0.92);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      color: var(--text-primary);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1200px) {
+      .stat-grid,
+      .three-col,
+      .two-col,
+      .quick-grid,
+      .market-grid,
+      .template-grid,
+      .suggestion-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 980px) {
+      #dashboardView {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+        min-height: auto;
+      }
+      .main { padding: 14px; }
+      .field-grid { grid-template-columns: 1fr; }
+      .topbar { position: static; }
+      .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 720px) {
+      .shell,
+      .main { padding: 12px; }
+      .stat-grid { grid-template-columns: 1fr; }
+      .topbar, .hero, .card, .stat-card { padding: 16px; }
+      .login-card { padding: 28px 22px 22px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="authView">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-title">PolyWatch Admin</div>
+        <p class="login-sub">로그인</p>
+        <div class="helper-box"><strong>기본 관리자</strong><br />ID: master666 / PW: master666</div>
+        <div id="loginError" class="error-box hidden"></div>
+        <form id="loginForm" style="margin-top: 18px;">
+          <div class="field">
+            <label for="identifierInput">ID</label>
+            <input id="identifierInput" type="text" autocomplete="username" placeholder="아이디 또는 이메일" required />
+          </div>
+          <div class="field">
+            <label for="passwordInput">PW</label>
+            <input id="passwordInput" type="password" autocomplete="current-password" placeholder="비밀번호" required />
+          </div>
+          <button id="loginBtn" class="btn btn-primary" type="submit">로그인</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="dashboardView">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-kicker">PolyWatch / Business</div>
+        <div class="brand-title">Admin Hub</div>
+        <div class="brand-body">Pandora와 같은 구조로, 판매 운영과 총판 정산 흐름을 먼저 보는 PolyWatch 전용 관리자 콘솔입니다.</div>
+      </div>
+
+      <nav class="nav">
+        <button class="btn nav-button active" data-tab="overview">대시보드</button>
+        <button class="btn nav-button" data-tab="clients">고객/주문</button>
+        <button class="btn nav-button" data-tab="keys">API 키</button>
+        <button class="btn nav-button" data-tab="templates">상품 템플릿</button>
+        <button class="btn nav-button" data-tab="network">총판 트리</button>
+        <button class="btn nav-button" data-tab="analytics">정산/배팅 추이</button>
+      </nav>
+
+      <div class="sidebar-meta">
+        <div class="meta-card">
+          <div class="label">로그인 사용자</div>
+          <div id="sidebarUser" class="value">—</div>
+        </div>
+        <div class="meta-card">
+          <div class="label">현재 세션</div>
+          <div id="sidebarSession" class="value">—</div>
+        </div>
+        <button id="sidebarLogoutBtn" class="btn btn-danger" type="button">로그아웃</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">PolyWatch Admin</div>
+          <div id="topbarTitle" class="topbar-value">API 판매 운영 대시보드</div>
+        </div>
+        <div class="topbar-actions">
+          <div id="sessionBadge" class="badge"><span class="badge-dot"></span><span>Session</span></div>
+          <button id="refreshBtn" class="btn btn-ghost" type="button">새로고침</button>
+          <button id="logoutBtn" class="btn btn-danger" type="button">로그아웃</button>
+        </div>
+      </div>
+
+      <section class="hero">
+        <div id="panelEyebrow" class="hero-eyebrow">PolyWatch / Overview</div>
+        <h1 id="panelTitle" class="hero-title">API 판매와 실시간 정산 흐름</h1>
+        <p id="panelDescription" class="hero-body">키 발급, 사용기간, 총판 요율, 실시간 마켓 상태와 정산 노출을 기준으로 운영 현황을 관리합니다.</p>
+        <div class="hero-foot">
+          <span>사용자 손실금 기반 총판 요율</span>
+          <span>•</span>
+          <span>YES/NO / 다중 후보 템플릿</span>
+          <span>•</span>
+          <span id="generatedAt">마지막 갱신: —</span>
+        </div>
+      </section>
+
+      <section class="quick-grid">
+        <button id="quickClients" class="btn quick-button" type="button">고객 추가</button>
+        <button id="quickKeys" class="btn quick-button" type="button">키 발급</button>
+        <button id="quickTemplates" class="btn quick-button" type="button">템플릿</button>
+        <button id="quickNetwork" class="btn quick-button" type="button">총판 추가</button>
+        <button id="quickAnalytics" class="btn quick-button" type="button">정산 보기</button>
+      </section>
+
+      <section class="stat-grid">
+        <article class="stat-card">
+          <div class="stat-label">활성 고객</div>
+          <div id="statClients" class="stat-value">0</div>
+          <div id="statClientsHelp" class="stat-help">활성 계약과 시험 계정을 함께 모니터링합니다.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">활성 API 키</div>
+          <div id="statKeys" class="stat-value">0</div>
+          <div id="statKeysHelp" class="stat-help">유효한 키와 만료 임박 키를 먼저 확인합니다.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">월 반복 매출</div>
+          <div id="statRevenue" class="stat-value">0</div>
+          <div id="statRevenueHelp" class="stat-help">현재 활성 고객 기준 MRR 추정치입니다.</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">마스터 보유율</div>
+          <div id="statMasterShare" class="stat-value">0</div>
+          <div id="statMasterShareHelp" class="stat-help">하위 총판 요율 배분 후 마스터가 보유하는 30일 추정 수익입니다.</div>
+        </article>
+      </section>
+
+      <section class="panel-grid">
+        <div id="panel-overview" class="tab-panel active">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">운영 상태</div>
+                  <div class="card-copy">실시간 데이터 상태와 판매 스택 준비도를 먼저 봅니다.</div>
+                </div>
+              </div>
+              <div id="systemStatusList" class="metric-list"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">판매 핵심 지표</div>
+                  <div class="card-copy">키 만료, 주문형 템플릿, 손실금 기반 정산 흐름을 바로 확인합니다.</div>
+                </div>
+              </div>
+              <div id="salesSummaryList" class="metric-list"></div>
+            </article>
+          </div>
+
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">실시간 마켓 펄스</div>
+                  <div class="card-copy">실제 마켓 흐름을 같이 보면서 판매 API 상품의 질문/배당 품질을 점검합니다.</div>
+                </div>
+              </div>
+              <div id="liveMarketsGrid" class="market-grid"></div>
+            </article>
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">정산 스냅샷</div>
+                  <div class="card-copy">대기 노출, 정산 오버듀, 최근 베팅 상황을 우선 봅니다.</div>
+                </div>
+              </div>
+              <div id="settlementSummaryList" class="metric-list"></div>
+            </article>
+          </div>
+        </div>
+
+        <div id="panel-clients" class="tab-panel">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">고객/주문 현황</div>
+                  <div class="card-copy">API 판매 고객, 사용기간, 주문형 여부, 총판 소속을 한 번에 봅니다.</div>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>고객</th>
+                      <th>플랜</th>
+                      <th>총판</th>
+                      <th>키</th>
+                      <th>손실금 30d</th>
+                      <th>만료</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="clientsBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">고객 추가</div>
+                  <div class="card-copy">발주처 주문이 들어오면 고객, 기간, 요금, 총판 연결을 바로 등록합니다.</div>
+                </div>
+              </div>
+              <form id="clientForm">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientCompanyInput">회사명</label>
+                    <input id="clientCompanyInput" required />
+                  </div>
+                  <div class="field">
+                    <label for="clientNameInput">서비스명</label>
+                    <input id="clientNameInput" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientContactInput">담당자/연락처</label>
+                    <input id="clientContactInput" required />
+                  </div>
+                  <div class="field">
+                    <label for="clientPlanInput">플랜명</label>
+                    <input id="clientPlanInput" value="Politics Growth" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientResellerSelect">총판</label>
+                    <select id="clientResellerSelect"></select>
+                  </div>
+                  <div class="field">
+                    <label for="clientTemplateSelect">템플릿</label>
+                    <select id="clientTemplateSelect"></select>
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientTierSelect">접속 권한</label>
+                    <select id="clientTierSelect">
+                      <option value="starter">starter</option>
+                      <option value="growth" selected>growth</option>
+                      <option value="enterprise">enterprise</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="clientTypeSelect">질문 구조</label>
+                    <select id="clientTypeSelect">
+                      <option value="yes-no">YES / NO</option>
+                      <option value="multi-candidate">다중 후보</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientMonthlyInput">월 이용료</label>
+                    <input id="clientMonthlyInput" type="number" min="0" value="350000" required />
+                  </div>
+                  <div class="field">
+                    <label for="clientDaysInput">사용 기간 (일)</label>
+                    <input id="clientDaysInput" type="number" min="7" value="30" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="clientSetupInput">세팅비</label>
+                    <input id="clientSetupInput" type="number" min="0" value="900000" />
+                  </div>
+                  <div class="field">
+                    <label for="clientLossInput">손실금 30d 추정</label>
+                    <input id="clientLossInput" type="number" min="0" value="0" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="clientMarketsInput">허용 마켓 카테고리</label>
+                  <input id="clientMarketsInput" value="politics" placeholder="쉼표로 구분" />
+                </div>
+                <div class="field">
+                  <label for="clientNotesInput">주문 메모</label>
+                  <textarea id="clientNotesInput" placeholder="디자인 커스텀, 대선 후보형, 데이터 범위 등을 적습니다."></textarea>
+                </div>
+                <button class="btn btn-primary" type="submit">고객 등록</button>
+              </form>
+            </article>
+          </div>
+        </div>
+
+        <div id="panel-keys" class="tab-panel">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">발급된 API 키</div>
+                  <div class="card-copy">사용기간, 요청 제한, 접속 범위, 최근 사용 시간을 확인합니다.</div>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>키</th>
+                      <th>고객</th>
+                      <th>권한</th>
+                      <th>RPM</th>
+                      <th>만료</th>
+                      <th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="keysBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">API 키 발급</div>
+                  <div class="card-copy">고객별로 질문/배당/정산 접근 권한과 사용기간을 설정합니다.</div>
+                </div>
+              </div>
+              <div id="issuedKeyBox" class="info-box hidden"></div>
+              <form id="keyForm">
+                <div class="field">
+                  <label for="keyClientSelect">고객</label>
+                  <select id="keyClientSelect"></select>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="keyLabelInput">라벨</label>
+                    <input id="keyLabelInput" value="Production Key" required />
+                  </div>
+                  <div class="field">
+                    <label for="keyExpiryInput">사용 기간 (일)</label>
+                    <input id="keyExpiryInput" type="number" min="1" value="30" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="keyScopesInput">권한 Scope</label>
+                    <input id="keyScopesInput" value="markets:read, odds:read, settlement:read" required />
+                  </div>
+                  <div class="field">
+                    <label for="keyRpmInput">분당 요청 수</label>
+                    <input id="keyRpmInput" type="number" min="30" value="120" required />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="keyOriginsInput">허용 Origin</label>
+                  <input id="keyOriginsInput" placeholder="https://example.com, https://app.example.com" />
+                </div>
+                <div class="field">
+                  <label for="keyIpsInput">허용 IP</label>
+                  <input id="keyIpsInput" placeholder="211.45.11.22, 211.45.11.23" />
+                </div>
+                <button class="btn btn-primary" type="submit">키 발급</button>
+              </form>
+            </article>
+          </div>
+        </div>
+
+        <div id="panel-templates" class="tab-panel">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">자동 배당 추천</div>
+                  <div class="card-copy">숨김</div>
+                </div>
+              </div>
+              <form id="automationForm" style="margin-bottom: 18px;">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="automationQueryInput">찾을 키워드</label>
+                    <input id="automationQueryInput" value="대통령 선거" />
+                  </div>
+                  <div class="field">
+                    <label for="automationTypeSelect">시장 구조</label>
+                    <select id="automationTypeSelect">
+                      <option value="yes-no">YES / NO</option>
+                      <option value="multi-candidate">다중선택</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="suggestion-actions" style="margin-top: 10px;">
+                  <button id="automationYesNoBtn" class="btn btn-primary" type="button">YES/NO 자동</button>
+                  <button id="automationMultiBtn" class="btn btn-primary" type="button">다중선택 자동</button>
+                  <button id="automationRefreshBtn" class="btn btn-ghost" type="submit">다시 찾기</button>
+                </div>
+              </form>
+              <div id="automationStatus" class="info-box hidden"></div>
+              <div id="automationSuggestions" class="suggestion-grid"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">상품 템플릿</div>
+                  <div class="card-copy">YES/NO, 대통령선거 다중 후보, 주문형 템플릿을 관리합니다.</div>
+                </div>
+              </div>
+              <div id="templatesGrid" class="template-grid"></div>
+            </article>
+          </div>
+
+          <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">템플릿 추가</div>
+                  <div class="card-copy">주문자에 맞게 커스텀 가능한 API 상품 템플릿을 등록합니다.</div>
+                </div>
+              </div>
+              <form id="templateForm">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="templateNameInput">템플릿명</label>
+                    <input id="templateNameInput" required />
+                  </div>
+                  <div class="field">
+                    <label for="templateCategoryInput">카테고리</label>
+                    <input id="templateCategoryInput" value="정치 기본형" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="templateTypeSelect">질문 구조</label>
+                    <select id="templateTypeSelect">
+                      <option value="yes-no">YES / NO</option>
+                      <option value="multi-candidate">다중 후보</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="templateTitlePatternInput">질문 포맷</label>
+                    <input id="templateTitlePatternInput" value="질문 1개 / YES·NO 2옵션" required />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="templateOutcomesInput">결과 옵션</label>
+                  <input id="templateOutcomesInput" value="YES, NO" required />
+                </div>
+                <div class="field">
+                  <label for="templateDescriptionInput">설명</label>
+                  <textarea id="templateDescriptionInput" required></textarea>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="templateMarginInput">기본 마진</label>
+                    <input id="templateMarginInput" type="number" min="0" max="0.5" step="0.01" value="0.07" />
+                  </div>
+                  <div class="field">
+                    <label for="templateDesignInput">디자인 팩</label>
+                    <input id="templateDesignInput" value="PolyWatch Default / Cyan" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="templateSetupInput">세팅비</label>
+                    <input id="templateSetupInput" type="number" min="0" value="900000" />
+                  </div>
+                  <div class="field">
+                    <label for="templateMonthlyInput">월 이용료</label>
+                    <input id="templateMonthlyInput" type="number" min="0" value="350000" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="templateSettlementInput">정산 기준</label>
+                  <input id="templateSettlementInput" value="공식 결과 + 관리자 확정" required />
+                </div>
+                <div id="templateAutomationBox" class="helper-box hidden"></div>
+                <button class="btn btn-primary" type="submit">템플릿 등록</button>
+              </form>
+          </article>
+        </div>
+
+        <div id="panel-network" class="tab-panel">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">총판 트리</div>
+                  <div class="card-copy">Binary 구조로 좌/우 자식 총판을 배치하고, 하위 고객 손실금 기준 수익 배분을 확인합니다.</div>
+                </div>
+              </div>
+              <div id="resellerTree" class="tree-wrap"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">총판 추가</div>
+                  <div class="card-copy">부모 총판의 left / right 브랜치 중 비어 있는 곳에 신규 총판을 배치합니다.</div>
+                </div>
+              </div>
+              <form id="resellerForm">
+                <div class="field">
+                  <label for="resellerParentSelect">부모 총판</label>
+                  <select id="resellerParentSelect"></select>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="resellerSlotSelect">브랜치</label>
+                    <select id="resellerSlotSelect">
+                      <option value="left">left</option>
+                      <option value="right">right</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="resellerRateInput">부모 대비 요율 %</label>
+                    <input id="resellerRateInput" type="number" min="0.1" max="100" step="0.1" value="20" required />
+                  </div>
+                </div>
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="resellerNameInput">총판명</label>
+                    <input id="resellerNameInput" required />
+                  </div>
+                  <div class="field">
+                    <label for="resellerCodeInput">코드</label>
+                    <input id="resellerCodeInput" required />
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="resellerContactInput">연락처</label>
+                  <input id="resellerContactInput" required />
+                </div>
+                <button class="btn btn-primary" type="submit">총판 추가</button>
+              </form>
+            </article>
+          </div>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">총판 정산 표</div>
+                <div class="card-copy">효과 요율, 잔여 요율, 하위 손실금, 예상 retained 수익을 평면 표로 같이 봅니다.</div>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>총판</th>
+                    <th>브랜치</th>
+                    <th>효과 요율</th>
+                    <th>잔여 요율</th>
+                    <th>하위 고객</th>
+                    <th>손실금 30d</th>
+                    <th>예상 retained 수익</th>
+                  </tr>
+                </thead>
+                <tbody id="resellersBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+
+        <div id="panel-analytics" class="tab-panel">
+          <div class="two-col">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">배팅 추이</div>
+                  <div class="card-copy">최근 7일 베팅 수와 포인트 노출을 같이 확인합니다.</div>
+                </div>
+              </div>
+              <div id="trendChart" class="trend-chart"></div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">포인트/정산 흐름</div>
+                  <div class="card-copy">가입 보너스, 일일 지급, 베팅 승리 지급, 순 흐름을 체크합니다.</div>
+                </div>
+              </div>
+              <div id="economyList" class="metric-list"></div>
+            </article>
+          </div>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">최근 베팅 / 정산 로그</div>
+                <div class="card-copy">고객 판매 흐름과 실제 플랫폼 리스크를 함께 확인할 수 있도록 최근 베팅 로그를 보여줍니다.</div>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>유저</th>
+                    <th>마켓</th>
+                    <th>결과</th>
+                    <th>베팅</th>
+                    <th>예상 지급</th>
+                    <th>상태</th>
+                    <th>생성</th>
+                  </tr>
+                </thead>
+                <tbody id="betsBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <div id="toast" class="toast"></div>
+  <script src="/admin-app.js" defer></script>
+</body>
+</html>

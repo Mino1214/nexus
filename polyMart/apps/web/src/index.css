@@ -1,0 +1,85 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #07111a;
+  --color-bg-soft: #0e1b28;
+  --color-panel: rgba(8, 23, 34, 0.76);
+  --color-panel-strong: rgba(12, 29, 42, 0.94);
+  --color-border: rgba(120, 185, 189, 0.18);
+  --color-text: #eff8f7;
+  --color-muted: #96aeb2;
+  --color-accent: #56d4c7;
+  --color-accent-2: #ffc978;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans KR", sans-serif;
+  color: var(--color-text);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(86, 212, 199, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(255, 201, 120, 0.16), transparent 24%),
+    linear-gradient(180deg, #061018 0%, #091520 48%, #08111a 100%);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 167, 170, 0.3);
+  border-radius: 999px;
+}
+
+.glass-panel {
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(16px);
+}
+
+.ticker-track {
+  animation: ticker-scroll 38s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}

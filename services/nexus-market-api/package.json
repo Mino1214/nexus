@@ -1,0 +1,21 @@
+{
+  "name": "nexus-market-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Nexus 총마켓 + 마켓 JWT API (Pandora DB 공유)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1020.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.18.2",
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "mysql2": "^3.17.1"
+  }
+}

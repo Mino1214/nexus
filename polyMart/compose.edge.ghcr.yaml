@@ -1,0 +1,98 @@
+name: polyedge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-polywatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-polywatch}
+      POSTGRES_DB: ${POSTGRES_DB:-polywatch}
+    volumes:
+      - polyedge-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-polywatch} -d ${POSTGRES_DB:-polywatch}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - polyedge-redis-data:/data
+
+  api:
+    image: ${API_IMAGE:?set API_IMAGE}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 43121
+      WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-polywatch}:${POSTGRES_PASSWORD:-polywatch}@postgres:5432/${POSTGRES_DB:-polywatch}}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:?set ADMIN_EMAILS}
+      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
+      GAMMA_API_URL: ${GAMMA_API_URL:-https://gamma-api.polymarket.com}
+      CLOB_API_URL: ${CLOB_API_URL:-https://clob.polymarket.com}
+      DATA_API_URL: ${DATA_API_URL:-https://data-api.polymarket.com}
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:43121/ready').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  web:
+    image: ${WEB_IMAGE:?set WEB_IMAGE}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      POLYWATCH_API_UPSTREAM: http://api:43121
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+      - "${EDGE_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - polyedge-caddy-data:/data
+      - polyedge-caddy-config:/config
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --header='Host: ${SITE_DOMAIN}' -O - http://127.0.0.1/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+volumes:
+  polyedge-postgres-data:
+  polyedge-redis-data:
+  polyedge-caddy-data:
+  polyedge-caddy-config:

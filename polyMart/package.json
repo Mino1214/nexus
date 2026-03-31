@@ -1,0 +1,45 @@
+{
+  "name": "polywatch",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "npm run build -w @polywatch/shared",
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f postgres redis",
+    "deploy:config": "docker compose -f compose.prod.yaml config",
+    "deploy:ghcr:config": "docker compose --env-file deploy.ghcr.env.example -f compose.ghcr.yaml config",
+    "deploy:edge:ghcr:config": "docker compose --env-file deploy.edge.ghcr.env.example -f compose.edge.ghcr.yaml config",
+    "observability:config": "docker compose -f compose.prod.yaml -f compose.observability.yaml --profile observability config",
+    "observability:up": "docker compose -f compose.prod.yaml -f compose.observability.yaml --profile observability up -d prometheus grafana",
+    "observability:down": "docker compose -f compose.prod.yaml -f compose.observability.yaml --profile observability stop prometheus grafana",
+    "observability:logs": "docker compose -f compose.prod.yaml -f compose.observability.yaml --profile observability logs -f prometheus grafana",
+    "deploy:build": "docker compose -f compose.prod.yaml build",
+    "deploy:up": "docker compose -f compose.prod.yaml up -d --build",
+    "deploy:down": "docker compose -f compose.prod.yaml down",
+    "deploy:logs": "docker compose -f compose.prod.yaml logs -f",
+    "ops:smoke": "bash scripts/ops-smoke.sh",
+    "ops:backup": "bash scripts/ops-backup.sh",
+    "ops:backup:prune": "bash scripts/ops-backup-prune.sh",
+    "ops:monitor": "bash scripts/ops-monitor.sh",
+    "ops:notify:test": "ALERT_STATUS=info ALERT_TITLE='Polywatch test alert' ALERT_TEXT='This is a test notification from the local workspace.' ALERT_SOURCE=local-dev bash scripts/ops-notify.sh",
+    "ops:restore": "bash scripts/ops-restore.sh",
+    "dev": "npm run build -w @polywatch/shared && concurrently --kill-others-on-fail -n shared,api,web -c yellow,cyan,magenta \"npm run dev -w @polywatch/shared\" \"npm run dev -w @polywatch/api\" \"npm run dev -w @polywatch/web\"",
+    "dev:reset": "node scripts/free-dev-ports.mjs",
+    "dev:restart": "npm run dev:reset && npm run dev",
+    "dev:api": "npm run dev -w @polywatch/api",
+    "dev:web": "npm run dev -w @polywatch/web",
+    "db:migrate": "npm run db:migrate -w @polywatch/api",
+    "seed:demo": "npm run seed:demo -w @polywatch/api",
+    "verify:runtime": "npm run verify:runtime -w @polywatch/api",
+    "build": "npm run build -w @polywatch/shared && npm run build -w @polywatch/api && npm run build -w @polywatch/web",
+    "typecheck": "npm run typecheck -w @polywatch/shared && npm run typecheck -w @polywatch/api && npm run typecheck -w @polywatch/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

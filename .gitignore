@@ -1,0 +1,44 @@
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+*.iml
+.vscode/
+
+# Secrets (use .env.example for templates)
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Builds & caches
+dist/
+build/
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.coverage/
+
+# Uploads & local data (generated)
+**/uploads/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Backups & temp
+*.backup.*
+*.tmp
+polyMart/backups/
+
+# Nested clones (if present)
+macroBot/

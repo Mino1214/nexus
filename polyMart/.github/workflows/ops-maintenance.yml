@@ -1,0 +1,67 @@
+name: ops-maintenance
+
+on:
+  schedule:
+    - cron: "15 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BACKUP_KEEP_COUNT: ${{ vars.BACKUP_KEEP_COUNT }}
+  BACKUP_MAX_AGE_DAYS: ${{ vars.BACKUP_MAX_AGE_DAYS }}
+  BACKUP_MAX_AGE_HOURS: ${{ vars.BACKUP_MAX_AGE_HOURS }}
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' '${{ secrets.DEPLOY_SSH_KEY }}' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H '${{ secrets.DEPLOY_HOST }}' >> ~/.ssh/known_hosts
+
+      - name: Upload ops bundle
+        run: |
+          ssh '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}' "mkdir -p '${{ secrets.DEPLOY_PATH }}/scripts' '${{ secrets.DEPLOY_PATH }}/backups'"
+          scp compose.ghcr.yaml '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/'
+          scp scripts/ops-smoke.sh scripts/ops-backup.sh scripts/ops-backup-prune.sh scripts/ops-monitor.sh '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/scripts/'
+
+      - name: Run remote maintenance
+        run: |
+          ssh '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}' <<EOF
+          set -eu
+          cd '${{ secrets.DEPLOY_PATH }}'
+          chmod +x scripts/*.sh
+          export COMPOSE_FILE_PATH=compose.ghcr.yaml
+          export COMPOSE_ENV_FILE=deploy.env
+          export BACKUP_ROOT=backups
+          export API_URL=http://127.0.0.1:${{ secrets.API_PUBLIC_PORT }}
+          export WEB_URL=http://127.0.0.1:${{ secrets.WEB_PUBLIC_PORT }}
+          export KEEP_COUNT=${BACKUP_KEEP_COUNT:-7}
+          export MAX_AGE_DAYS=${BACKUP_MAX_AGE_DAYS:-14}
+          export MAX_BACKUP_AGE_HOURS=${BACKUP_MAX_AGE_HOURS:-36}
+          bash scripts/ops-backup.sh
+          bash scripts/ops-backup-prune.sh
+          bash scripts/ops-monitor.sh
+          EOF
+
+      - name: Notify maintenance status
+        if: ${{ always() && secrets.ALERT_WEBHOOK_URL != '' }}
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_FORMAT: ${{ vars.ALERT_FORMAT || 'generic' }}
+          ALERT_STATUS: ${{ job.status }}
+          ALERT_TITLE: Polywatch ops-maintenance
+          ALERT_TEXT: repository=${{ github.repository }} schedule=${{ github.event_name }} actor=${{ github.actor }}
+          ALERT_SOURCE: ops-maintenance
+          ALERT_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/ops-notify.sh

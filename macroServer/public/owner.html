@@ -1,0 +1,2888 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="theme-color" content="#061a1c">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Pandora — 그룹 대시보드</title>
+  <link rel="icon" href="/logo/favicon.ico?v=1" type="image/x-icon">
+  <!-- QR: api.qrserver.com 이미지 방식 사용 (라이브러리 불필요) -->
+  <style>
+    @font-face {
+      font-family: 'SUIT';
+      src: url('/font/SUIT-Bold.ttf?v=2') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    /* ===== VARIABLES — 2026 Design System (브랜드 #5CE1E6) ===== */
+    :root {
+      --bg:        #050e11;
+      --bg2:       #0a1518;
+      --bg3:       #152428;
+      --border:    rgba(92,225,230,.14);
+      --ac:        #5CE1E6;
+      --ac-dim:    rgba(92,225,230,.10);
+      --ac-glow:   rgba(92,225,230,.25);
+      --fg:        #e8fafb;
+      --muted:     #6b8a8c;
+      --ok:        #4ade80;
+      --warn:      #fb923c;
+      --err:       #f87171;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.5), 0 4px 12px rgba(0,0,0,.35);
+      --shadow-ac: 0 4px 20px rgba(92,225,230,.3), 0 2px 8px rgba(92,225,230,.2);
+      --stat-box-end: rgba(15,28,32,.88);
+    }
+    /* ===== LIGHT MODE ===== */
+    body.light {
+      --bg:        #f2f3f9;
+      --bg2:       #ffffff;
+      --bg3:       #e6e8f2;
+      --border:    rgba(40,150,160,.18);
+      --fg:        #151625;
+      --muted:     #8892aa;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+      --shadow-md: 0 4px 16px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.07);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,.13), 0 4px 12px rgba(0,0,0,.08);
+      --stat-box-end: #f8f9fd;
+    }
+    body.light input[type=text], body.light input[type=password] {
+      background: var(--bg3); color: var(--fg);
+    }
+    body.light .glass-card, body.light .card { background: var(--bg2); }
+    body.light .sidebar { background: var(--bg2); border-right-color: var(--border); }
+    body.light .sidebar-nav a { color: var(--fg); }
+    body.light .topbar { background: var(--bg2); border-bottom-color: var(--border); }
+    body.light select { background: var(--bg3); color: var(--fg); }
+    body.light input[type=date] { background: var(--bg3); color: var(--fg); color-scheme: light; }
+    body.light .filter-count { background: rgba(0,0,0,.06); color: var(--muted); }
+    body.light .account-card.selected {
+      background: rgba(92,225,230,.10);
+      border-color: rgba(92,225,230,.35);
+    }
+    body.light #selectionBar {
+      background: rgba(255,255,255,.96);
+      border-top-color: var(--border);
+      box-shadow: 0 -4px 24px rgba(0,0,0,.08);
+    }
+
+    /* ===== THEME TOGGLE ===== */
+    .theme-switch {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .theme-switch label { margin: 0; font-size: 13px; font-weight: 600; color: var(--fg); text-transform: none; letter-spacing: 0; flex: 1; }
+    .theme-switch-inner { display: flex; gap: 6px; }
+    .theme-btn {
+      padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700;
+      border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+      transition: all .18s;
+    }
+    .theme-btn.active { background: linear-gradient(135deg,#5CE1E6,#2CB8C0); color: #fff; border-color: transparent; box-shadow: 0 2px 8px rgba(92,225,230,.35); }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; -webkit-font-smoothing: antialiased; }
+    body { font-family: 'SUIT', -apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', system-ui, sans-serif;
+           font-weight: 700; background: var(--bg); color: var(--fg); min-height: 100vh; }
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(92,225,230,.25); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(92,225,230,.4); }
+
+    /* ── LOGIN ─────────────────────────── */
+    #loginBox {
+      display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(92,225,230,.07) 0%, transparent 60%);
+    }
+    .login-wrap { width:100%; max-width:380px; }
+    .login-card {
+      background:var(--bg2); border:1px solid var(--border); border-radius:24px; padding:32px 28px;
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(92,225,230,.04);
+    }
+    .login-logo {
+      display:flex; align-items:center; justify-content:center;
+      margin:0 auto 10px;
+    }
+    .login-logo img {
+      height:76px; width:auto; max-width:320px; object-fit:contain;
+      filter: drop-shadow(0 0 14px rgba(92,225,230,.22));
+    }
+    .login-title { font-size:31px; font-weight:800; color:var(--fg); text-align:center; margin-bottom:4px; letter-spacing:-.4px; }
+    .login-sub { text-align:center; color:var(--muted); font-size:13px; margin-bottom:26px; line-height:1.5; }
+    .field { margin-bottom:12px; }
+    label { display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
+    input[type=text], input[type=password] {
+      width:100%; padding:13px 16px; background:var(--bg3); border:1.5px solid var(--border);
+      border-radius:12px; color:var(--fg); font-size:15px; outline:none; font-family:inherit;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    input[type=text]::placeholder, input[type=password]::placeholder { color: rgba(107,114,128,.45); }
+    input:focus { border-color:var(--ac); box-shadow:0 0 0 3px rgba(92,225,230,.15), 0 0 12px rgba(92,225,230,.08); }
+    .errmsg { color:var(--err); font-size:12px; margin-top:8px; min-height:16px; text-align:center; }
+    .okmsg  { color:var(--ok);  font-size:12px; margin-top:8px; min-height:16px; text-align:center; }
+
+    /* ── BUTTONS ───────────────────────── */
+    button { padding:10px 18px; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; transition:all .18s cubic-bezier(.4,0,.2,1); outline:none; font-family:inherit; }
+    .btn-ac {
+      background: linear-gradient(135deg, #5CE1E6 0%, #2CB8C0 100%);
+      color:#fff; box-shadow: 0 2px 10px rgba(92,225,230,.35);
+    }
+    .btn-ac:hover {
+      background: linear-gradient(135deg, #7EECF1 0%, #4DC8CF 100%);
+      box-shadow: var(--shadow-ac); transform:translateY(-1px);
+    }
+    .btn-ac:active { transform:translateY(0) scale(.98); box-shadow: 0 1px 6px rgba(92,225,230,.2); }
+    .btn-full { width:100%; padding:14px; font-size:15px; margin-top:10px; border-radius:14px; letter-spacing:-.2px; }
+    .btn-ghost { background:transparent; border:1.5px solid var(--border); color:var(--fg); }
+    .btn-ghost:hover { border-color:var(--ac); color:var(--ac); background: rgba(92,225,230,.06); }
+    .btn-sm { padding:7px 14px; font-size:12px; border-radius:9px; }
+    .btn-xs { padding:3px 8px; font-size:11px; border-radius:6px; }
+    .btn-warn { background:transparent; border:1.5px solid var(--warn); color:var(--warn); }
+    .btn-warn:hover { background:rgba(251,146,60,.08); transform:translateY(-1px); }
+    .btn-err-sm { background:transparent; border:1.5px solid rgba(248,113,113,.4); color:var(--err); padding:6px 12px; font-size:11px; border-radius:8px; }
+    .btn-err-sm:hover { background:rgba(248,113,113,.07); transform:translateY(-1px); }
+    button:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+    .seed-phrase-cell { font-family:monospace; font-size:11px; color:var(--muted); word-break:break-all; flex:1; min-width:0; }
+
+    /* ── APP ───────────────────────────── */
+    #appBox { display:none; }
+
+    /* ── TOP BAR ───────────────────────── */
+    .top-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 16px; height:56px;
+      background:rgba(8,9,15,.88);
+      border-bottom:1px solid var(--border);
+      position:sticky; top:0; z-index:100;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0,0,0,.3);
+    }
+    .top-brand { display:flex; align-items:center; gap:9px; }
+    .top-icon {
+      width:32px; height:32px;
+      background: linear-gradient(135deg, rgba(92,225,230,.2) 0%, rgba(92,225,230,.06) 100%);
+      border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px;
+      border:1px solid rgba(92,225,230,.2);
+    }
+    .top-title { font-size:15px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }
+    .top-right { display:flex; align-items:center; gap:8px; }
+    .top-user { font-size:12px; color:var(--muted); background:var(--bg3); padding:4px 10px; border-radius:20px; border:1px solid var(--border); box-shadow: var(--shadow-sm); }
+    .top-logout { font-size:12px; color:var(--muted); cursor:pointer; padding:6px 12px; border-radius:9px; border:1.5px solid var(--border); background:transparent; transition: all .18s; }
+    .top-logout:hover { color:var(--err); border-color:rgba(248,113,113,.5); background: rgba(248,113,113,.05); }
+
+    /* ── SIDEBAR LAYOUT ────────────────── */
+    #appBox { display:none; flex-direction:row; height:100vh; overflow:hidden; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 220px; flex-shrink:0;
+      background:var(--bg2); border-right:1px solid var(--border);
+      display:flex; flex-direction:column;
+      overflow-y:auto; overflow-x:hidden;
+      scrollbar-width:thin;
+      position:relative;
+    }
+    .sidebar-brand {
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      padding:22px 18px 16px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;
+      text-align:center;
+      background: linear-gradient(180deg, rgba(92,225,230,.06) 0%, transparent 100%);
+    }
+    .sidebar-brand-logo {
+      height:68px; width:auto; max-width:280px; object-fit:contain;
+      filter: drop-shadow(0 0 10px rgba(92,225,230,.2));
+    }
+    .sidebar-brand-text { font-size:23px; font-weight:800; letter-spacing:-.3px; color:var(--ac); line-height:1.05; }
+    .sidebar-user {
+      font-size:11px; color:var(--muted);
+      padding:10px 16px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:8px; flex-shrink:0;
+    }
+    .sidebar-user-chip {
+      background:rgba(92,225,230,.1); border:1px solid rgba(92,225,230,.2);
+      border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; color:var(--ac);
+    }
+    .sidebar-nav { flex:1; padding:10px 0 80px; }
+    .nav-item {
+      display:flex; align-items:center; gap:10px;
+      width:100%; padding:10px 16px;
+      background:transparent; border:none; color:var(--muted);
+      font-size:13px; font-weight:600; text-align:left;
+      cursor:pointer; transition:all .15s; border-radius:0;
+      font-family:inherit;
+    }
+    .nav-item:hover { color:var(--fg); background:rgba(92,225,230,.05); }
+    .nav-item.active {
+      color:var(--ac);
+      background:rgba(92,225,230,.1);
+      border-right:2px solid var(--ac);
+    }
+    .nav-icon { font-size:15px; flex-shrink:0; width:20px; text-align:center; }
+    .nav-footer {
+      padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .nav-footer .btn-logout-all {
+      color:var(--err) !important;
+      border-color:rgba(248,113,113,.4) !important;
+    }
+    .nav-footer .btn-logout-all:hover {
+      background:rgba(248,113,113,.08) !important;
+    }
+    .modal-idle-overlay {
+      display:none; position:fixed; inset:0; z-index:99999;
+      background:rgba(0,0,0,.78); align-items:center; justify-content:center;
+      padding:16px; backdrop-filter:blur(4px);
+    }
+    .modal-idle-overlay.open { display:flex; }
+    .modal-idle-box {
+      background:var(--bg2); border:1px solid var(--border); border-radius:20px;
+      padding:24px 22px; max-width:400px; width:100%; box-shadow:var(--shadow-lg);
+    }
+    .modal-idle-title { font-size:16px; font-weight:800; margin-bottom:12px; color:var(--fg); }
+
+    /* Main area */
+    .main-area {
+      flex:1; display:flex; flex-direction:column;
+      overflow:hidden; min-width:0;
+    }
+    .topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 20px; height:52px; flex-shrink:0;
+      background:rgba(8,9,15,.88);
+      border-bottom:1px solid var(--border);
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    }
+    .topbar-left { display:flex; align-items:center; gap:10px; }
+    .topbar-hamburger {
+      display:none; background:transparent; border:none; color:var(--muted);
+      font-size:18px; cursor:pointer; padding:6px; border-radius:8px;
+    }
+    .topbar-hamburger:hover { color:var(--fg); background:rgba(255,255,255,.06); }
+    .topbar-right { display:flex; align-items:center; gap:8px; }
+    .top-user { font-size:12px; color:var(--muted); background:var(--bg3); padding:4px 10px; border-radius:20px; border:1px solid var(--border); }
+    .top-logout { font-size:12px; color:var(--muted); cursor:pointer; padding:6px 12px; border-radius:9px; border:1.5px solid var(--border); background:transparent; transition: all .18s; }
+    .top-logout:hover { color:var(--err); border-color:rgba(248,113,113,.5); background: rgba(248,113,113,.05); }
+
+    /* Content scroll area */
+    .content { flex:1; overflow-y:auto; padding:18px 20px 60px; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; animation: fadeSlide .22s cubic-bezier(.4,0,.2,1); }
+    @keyframes fadeSlide {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* Sidebar overlay (mobile) */
+    .sidebar-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+      z-index:299; backdrop-filter:blur(2px);
+    }
+    .sidebar-overlay.open { display:block; }
+
+    /* Mobile */
+    @media (max-width:768px) {
+      #appBox { flex-direction:column; height:auto; overflow:visible; }
+      .sidebar {
+        position:fixed; top:0; left:-240px; width:240px; height:100%;
+        z-index:300; transition: left .25s cubic-bezier(.4,0,.2,1);
+        box-shadow: var(--shadow-lg);
+      }
+      .sidebar.open { left:0; }
+      .topbar-hamburger { display:flex; }
+      .main-area { overflow:visible; }
+      .content { overflow:visible; padding:14px 14px 80px; }
+    }
+
+    /* 구 레이아웃 top-bar 숨김 */
+    .top-bar { display:none; }
+    .tabbar { display:none; }
+
+    /* ── SECTION CARD ──────────────────── */
+    .glass-card {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:20px; padding:18px 16px; margin-bottom:12px;
+      box-shadow: var(--shadow-sm); transition: box-shadow .2s;
+    }
+    .glass-card:hover { box-shadow: var(--shadow-md); }
+    .glass-card h2 { font-size:14px; font-weight:700; margin-bottom:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+    .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+    .section-title { font-size:15px; font-weight:800; color:var(--fg); letter-spacing:-.3px; }
+
+    /* ── STAT ROW ──────────────────────── */
+    .stat-row { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+    .stat-row::-webkit-scrollbar { display:none; }
+    .stat-box {
+      flex:0 0 auto; min-width:100px;
+      background: linear-gradient(145deg, var(--bg3) 0%, var(--stat-box-end) 100%);
+      border:1px solid var(--border); border-radius:16px; padding:13px 14px;
+      box-shadow: var(--shadow-sm); transition: box-shadow .2s, transform .2s;
+    }
+    .stat-box:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .stat-label { font-size:10px; color:var(--muted); margin-bottom:5px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+    .stat-val { font-size:21px; font-weight:800; letter-spacing:-.5px; }
+
+    /* ── DEVICE FILTER ─────────────────── */
+    .dev-filter-bar { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px; }
+    .dev-filter-bar::-webkit-scrollbar { display:none; }
+    .dev-filter-btn { background:var(--bg3); border:1.5px solid transparent; color:var(--muted); padding:7px 16px; border-radius:20px; font-size:12px; font-weight:700; cursor:pointer; transition:all .18s; white-space:nowrap; flex-shrink:0; }
+    .dev-filter-btn:hover { color:var(--fg); border-color:var(--border); }
+    .dev-filter-btn.active { background:rgba(92,225,230,.12); color:var(--ac); border-color:rgba(92,225,230,.3); }
+    .filter-count { font-size:10px; background:rgba(255,255,255,.06); border-radius:8px; padding:1px 5px; margin-left:3px; }
+
+    /* ── ACCOUNT GRID ──────────────────── */
+    .account-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+    @media (min-width:560px) { .account-grid { grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); } }
+
+    .account-card {
+      background:var(--bg3); border:1.5px solid var(--border); border-radius:18px;
+      padding:16px 15px;
+      transition: border-color .18s, background .18s, box-shadow .18s, transform .18s;
+      position:relative; box-shadow: var(--shadow-sm);
+    }
+    .account-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .account-card:active { background:rgba(92,225,230,.05); transform: translateY(0); }
+    .account-card.selected { border-color:var(--ac); background:rgba(92,225,230,.07); box-shadow: 0 0 0 1px rgba(92,225,230,.3), var(--shadow-sm); }
+
+    /* card internals */
+    .card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+    .card-left { display:flex; align-items:center; gap:7px; min-width:0; flex:1; }
+    .ac-id { font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-.3px; }
+    .card-meta { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:12px; }
+    .meta-box {
+      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); border-radius:14px;
+      padding:11px 12px; min-width:0;
+    }
+    .meta-label {
+      display:block; font-size:10px; color:var(--muted); margin-bottom:4px;
+      font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    }
+    .meta-expire { font-size:12px; color:var(--fg); font-weight:700; }
+    .status-text { font-size:12px; color:var(--fg); font-weight:700; }
+    .days-chip { font-size:13px; font-weight:800; letter-spacing:-.3px; }
+    .card-note {
+      min-height:48px; margin-bottom:12px; padding:11px 12px;
+      background:rgba(92,225,230,.06); border:1px solid rgba(92,225,230,.14); border-radius:14px;
+      color:var(--fg); font-size:12px; line-height:1.5; white-space:pre-wrap; word-break:break-word;
+    }
+    .card-note.empty {
+      background:rgba(255,255,255,.02); border-color:rgba(255,255,255,.05); color:var(--muted);
+    }
+    .card-actions { display:flex; gap:6px; }
+    .card-actions button { flex:1; font-size:11px; padding:7px 4px; border-radius:9px; font-weight:700; }
+    .referral-card {
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      padding:14px 15px; border-radius:16px; border:1px solid rgba(92,225,230,.18);
+      background:linear-gradient(145deg, rgba(92,225,230,.12) 0%, rgba(44,184,192,.05) 100%);
+      margin-bottom:12px;
+    }
+    .referral-code-box {
+      display:flex; flex-direction:column; gap:4px; min-width:0; flex:1;
+    }
+    .referral-code {
+      font-size:20px; font-weight:900; letter-spacing:1.4px; color:var(--ac);
+      word-break:break-all;
+    }
+
+    /* ── BADGE ─────────────────────────── */
+    .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; flex-shrink:0; }
+    .badge-run  { background:rgba(74,222,128,.12); color:var(--ok); border:1px solid rgba(74,222,128,.25); }
+    .badge-stop { background:rgba(107,114,128,.08); color:var(--muted); border:1px solid rgba(107,114,128,.15); }
+    .badge-warn { background:rgba(251,146,60,.12); color:var(--warn); border:1px solid rgba(251,146,60,.25); }
+    .badge-pend { background:var(--ac-dim); color:var(--ac); border:1px solid rgba(92,225,230,.2); }
+    .dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+    .dot-run  { background:var(--ok); animation:pulse 1.6s infinite; box-shadow: 0 0 6px rgba(74,222,128,.5); }
+    .dot-stop { background:var(--muted); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+    /* ── STATUS DOT ────────────────────── */
+    .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .dot-blue   { background:#60a5fa; box-shadow:0 0 4px rgba(96,165,250,.5); }
+    .dot-red    { background:#f87171; box-shadow:0 0 4px rgba(248,113,113,.5); }
+    .dot-orange { background:#fb923c; box-shadow:0 0 4px rgba(251,146,60,.5); }
+
+    /* ── TABLE ─────────────────────────── */
+    .table-wrap { overflow-x:auto; margin-top:8px; -webkit-overflow-scrolling:touch; border-radius:12px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { padding:8px 10px; text-align:left; color:var(--muted); font-weight:600; font-size:10px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+    td { padding:10px; border-bottom:1px solid rgba(92,225,230,.05); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr { transition: background .15s; }
+    tr:hover td { background:rgba(92,225,230,.04); }
+    .no-data { text-align:center; color:var(--muted); padding:32px; font-size:13px; }
+
+    /* ── FORM ──────────────────────────── */
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px; }
+
+    /* ── QR MODAL ──────────────────────── */
+    #qrModal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.8);
+      z-index:200; align-items:flex-end; justify-content:center;
+      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+    }
+    #qrModal.open { display:flex; }
+    .qr-box {
+      background:var(--bg2); border:1px solid var(--border); border-radius:24px 24px 0 0;
+      padding:24px 20px 32px; max-width:460px; width:100%; max-height:92vh; overflow-y:auto;
+      box-shadow: var(--shadow-lg);
+      animation: sheetIn .25s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes sheetIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    @media (min-width:560px) {
+      #qrModal { align-items:center; }
+      .qr-box { border-radius:24px; margin:16px; animation: modalIn .22s cubic-bezier(.4,0,.2,1); }
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:translateY(12px) scale(.97); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+    .qr-title { font-size:17px; font-weight:800; margin-bottom:2px; letter-spacing:-.4px; }
+    .qr-sub { font-size:12px; color:var(--muted); }
+    .qr-expiry-info { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:11px 14px; font-size:12px; margin:12px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
+    .mode-toggle { display:flex; background:var(--bg3); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:14px; padding:3px; gap:3px; }
+    .mode-btn { flex:1; background:transparent; border:none; color:var(--muted); padding:8px; font-size:13px; font-weight:700; cursor:pointer; transition:all .18s; border-radius:9px; }
+    .mode-btn.active { background: linear-gradient(135deg, #5CE1E6 0%, #2CB8C0 100%); color:#fff; box-shadow:0 2px 8px rgba(92,225,230,.4); }
+    .pkg-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:7px; margin-bottom:14px; }
+    .pkg-btn { background:var(--bg3); border:1.5px solid var(--border); color:var(--fg); border-radius:12px; padding:11px 6px; font-size:12px; font-weight:600; text-align:center; cursor:pointer; transition:all .18s; }
+    .pkg-btn:hover { transform: translateY(-1px); }
+    .pkg-btn:hover, .pkg-btn.sel { border-color:var(--ac); color:var(--ac); background:rgba(92,225,230,.08); }
+    input[type=date] { width:100%; padding:11px 14px; background:var(--bg3); border:1.5px solid var(--border); border-radius:12px; color:var(--fg); font-size:14px; outline:none; font-family:inherit; color-scheme:dark; transition: border-color .2s, box-shadow .2s; }
+    input[type=date]:focus { border-color:var(--ac); box-shadow:0 0 0 3px rgba(92,225,230,.15); }
+    .calc-box { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:13px 14px; margin:12px 0; font-size:13px; line-height:1.8; }
+    .calc-row { display:flex; justify-content:space-between; }
+    .calc-total { font-size:16px; font-weight:800; color:var(--ac); margin-top:8px; border-top:1px solid var(--border); padding-top:8px; }
+    .amount-display { font-size:14px; margin-bottom:14px; }
+    .qr-img { background:#fff; border-radius:14px; padding:8px; display:block; margin:0 auto 12px; width:200px; height:200px; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+    .addr-box { background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:11px 13px; font-family:monospace; font-size:11px; word-break:break-all; color:var(--fg); margin-bottom:12px; }
+
+    /* ── SPINNER ───────────────────────── */
+    .spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--ac); border-radius:50%; animation:spin .6s linear infinite; }
+    .loading-center { display:flex; justify-content:center; padding:32px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── TOAST ─────────────────────────── */
+    #toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+      background:rgba(14,15,28,.95); border:1px solid var(--border);
+      border-radius:14px; padding:11px 20px; font-size:13px; z-index:9999;
+      opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap; font-weight:600;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    #toast.show { opacity:1; }
+    #toast.ok  { border-color:rgba(74,222,128,.4); color:var(--ok); }
+    #toast.err { border-color:rgba(248,113,113,.4); color:var(--err); }
+
+    /* ── SELECTION BAR ─────────────────── */
+    #selectionBar {
+      display:none; position:fixed; bottom:0; left:0; right:0;
+      background:rgba(8,9,15,.95); border-top:1px solid var(--border);
+      padding:12px 16px; z-index:150; align-items:center; gap:8px; flex-wrap:wrap;
+      backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+      box-shadow: 0 -4px 24px rgba(0,0,0,.4);
+    }
+    #selectionBar.show { display:flex; }
+    #selCount { font-weight:800; color:var(--ac); font-size:13px; }
+
+    /* ── BULK MODAL ────────────────────── */
+    #bulkModal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.82);
+      z-index:220; align-items:flex-end; justify-content:center; overflow-y:auto;
+      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+    }
+    #bulkModal.open { display:flex; }
+    .bulk-box {
+      background:var(--bg2); border:1px solid var(--border); border-radius:24px 24px 0 0;
+      padding:24px 20px 36px; max-width:660px; width:100%; margin-top:auto;
+      box-shadow: var(--shadow-lg);
+    }
+    @media (min-width:700px) {
+      #bulkModal { align-items:center; padding:16px; }
+      .bulk-box { border-radius:24px; margin:auto; }
+    }
+    .bulk-row-done td { opacity:.45; }
+    .bulk-price-cell { font-weight:800; color:var(--ac); }
+  </style>
+</head>
+<body>
+
+<!-- ====== 로그인 ====== -->
+<div id="loginBox">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo"><img src="/logo/logo.png?v=2" alt="Pandora" width="300" height="76" /></div>
+      <div class="login-title">Pandora</div>
+      <div class="login-sub">그룹 대시보드 · 연결된 모든 기기를 한눈에 관리하세요</div>
+      <form id="ownerLoginForm" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" onsubmit="return false;">
+      <div class="field">
+        <label>회원/총판 ID</label>
+        <input type="text" id="loginId" name="pandora_owner_uid_field" placeholder="아이디 입력"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+          data-lpignore="true" data-1p-ignore="true" data-bwignore="true"
+          readonly onfocus="this.removeAttribute('readonly')">
+      </div>
+      <div class="field">
+        <label>비밀번호</label>
+        <input type="password" id="loginPw" name="pandora_owner_pw_field" placeholder="비밀번호 입력"
+          autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" data-bwignore="true">
+      </div>
+      </form>
+      <button class="btn-ac btn-full" id="loginBtn" onclick="doLogin()">로그인</button>
+      <div class="errmsg" id="loginErr"></div>
+      <div style="text-align:center;margin-top:16px;">
+        <a onclick="openRegisterModal()" style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;text-underline-offset:3px;">계정이 없으신가요? 회원가입 신청</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 회원가입 모달 ====== -->
+<div id="registerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;overflow-y:auto;padding:16px;">
+  <div class="login-card" style="max-width:400px;width:100%;margin:auto;position:relative;">
+    <button onclick="closeRegisterModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">✕</button>
+    <div class="login-title" style="font-size:18px;margin-bottom:4px">회원가입 신청</div>
+    <div class="login-sub" style="margin-bottom:12px">레퍼럴 코드를 입력하세요<br>승인 후 로그인 가능합니다.</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px;padding:10px 12px;background:rgba(92,225,230,.06);border:1px solid rgba(92,225,230,.14);border-radius:12px;">
+      아이디: 4~20자 영문 소문자, 숫자, `-`, `_`<br>
+      비밀번호: 8~24자 영문+숫자 포함
+    </div>
+    <div class="field">
+      <label>아이디</label>
+      <input type="text" id="regId" placeholder="사용할 아이디" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>비밀번호</label>
+      <input type="password" id="regPw" placeholder="비밀번호" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>이름 (선택)</label>
+      <input type="text" id="regName" placeholder="홍길동" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>레퍼럴 코드</label>
+      <input type="text" id="regReferral" placeholder="예: 8H4KQ2NP" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>텔레그램 (선택)</label>
+      <input type="text" id="regTelegram" placeholder="@username">
+    </div>
+    <button class="btn-ac btn-full" id="regBtn" onclick="doRegister()">회원가입 신청</button>
+    <div class="errmsg" id="regErr"></div>
+    <div class="okmsg"  id="regOk"></div>
+  </div>
+</div>
+
+<!-- ====== 기기 정보 수정 모달 ====== -->
+<div id="deviceEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:24px 22px;max-width:380px;width:100%;box-shadow:var(--shadow-lg);position:relative;">
+    <button onclick="closeDeviceEditModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px;">⚙️ 기기 정보 수정</div>
+    <div id="deviceEditTargetLabel" style="font-size:12px;color:var(--ac);margin-bottom:16px;"></div>
+    <div class="form-group" style="margin:0 0 12px;">
+      <label>메모</label>
+      <input type="text" id="deviceEditMemo" placeholder="기기 식별 메모">
+    </div>
+    <div class="form-group" style="margin:0 0 12px;">
+      <label>새 비밀번호 (선택)</label>
+      <input type="password" id="deviceEditNewPw" placeholder="변경할 때만 입력" autocomplete="new-password">
+    </div>
+    <div class="form-group" style="margin:0 0 16px;">
+      <label>새 비밀번호 확인</label>
+      <input type="password" id="deviceEditConfirmPw" placeholder="새 비밀번호 재입력" autocomplete="new-password">
+    </div>
+    <button class="btn-ac" style="width:100%;padding:13px;" onclick="saveDeviceInfo()">저장</button>
+    <p id="deviceEditMsg" style="font-size:12px;margin-top:10px;min-height:16px;text-align:center;"></p>
+  </div>
+</div>
+
+<!-- ====== 공지 팝업 ====== -->
+<div id="noticePopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:600;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:24px 22px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);position:relative;">
+    <button onclick="closeNoticePopup()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;z-index:1;">✕</button>
+    <div id="noticePopupContent"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+      <button onclick="dismissNoticeWeek()" style="flex:1;padding:10px;background:transparent;border:1.5px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;" onmouseover="this.style.borderColor='var(--ac)';this.style.color='var(--ac)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">1주일 동안 안보기</button>
+      <button onclick="closeNoticePopup()" style="flex:1;padding:10px;background:linear-gradient(135deg,#5CE1E6,#2CB8C0);border:none;border-radius:10px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 메인 앱 ====== -->
+<div id="appBox" style="display:none;">
+  <!-- 모바일 오버레이 -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- 사이드바 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <img src="/logo/logo.png?v=2" alt="" class="sidebar-brand-logo" width="270" height="68" />
+      <span class="sidebar-brand-text">Pandora</span>
+    </div>
+    <div class="sidebar-user">
+      <span style="color:var(--muted)">접속:</span>
+      <span class="sidebar-user-chip" id="sidebarUser">-</span>
+    </div>
+    <div id="sidebarRoleBadge" style="display:none;margin:0 14px 8px;padding:4px 10px;background:rgba(92,225,230,.15);border:1px solid rgba(92,225,230,.3);border-radius:20px;font-size:11px;font-weight:700;color:var(--ac);text-align:center;">총판</div>
+    <nav class="sidebar-nav">
+      <!-- 오너 전용 탭 -->
+      <button class="nav-item active owner-tab" data-tab="tabDevices" onclick="switchTab('tabDevices')">
+        <span class="nav-icon">💻</span><span>기기 목록</span>
+      </button>
+      <button class="nav-item owner-tab" data-tab="tabCreate" onclick="switchTab('tabCreate')">
+        <span class="nav-icon">➕</span><span>기기 생성</span>
+      </button>
+      <button class="nav-item owner-tab" data-tab="tabSeeds" onclick="switchTab('tabSeeds');loadSeeds(true)">
+        <span class="nav-icon">🌱</span><span>시드 현황</span>
+      </button>
+      <!-- 매니저 전용 탭 -->
+      <button class="nav-item mgr-tab" data-tab="tabMgrOwners" onclick="switchTab('tabMgrOwners');loadMgrOwners()">
+        <span class="nav-icon">🗂️</span><span>내 회원 목록</span>
+      </button>
+      <button class="nav-item mgr-tab" data-tab="tabMgrSettle" onclick="switchTab('tabMgrSettle');loadMgrSettlement(1)">
+        <span class="nav-icon">💵</span><span>정산/출금</span>
+      </button>
+      <!-- 공통 탭 -->
+      <button class="nav-item" data-tab="tabDownloads" onclick="switchTab('tabDownloads');loadDownloadItems()">
+        <span class="nav-icon">⬇️</span><span>다운로드</span>
+      </button>
+      <button class="nav-item" data-tab="tabTelegram" onclick="switchTab('tabTelegram');loadOwnerTgBot()">
+        <span class="nav-icon">📣</span><span>텔레그램</span>
+      </button>
+      <button class="nav-item" data-tab="tabMyAccount" onclick="switchTab('tabMyAccount')">
+        <span class="nav-icon">👤</span><span>내 계정</span>
+      </button>
+    </nav>
+    <div class="nav-footer">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg3);text-align:left;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">텔레그램 문의 :</div>
+        <a id="sidebarTelegramLink" href="#" target="_blank" rel="noopener noreferrer" style="font-size:13px;font-weight:700;color:var(--ac);text-decoration:none;word-break:break-all;">불러오는 중...</a>
+      </div>
+      <button class="top-logout" style="width:100%;text-align:center;" onclick="doLogout()">로그아웃</button>
+      <button class="top-logout btn-logout-all" style="width:100%;text-align:center;" onclick="doLogoutAll()">모든 기기·탭에서 로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- 메인 영역 -->
+  <div class="main-area">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="topbar-hamburger" onclick="toggleSidebar()">☰</button>
+        <span style="font-size:14px;font-weight:700;color:var(--muted);" id="topbarPageTitle">기기 목록</span>
+      </div>
+      <div class="topbar-right">
+        <button onclick="setTheme('dark')"  id="themeBtnTopDark"  title="다크모드" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;font-size:14px;border-radius:8px;line-height:1;">🌙</button>
+        <button onclick="setTheme('light')" id="themeBtnTopLight" title="라이트모드" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;font-size:14px;border-radius:8px;line-height:1;">☀️</button>
+        <span class="top-user" id="topUser"></span>
+        <button class="top-logout" onclick="doLogout()">로그아웃</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+    <!-- ===== 탭: 기기 목록 ===== -->
+    <div class="tab-panel active" id="tabDevices">
+
+      <!-- 요약 통계 -->
+      <div class="glass-card" style="padding:14px 14px 12px;">
+        <div class="stat-row" id="summaryRow">
+          <div class="loading-center" style="padding:16px;"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- 기기 목록 -->
+      <div class="glass-card">
+        <div class="section-header">
+          <span class="section-title">기기 목록</span>
+          <button class="btn-ghost btn-sm" onclick="loadAccounts()">새로고침</button>
+        </div>
+        <div class="dev-filter-bar" style="margin-bottom:14px;">
+          <button class="dev-filter-btn active" data-dfilter="all"      onclick="setDeviceFilter('all')">전체<span id="cntAll" class="filter-count">0</span></button>
+          <button class="dev-filter-btn"         data-dfilter="active"  onclick="setDeviceFilter('active')">활성<span id="cntActive" class="filter-count">0</span></button>
+          <button class="dev-filter-btn"         data-dfilter="expired" onclick="setDeviceFilter('expired')">만료<span id="cntExpired" class="filter-count">0</span></button>
+        </div>
+        <div id="accountGrid" class="account-grid">
+          <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- 채굴 내역 상세 -->
+      <div class="glass-card" id="detailPanel" style="display:none;">
+        <div class="section-header">
+          <span class="section-title">채굴 내역 &mdash; <span id="detailId" style="color:var(--ac)"></span></span>
+          <button class="btn-ghost btn-sm" onclick="closeDetail()">✕ 닫기</button>
+        </div>
+        <div id="detailStats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>채굴 일시</th><th>코인</th><th>수량</th><th>메모</th>
+            </tr></thead>
+            <tbody id="detailBody">
+              <tr><td colspan="5" class="no-data">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /tabDevices -->
+
+    <!-- ===== 탭: 계정 생성 ===== -->
+    <div class="tab-panel" id="tabCreate">
+      <div class="glass-card">
+        <div class="section-header" style="margin-bottom:8px;">
+          <span class="section-title">기기 계정 생성</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6;">생성된 계정은 바로 활성 처리됩니다.<br>단, 48시간 안에 충전이 없으면 자동 삭제됩니다.</p>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:16px;padding:10px 12px;background:rgba(92,225,230,.06);border:1px solid rgba(92,225,230,.14);border-radius:12px;">
+          아이디: 4~20자 영문 소문자, 숫자, `-`, `_`<br>
+          비밀번호: 8~24자 영문+숫자 포함
+        </div>
+        <div class="form-group">
+          <label>아이디</label>
+          <input type="text" id="createId" placeholder="사용할 아이디" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <input type="password" id="createPw" placeholder="비밀번호" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>메모 (선택)</label>
+          <input type="text" id="createTg" placeholder="기기 식별 메모">
+        </div>
+        <button class="btn-ac btn-full" id="createBtn" onclick="doCreateAccount()">기기 계정 생성</button>
+        <div class="errmsg" id="createErr"></div>
+        <div class="okmsg"  id="createOk"></div>
+      </div>
+    </div><!-- /tabCreate -->
+
+    <!-- ===== 탭: 시드 현황 ===== -->
+    <div class="tab-panel" id="tabSeeds">
+      <div class="glass-card">
+        <div class="section-header">
+          <span class="section-title">시드 현황</span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;">
+              <input type="checkbox" id="filterBalance" onchange="loadSeeds(true)" style="accent-color:var(--ac);width:15px;height:15px;">
+              잔고만
+            </label>
+            <button class="btn-ghost btn-sm" onclick="loadSeeds(true)">새로고침</button>
+          </div>
+        </div>
+        <div id="seedsBody">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div><!-- /tabSeeds -->
+
+    <!-- ===== 탭: 다운로드 ===== -->
+    <div class="tab-panel" id="tabDownloads">
+      <div class="glass-card">
+        <div class="section-header">
+          <span class="section-title">다운로드</span>
+          <button class="btn-ghost btn-sm" onclick="loadDownloadItems()">새로고침</button>
+        </div>
+        <div id="downloadsBody">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div><!-- /tabDownloads -->
+
+    <!-- ===== 탭: 텔레그램 알림 설정 (역할별) ===== -->
+    <div class="tab-panel" id="tabTelegram">
+      <div class="glass-card owner-tab">
+        <div class="section-header">
+          <span class="section-title">텔레그램 — 시드 잔고 발견 알림</span>
+        </div>
+        <div style="margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(92,225,230,.06);border:1px solid rgba(92,225,230,.14);font-size:12px;color:var(--muted);line-height:1.7;">
+          <div style="font-weight:700;color:var(--txt);margin-bottom:6px;">아주 간단하게 설정하세요</div>
+          <div>1. 텔레그램에서 <b>@BotFather</b> 검색 후 <b>/newbot</b> 입력</div>
+          <div>2. 받은 <b>봇 토큰</b>을 아래 칸에 붙여넣기</div>
+          <div>3. 알림 받을 개인채팅 또는 그룹방에 봇 초대</div>
+          <div>4. 개인채팅이면 <b>/start</b>, 그룹방이면 <b>@봇아이디 test</b>처럼 봇을 한 번 불러주기</div>
+          <div>5. <b>Chat ID 자동 찾기</b> 버튼 누르면 아래 칸에 자동 입력됩니다</div>
+        </div>
+        <div style="max-width:480px;display:grid;gap:12px;">
+          <div class="form-group" style="margin:0;"><label>봇 Token</label><input type="text" id="ownTgBotToken" placeholder="BotFather 토큰"></div>
+          <div class="form-group" style="margin:0;"><label>Chat ID (시드 발견)</label><input type="text" id="ownTgChatSeed" placeholder="-100..."></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="btn-ghost btn-sm" onclick="inspectOwnerTgBot('owner')">토큰 확인</button>
+            <button class="btn-ghost btn-sm" onclick="discoverOwnerTgChats('owner')">Chat ID 자동 찾기</button>
+            <button class="btn-ac btn-sm" onclick="saveOwnerTgBot()">저장</button>
+            <button class="btn-ghost btn-sm" onclick="testOwnerTgBot()">테스트 전송</button>
+          </div>
+          <div id="ownTgBotInfo" style="font-size:12px;color:var(--muted);min-height:18px;"></div>
+          <div id="ownTgDiscoverList" style="display:grid;gap:8px;"></div>
+          <p id="ownTgMsg" style="font-size:13px;min-height:18px;"></p>
+        </div>
+      </div>
+      <div class="glass-card mgr-tab" style="margin-top:12px;">
+        <div class="section-header">
+          <span class="section-title">텔레그램 — 입금 / 회원승인</span>
+        </div>
+        <div style="margin-bottom:14px;padding:12px 14px;border-radius:14px;background:rgba(92,225,230,.06);border:1px solid rgba(92,225,230,.14);font-size:12px;color:var(--muted);line-height:1.7;">
+          <div style="font-weight:700;color:var(--txt);margin-bottom:6px;">입금 / 승인 알림 방 연결</div>
+          <div>1. <b>봇 토큰</b> 입력</div>
+          <div>2. 입금방 / 승인방에 봇 초대</div>
+          <div>3. 개인채팅이면 <b>/start</b>, 그룹방이면 <b>@봇아이디 test</b>처럼 봇을 한 번 불러주기</div>
+          <div>4. <b>Chat ID 자동 찾기</b> 후 아래 버튼으로 입금 / 승인 칸에 넣기</div>
+          <div>한 개 방만 쓸 경우 같은 Chat ID를 두 칸에 넣어도 됩니다</div>
+        </div>
+        <div style="max-width:480px;display:grid;gap:12px;">
+          <div class="form-group" style="margin:0;"><label>봇 Token</label><input type="text" id="mgrTgBotToken" placeholder="BotFather 토큰"></div>
+          <div class="form-group" style="margin:0;"><label>Chat ID — 입금</label><input type="text" id="mgrTgChatDeposit" placeholder="-100..."></div>
+          <div class="form-group" style="margin:0;"><label>Chat ID — 회원승인</label><input type="text" id="mgrTgChatApproval" placeholder="-100..."></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="btn-ghost btn-sm" onclick="inspectOwnerTgBot('manager')">토큰 확인</button>
+            <button class="btn-ghost btn-sm" onclick="discoverOwnerTgChats('manager')">Chat ID 자동 찾기</button>
+            <button class="btn-ac btn-sm" onclick="saveOwnerTgBot()">저장</button>
+            <button class="btn-ghost btn-sm" onclick="testOwnerTgBot('deposit')">테스트·입금</button>
+            <button class="btn-ghost btn-sm" onclick="testOwnerTgBot('approval')">테스트·승인</button>
+          </div>
+          <div id="mgrTgBotInfo" style="font-size:12px;color:var(--muted);min-height:18px;"></div>
+          <div id="mgrTgDiscoverList" style="display:grid;gap:8px;"></div>
+          <p id="mgrTgMsg" style="font-size:13px;min-height:18px;"></p>
+        </div>
+      </div>
+    </div><!-- /tabTelegram -->
+
+    <!-- ===== 탭: 내 계정 ===== -->
+    <div class="tab-panel" id="tabMyAccount">
+      <div class="glass-card">
+        <div class="section-header">
+          <span class="section-title">내 계정 정보</span>
+        </div>
+        <div style="max-width:400px;display:grid;gap:14px;">
+          <!-- 테마 토글 -->
+          <div class="theme-switch">
+            <label>화면 테마</label>
+            <div class="theme-switch-inner">
+              <button class="theme-btn" id="themeBtnDark"  onclick="setTheme('dark')">🌙 다크</button>
+              <button class="theme-btn" id="themeBtnLight" onclick="setTheme('light')">☀️ 화이트</button>
+            </div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>현재 비밀번호</label>
+            <input type="password" id="meCurPw" placeholder="현재 비밀번호">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>새 비밀번호</label>
+            <input type="password" id="meNewPw" placeholder="새 비밀번호 (변경 시만 입력)">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>메신저 ID (선택)</label>
+            <input type="text" id="meTelegram" placeholder="@username">
+          </div>
+          <button class="btn-ac" onclick="saveMyAccount()" style="width:100%;padding:13px;">저장</button>
+          <p id="meMsg" style="font-size:13px;min-height:18px;text-align:center;"></p>
+        </div>
+      </div>
+    </div><!-- /tabMyAccount -->
+
+    <!-- ===== 탭: 내 회원 목록 (총판 전용) ===== -->
+    <div class="tab-panel" id="tabMgrOwners">
+      <div class="referral-card" id="managerReferralCard" style="display:none;">
+        <div class="referral-code-box">
+          <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;">내 레퍼럴 코드</span>
+          <span class="referral-code" id="managerReferralCode">-</span>
+          <span style="font-size:12px;color:var(--muted);">회원 가입 시 이 코드를 입력하면 내 소속으로 연결됩니다.</span>
+        </div>
+        <button class="btn-ac btn-sm" onclick="copyManagerReferralCode()">복사</button>
+      </div>
+      <!-- 회원 생성 카드 -->
+      <div class="glass-card" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleMgrOwnerCreateForm()">
+          <span style="font-weight:700;font-size:14px;">➕ 회원 계정 생성 <span style="font-size:11px;color:var(--muted);font-weight:400;">(내 레퍼럴로 즉시 활성)</span></span>
+          <span id="mgrOwnerCreateToggle" style="color:var(--muted);font-size:12px;">▼ 열기</span>
+        </div>
+        <div id="mgrOwnerCreateForm" style="display:none;margin-top:12px;">
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;padding:10px 12px;background:rgba(92,225,230,.06);border:1px solid rgba(92,225,230,.14);border-radius:12px;">
+            아이디: 4~20자 영문 소문자, 숫자, `-`, `_`<br>
+            비밀번호: 8~24자 영문+숫자 포함
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">
+            <div><label>회원 ID</label><input type="text"     id="mgrNewOwnerId"   placeholder="로그인 ID"></div>
+            <div><label>비밀번호</label><input type="password" id="mgrNewOwnerPw"   placeholder="비밀번호"></div>
+            <div><label>이름 (선택)</label><input type="text"  id="mgrNewOwnerName" placeholder="홍길동"></div>
+            <div><label>메신저 (선택)</label><input type="text" id="mgrNewOwnerTg"  placeholder="@id"></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+            <button class="btn-ac btn-sm" onclick="createOwnerByMgr()">생성</button>
+            <span id="mgrOwnerCreateMsg" style="font-size:13px;min-height:18px;"></span>
+          </div>
+        </div>
+      </div>
+      <!-- 회원 목록 -->
+      <div class="glass-card">
+        <div class="section-header">
+          <span class="section-title">내 회원 목록</span>
+          <button class="btn-ghost btn-sm" onclick="loadMgrOwners()">새로고침</button>
+        </div>
+        <div id="mgrOwnersBody">
+          <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div><!-- /tabMgrOwners -->
+
+    <!-- ===== 탭: 정산/출금 (매니저 전용) ===== -->
+    <div class="tab-panel" id="tabMgrSettle">
+      <!-- 요약 KPI -->
+      <div id="mgrSettleSummary" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;"></div>
+      <!-- 정산 내역 -->
+      <div class="glass-card" style="margin-bottom:12px;">
+        <div class="section-header">
+          <span class="section-title">정산 내역</span>
+          <button class="btn-ghost btn-sm" onclick="loadMgrSettlement(1)">새로고침</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>일시</th><th>기기 ID</th><th>결제금액</th><th>정산율</th><th>정산금액</th><th>유형</th>
+            </tr></thead>
+            <tbody id="mgrSettleBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="mgrSettlePagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px;"></div>
+      </div>
+      <!-- 출금 신청 -->
+      <div class="glass-card">
+        <div class="section-header" style="margin-bottom:14px;">
+          <span class="section-title">출금 신청</span>
+          <button class="btn-ghost btn-sm" onclick="loadMgrWithdrawals()">내역 새로고침</button>
+        </div>
+        <div id="mgrWithdrawBalance" style="font-size:13px;color:var(--muted);margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;">
+          <div style="flex:1;min-width:130px;"><label>금액 (USDT)</label><input type="number" id="mgrWithdrawAmount" placeholder="0.0000" min="0" step="0.0001"></div>
+          <div style="flex:2;min-width:180px;"><label>지갑 주소 (TRC-20)</label><input type="text" id="mgrWithdrawWallet" placeholder="T..."></div>
+          <button class="btn-ac btn-sm" onclick="requestMgrWithdrawal()">출금 신청</button>
+        </div>
+        <p id="mgrWithdrawMsg" style="font-size:13px;min-height:18px;"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>신청일</th><th>금액</th><th>지갑 주소</th><th>상태</th><th>처리일</th><th>거절 사유</th>
+            </tr></thead>
+            <tbody id="mgrWithdrawBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /tabMgrSettle -->
+
+    </div><!-- /content -->
+  </div><!-- /main-area -->
+</div><!-- /appBox -->
+
+<!-- QR 충전 모달 -->
+<div id="qrModal">
+  <div class="qr-box">
+    <!-- 헤더 -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <div class="qr-title">💳 QR 충전</div>
+        <div class="qr-sub" id="qrTargetLabel">대상: -</div>
+      </div>
+      <button class="btn-ghost btn-sm" onclick="closeQr()">✕</button>
+    </div>
+
+    <!-- 현재 만료일 정보 -->
+    <div class="qr-expiry-info">
+      <span style="color:var(--muted)">현재 만료일</span>
+      <span id="qrCurExpiry" style="font-weight:600">-</span>
+    </div>
+
+    <!-- 모드 토글 -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modePkgBtn" onclick="setQrMode('pkg')">패키지 선택</button>
+      <button class="mode-btn"        id="modeDateBtn" onclick="setQrMode('date')">날짜로 선택</button>
+    </div>
+
+    <!-- 패키지 모드 -->
+    <div id="modePkg">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">이용 기간 패키지</div>
+      <div class="pkg-grid" id="pkgGrid">
+        <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- 날짜 모드 -->
+    <div id="modeDate" style="display:none;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">충전 후 만료일 선택</div>
+      <input type="date" id="qrTargetDate" oninput="onDateChange()" style="margin-bottom:10px;">
+      <div class="calc-box" id="calcBox" style="display:none;">
+        <div class="calc-row"><span style="color:var(--muted)">현재 만료일</span><span id="calcFrom">-</span></div>
+        <div class="calc-row"><span style="color:var(--muted)">목표 만료일</span><span id="calcTo" style="color:var(--ac)">-</span></div>
+        <div class="calc-row"><span style="color:var(--muted)">연장 일수</span><span id="calcDays" style="color:var(--ok)">-</span></div>
+        <div class="calc-total calc-row"><span>예상 금액</span><span id="calcPrice">-</span></div>
+      </div>
+    </div>
+
+    <!-- 금액 표시 (패키지 모드) -->
+    <div class="amount-display" id="pkgAmountRow">
+      예상 금액: <b id="qrAmount" style="color:var(--ac)">-</b>
+    </div>
+
+    <button class="btn-ac" id="qrRequestBtn" onclick="requestQr()" style="width:100%;margin-bottom:12px">입금 주소 발급 / QR 보기</button>
+
+    <!-- QR 영역 -->
+    <div id="qrArea" style="display:none;text-align:center;">
+      <img id="qrImg" class="qr-img" src="" alt="QR Code">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">TRON (TRC-20 USDT) 입금 주소</div>
+      <div class="addr-box" id="qrAddress"></div>
+      <button class="btn-ghost btn-sm" onclick="checkDeposit()" style="width:100%;margin-bottom:6px">지금 확인</button>
+      <div style="font-size:12px;color:var(--muted)">입금 후 자동 감지됩니다 (10초마다)</div>
+    </div>
+
+    <div class="errmsg" id="qrErr"></div>
+    <div class="okmsg"  id="qrOk"></div>
+  </div>
+</div>
+
+<!-- 하단 선택 바 -->
+<div id="selectionBar">
+  <span id="selCount">0개 선택됨</span>
+  <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
+    <button class="btn-ghost btn-sm" onclick="selectAllVisible()">전체</button>
+    <button class="btn-ac btn-sm" onclick="openBulkModal()">📅 통합 충전</button>
+    <button class="btn-ghost btn-sm" onclick="clearBulkSelect()">해제</button>
+  </div>
+</div>
+
+<!-- 통합 충전 모달 -->
+<div id="bulkModal">
+  <div class="bulk-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:17px;font-weight:700">📅 날짜 통합 충전</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">선택 기기를 목표 날짜까지 일괄 충전</div>
+      </div>
+      <button class="btn-ghost btn-sm" onclick="closeBulkModal()">✕</button>
+    </div>
+
+    <!-- 목표 날짜 -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">목표 만료일 (모든 기기를 이 날짜까지 충전)</div>
+      <input type="date" id="bulkTargetDate" oninput="renderBulkTable()" style="max-width:220px;">
+    </div>
+
+    <!-- 기기별 내역 테이블 -->
+    <div id="bulkTableWrap">
+      <div class="no-data">날짜를 선택하면 내역이 표시됩니다.</div>
+    </div>
+
+    <!-- 총 금액 + 결제 버튼 -->
+    <div id="bulkSummary" style="display:none;margin-top:14px;">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <span style="color:var(--muted);font-size:13px;">총 예상 금액</span>
+        <b id="bulkTotalPrice" style="font-size:18px;color:var(--ac)">-</b>
+      </div>
+      <button class="btn-ac" id="bulkPayBtn" onclick="requestBulkQr()" style="width:100%;margin-bottom:10px;">💳 통합 입금 주소 발급 / QR 보기</button>
+      <div class="errmsg" id="bulkErr"></div>
+      <div class="okmsg"  id="bulkOk"></div>
+    </div>
+
+    <!-- 통합 QR 영역 -->
+    <div id="bulkQrArea" style="display:none;text-align:center;margin-top:12px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">아래 주소로 정확한 금액 입금 후 자동 처리됩니다</div>
+      <img id="bulkQrImg" class="qr-img" src="" alt="QR Code">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">TRON (TRC-20 USDT) 입금 주소</div>
+      <div class="addr-box" id="bulkQrAddress" style="cursor:pointer;" onclick="copyBulkAddress()"></div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">입금 후 자동 감지됩니다 (크론: 매분 체크)</div>
+      <button class="btn-ghost btn-sm" onclick="checkBulkDeposit()" style="width:100%;margin-bottom:6px;">지금 확인</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="webSessionIdleModal" class="modal-idle-overlay" role="dialog" aria-modal="true">
+  <div class="modal-idle-box">
+    <div class="modal-idle-title">세션 유지</div>
+    <p style="font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:8px;">
+      30분 동안 이 화면에서 활동이 없었습니다.<br><strong>세션을 유지하시겠습니까?</strong>
+    </p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+      응답이 없으면 자동 로그아웃됩니다. (<span id="webSessionIdleSec">120</span>초)
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn-ac btn-sm" style="flex:1;min-width:100px;" onclick="webSessionIdleContinue()">세션 유지</button>
+      <button type="button" class="btn-ghost btn-sm" style="flex:1;min-width:100px;" onclick="webSessionIdleLogout()">로그아웃</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ===== THEME ===== */
+  (function() {
+    const t = localStorage.getItem('owner_theme');
+    if (t === 'light') document.body.classList.add('light');
+  })();
+
+  function setTheme(mode) {
+    if (mode === 'light') {
+      document.body.classList.add('light');
+      localStorage.setItem('owner_theme', 'light');
+    } else {
+      document.body.classList.remove('light');
+      localStorage.setItem('owner_theme', 'dark');
+    }
+    _updateThemeBtns();
+  }
+  function _updateThemeBtns() {
+    const isLight = document.body.classList.contains('light');
+    // 내 계정 탭 버튼
+    const d = document.getElementById('themeBtnDark');
+    const l = document.getElementById('themeBtnLight');
+    if (d) d.classList.toggle('active', !isLight);
+    if (l) l.classList.toggle('active', isLight);
+    // 탑바 버튼 - 현재 모드 버튼을 accent 색으로 강조
+    const td = document.getElementById('themeBtnTopDark');
+    const tl = document.getElementById('themeBtnTopLight');
+    if (td) { td.style.color = !isLight ? 'var(--ac)' : 'var(--muted)'; td.style.borderColor = !isLight ? 'var(--ac)' : ''; }
+    if (tl) { tl.style.color =  isLight ? 'var(--ac)' : 'var(--muted)'; tl.style.borderColor =  isLight ? 'var(--ac)' : ''; }
+  }
+
+  const API = '';
+  let _token    = localStorage.getItem('owner_token') || '';
+  let _ownerId  = localStorage.getItem('owner_id')    || '';
+  let _role     = localStorage.getItem('owner_role')  || 'owner'; // 'owner' | 'manager'
+  let _accounts = [];
+  let _deviceFilter = 'all';
+  let _qrUserId = null;
+  let _qrPollTimer = null;
+  let _qrPrevExpiry = null;
+  let _qrSelectedDays = 30;
+  let _qrMode = 'pkg';
+  let _qrCalcDays = 0;
+  let _qrCalcPrice = 0;
+  let _pricing = null;
+  let _seedsLoaded = false;
+  let _seedPage    = 1;
+  const _seedRevealed = {};
+  let _ownerReferralCode = '';
+  const OWNER_ACCOUNT_ID_REGEX = /^[a-z0-9][a-z0-9_-]{3,19}$/;
+  const OWNER_ACCOUNT_PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_\-+=\[\]{};:,.?]{8,24}$/;
+
+  // 통합 충전
+  let _bulkSelected   = new Set();
+  let _bulkFromModal  = false;
+  let _bulkDone       = new Set();
+  let _bulkTargetDate = '';
+  let _bulkToken      = null;
+  let _bulkPollTimer  = null;
+  let _deviceEditTarget = null;
+  let _selectedId     = null;
+
+  /* ===== 웹 세션 30분 유휴 (앱/기기 로그인과 무관) ===== */
+  const WEB_IDLE_MS = 30 * 60 * 1000;
+  const WEB_PROMPT_SEC = 120;
+  let _webIdleT = null;
+  let _webPromptTick = null;
+  let _webWatchOn = false;
+  let _webModalOpen = false;
+
+  function clearOwnerLoginInputs() {
+    const id = document.getElementById('loginId');
+    const pw = document.getElementById('loginPw');
+    if (id) id.value = '';
+    if (pw) pw.value = '';
+  }
+
+  function validateNewAccountFields(id, password) {
+    const normalizedId = String(id || '').trim().toLowerCase();
+    const rawPw = String(password || '');
+    if (!OWNER_ACCOUNT_ID_REGEX.test(normalizedId)) {
+      return '아이디는 4~20자의 영문 소문자, 숫자, -, _만 사용할 수 있습니다.';
+    }
+    if (rawPw !== rawPw.trim()) {
+      return '비밀번호 앞뒤 공백은 사용할 수 없습니다.';
+    }
+    if (!OWNER_ACCOUNT_PASSWORD_REGEX.test(rawPw)) {
+      return '비밀번호는 8~24자의 영문과 숫자를 포함해야 합니다.';
+    }
+    return '';
+  }
+
+  function setSidebarTelegramLink(telegram) {
+    const link = document.getElementById('sidebarTelegramLink');
+    if (!link) return;
+    const value = String(telegram || '@문의').trim() || '@문의';
+    link.textContent = value;
+    if (value.startsWith('@')) {
+      link.href = 'https://t.me/' + value.slice(1);
+      link.style.pointerEvents = '';
+      link.style.opacity = '';
+      link.setAttribute('target', '_blank');
+    } else {
+      link.href = '#';
+      link.style.pointerEvents = 'none';
+      link.style.opacity = '.9';
+      link.removeAttribute('target');
+    }
+  }
+
+  async function loadOwnerContactTelegram() {
+    try {
+      const r = await fetch(API + '/api/admin/telegram');
+      if (!r.ok) throw new Error('fail');
+      const data = await r.json();
+      setSidebarTelegramLink(data.nickname || '@문의');
+    } catch (_) {
+      setSidebarTelegramLink('@문의');
+    }
+  }
+
+  function _ownerWebActivityHandler() {
+    if (!_webWatchOn || _webModalOpen || document.visibilityState !== 'visible') return;
+    clearTimeout(_webIdleT);
+    _webIdleT = setTimeout(openOwnerWebSessionIdleModal, WEB_IDLE_MS);
+  }
+
+  function _ownerWebVisHandler() {
+    if (document.visibilityState === 'hidden') {
+      clearTimeout(_webIdleT);
+    } else if (_webWatchOn && !_webModalOpen) {
+      _ownerWebActivityHandler();
+    }
+  }
+
+  function closeOwnerWebSessionIdleModal() {
+    const m = document.getElementById('webSessionIdleModal');
+    if (m) m.classList.remove('open');
+    if (_webPromptTick) {
+      clearInterval(_webPromptTick);
+      _webPromptTick = null;
+    }
+    _webModalOpen = false;
+  }
+
+  function openOwnerWebSessionIdleModal() {
+    if (!_webWatchOn) return;
+    const app = document.getElementById('appBox');
+    if (!app || app.style.display === 'none') return;
+    _webModalOpen = true;
+    clearTimeout(_webIdleT);
+    const m = document.getElementById('webSessionIdleModal');
+    if (!m) return;
+    m.classList.add('open');
+    let sec = WEB_PROMPT_SEC;
+    const el = document.getElementById('webSessionIdleSec');
+    if (el) el.textContent = String(sec);
+    _webPromptTick = setInterval(function () {
+      sec -= 1;
+      if (el) el.textContent = String(Math.max(0, sec));
+      if (sec <= 0) {
+        clearInterval(_webPromptTick);
+        _webPromptTick = null;
+        webSessionIdleLogout();
+      }
+    }, 1000);
+  }
+
+  function stopWebSessionWatch() {
+    _webWatchOn = false;
+    clearTimeout(_webIdleT);
+    _webIdleT = null;
+    closeOwnerWebSessionIdleModal();
+    document.removeEventListener('visibilitychange', _ownerWebVisHandler);
+    document.removeEventListener('mousemove', _ownerWebActivityHandler, true);
+    document.removeEventListener('keydown', _ownerWebActivityHandler, true);
+    document.removeEventListener('click', _ownerWebActivityHandler, true);
+    document.removeEventListener('scroll', _ownerWebActivityHandler, true);
+    document.removeEventListener('touchstart', _ownerWebActivityHandler, true);
+  }
+
+  function startWebSessionWatch() {
+    stopWebSessionWatch();
+    _webWatchOn = true;
+    document.addEventListener('visibilitychange', _ownerWebVisHandler);
+    document.addEventListener('mousemove', _ownerWebActivityHandler, true);
+    document.addEventListener('keydown', _ownerWebActivityHandler, true);
+    document.addEventListener('click', _ownerWebActivityHandler, true);
+    document.addEventListener('scroll', _ownerWebActivityHandler, true);
+    document.addEventListener('touchstart', _ownerWebActivityHandler, true);
+    _ownerWebActivityHandler();
+  }
+
+  async function webSessionIdleContinue() {
+    closeOwnerWebSessionIdleModal();
+    try { await ownerFetch('/api/owner/me'); } catch (_) {}
+    if (_webWatchOn) _ownerWebActivityHandler();
+  }
+
+  async function webSessionIdleLogout() {
+    closeOwnerWebSessionIdleModal();
+    stopWebSessionWatch();
+    try { await ownerFetch('/api/owner/logout', 'POST'); } catch (_) {}
+    clearSession();
+    showLogin();
+  }
+
+  /* ===================== INIT ===================== */
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('loginId').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('loginPw').focus(); });
+    document.getElementById('loginPw').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+    if (_token) tryAutoLogin(); else showLogin();
+  });
+
+  async function tryAutoLogin() {
+    try {
+      const r = await ownerFetch('/api/owner/me');
+      if (r.ok) {
+        const d = await r.json();
+        if (d.role) { _role = d.role; localStorage.setItem('owner_role', _role); }
+        _ownerReferralCode = d.referralCode || '';
+        showApp();
+      } else { clearSession(); showLogin(); }
+    } catch { clearSession(); showLogin(); }
+  }
+
+  /* ===================== SESSION ===================== */
+  function resetOwnerUiForLogout() {
+    try { stopQrPoll(); } catch (e) {}
+    try { stopBulkPoll(); } catch (e) {}
+    const qm = document.getElementById('qrModal');
+    if (qm) qm.classList.remove('open');
+    const bm = document.getElementById('bulkModal');
+    if (bm) bm.classList.remove('open');
+    const sb = document.getElementById('selectionBar');
+    if (sb) sb.classList.remove('show');
+    document.body.style.paddingBottom = '';
+    _bulkSelected.clear();
+    _qrUserId = null;
+    _bulkFromModal = false;
+    const dp = document.getElementById('detailPanel');
+    if (dp) { dp.style.display = 'none'; }
+    const dpm = document.getElementById('deviceEditModal');
+    if (dpm) dpm.style.display = 'none';
+    _deviceEditTarget = null;
+    const reg = document.getElementById('registerModal');
+    if (reg) reg.style.display = 'none';
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('open');
+    const ov = document.querySelector('.sidebar-overlay');
+    if (ov) ov.classList.remove('open');
+    document.body.style.overflow = '';
+    document.querySelectorAll('.account-card').forEach(c => { c.style.outline = ''; });
+    _selectedId = null;
+  }
+
+  function showLogin() {
+    stopWebSessionWatch();
+    resetOwnerUiForLogout();
+    document.getElementById('loginBox').style.display = 'flex';
+    document.getElementById('appBox').style.display = 'none';
+    clearOwnerLoginInputs();
+  }
+
+  function renderManagerReferralCard() {
+    const card = document.getElementById('managerReferralCard');
+    const codeEl = document.getElementById('managerReferralCode');
+    if (!card || !codeEl) return;
+    const show = _role === 'manager' && !!_ownerReferralCode;
+    card.style.display = show ? '' : 'none';
+    codeEl.textContent = show ? _ownerReferralCode : '-';
+  }
+
+  async function copyManagerReferralCode() {
+    if (!_ownerReferralCode) {
+      showToast('레퍼럴 코드가 없습니다.', 'err');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(_ownerReferralCode);
+      showToast('레퍼럴 코드가 복사되었습니다.');
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = _ownerReferralCode;
+      ta.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('레퍼럴 코드가 복사되었습니다.');
+    }
+  }
+
+  function showApp() {
+    document.getElementById('loginBox').style.display = 'none';
+    document.getElementById('appBox').style.display = 'flex';
+    document.getElementById('topUser').textContent = _ownerId;
+    _updateThemeBtns();
+    if (document.getElementById('sidebarUser')) document.getElementById('sidebarUser').textContent = _ownerId;
+    loadOwnerContactTelegram();
+
+    const isManager = _role === 'manager';
+    const tgNavBtn = document.querySelector('.nav-item[data-tab="tabTelegram"]');
+    // 역할 배지
+    const badge = document.getElementById('sidebarRoleBadge');
+    if (badge) { badge.style.display = isManager ? '' : 'none'; }
+    // 탭 가시성 설정
+    document.querySelectorAll('.owner-tab').forEach(el => el.style.display = isManager ? 'none' : '');
+    document.querySelectorAll('.mgr-tab').forEach(el => el.style.display = isManager ? '' : 'none');
+    if (tgNavBtn) tgNavBtn.style.display = '';
+    renderManagerReferralCard();
+
+    if (isManager) {
+      // 총판: 첫 탭 = 내 회원 목록
+      document.querySelectorAll('.nav-item.active').forEach(el => el.classList.remove('active'));
+      const mgrBtn = document.querySelector('.nav-item[data-tab="tabMgrOwners"]');
+      if (mgrBtn) mgrBtn.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      const mgrPanel = document.getElementById('tabMgrOwners');
+      if (mgrPanel) mgrPanel.classList.add('active');
+      loadMgrOwners();
+    } else {
+      // 오너: 기존 플로우
+      loadAccounts();
+    }
+    loadPricing();
+    loadNoticePopup();
+    startWebSessionWatch();
+  }
+  function clearSession() {
+    _token = ''; _ownerId = ''; _role = 'owner';
+    _ownerReferralCode = '';
+    localStorage.removeItem('owner_token');
+    localStorage.removeItem('owner_id');
+    localStorage.removeItem('owner_role');
+  }
+
+  /* ===================== LOGIN ===================== */
+  async function doLogin() {
+    const id  = document.getElementById('loginId').value.trim();
+    const pw  = document.getElementById('loginPw').value.trim();
+    const err = document.getElementById('loginErr');
+    const btn = document.getElementById('loginBtn');
+    err.textContent = '';
+    if (!id || !pw) { err.textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+    btn.disabled = true; btn.textContent = '로그인 중...';
+    try {
+      const r = await fetch(API + '/api/owner/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password: pw }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        const msg = data.error || '로그인 실패';
+        err.textContent = msg;
+        if (r.status === 403 && msg.includes('승인 대기')) {
+          alert('승인 대기 중입니다.\n관리자 승인 후 로그인할 수 있습니다.');
+        }
+        return;
+      }
+      _token = data.token; _ownerId = data.id; _role = data.role || 'owner';
+      _ownerReferralCode = data.referralCode || '';
+      localStorage.setItem('owner_token', _token);
+      localStorage.setItem('owner_id', _ownerId);
+      localStorage.setItem('owner_role', _role);
+      showApp();
+    } catch { err.textContent = '서버 연결 오류'; }
+    finally { btn.disabled = false; btn.textContent = '로그인'; }
+  }
+
+  async function doLogout() {
+    stopWebSessionWatch();
+    try { await ownerFetch('/api/owner/logout', 'POST'); } catch {}
+    clearSession();
+    showLogin();
+  }
+
+  async function doLogoutAll() {
+    if (!confirm('이 계정의 모든 웹 로그인(다른 탭·브라우저)을 종료합니다.\n계속하시겠습니까?')) return;
+    stopWebSessionWatch();
+    try {
+      const r = await ownerFetch('/api/owner/logout-all', 'POST');
+      if (!r.ok) await ownerFetch('/api/owner/logout', 'POST');
+    } catch (_) {
+      try { await ownerFetch('/api/owner/logout', 'POST'); } catch (__) {}
+    }
+    clearSession();
+    showLogin();
+  }
+
+  /* ===================== REGISTER ===================== */
+  function openRegisterModal() {
+    const m = document.getElementById('registerModal');
+    m.style.display = 'flex';
+    document.getElementById('regErr').textContent = '';
+    document.getElementById('regOk').textContent  = '';
+  }
+
+  function closeRegisterModal() {
+    document.getElementById('registerModal').style.display = 'none';
+  }
+
+  // 기존 toggleRegister 호환
+  function toggleRegister() { openRegisterModal(); }
+
+  async function doRegister() {
+    const id       = document.getElementById('regId').value.trim();
+    const pw       = document.getElementById('regPw').value.trim();
+    const name     = document.getElementById('regName')?.value.trim() || '';
+    const referral = document.getElementById('regReferral').value.trim();
+    const telegram = document.getElementById('regTelegram').value.trim();
+    const errEl    = document.getElementById('regErr');
+    const okEl     = document.getElementById('regOk');
+    const btn      = document.getElementById('regBtn');
+    errEl.textContent = ''; okEl.textContent = '';
+    if (!id || !pw || !referral) { errEl.textContent = '아이디, 비밀번호, 레퍼럴 코드를 입력하세요.'; return; }
+    const fieldError = validateNewAccountFields(id, pw);
+    if (fieldError) { errEl.textContent = fieldError; return; }
+    btn.disabled = true; btn.textContent = '처리 중...';
+    try {
+      const r = await fetch(API + '/api/owner/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password: pw, name: name || undefined, referralCode: referral, telegram: telegram || undefined }),
+      });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || '가입 실패'; return; }
+      okEl.textContent = '회원가입 신청이 완료되었습니다. 승인 후 로그인 가능합니다.';
+      ['regId','regPw','regName','regReferral','regTelegram'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    } catch { errEl.textContent = '서버 연결 오류'; }
+    finally { btn.disabled = false; btn.textContent = '회원가입 신청'; }
+  }
+
+  /* ===================== SIDEBAR ===================== */
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    const isOpen = sb.classList.contains('open');
+    if (isOpen) {
+      sb.classList.remove('open'); ov.classList.remove('open');
+      document.body.style.overflow = '';
+    } else {
+      sb.classList.add('open'); ov.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  /* ===================== TAB ===================== */
+  const _tabTitles = {
+    tabDevices: '기기 목록', tabCreate: '기기 생성',
+    tabSeeds: '시드 현황', tabDownloads: '다운로드', tabTelegram: '텔레그램',
+    tabMgrOwners: '내 회원 목록', tabMgrSettle: '정산/출금', tabMyAccount: '내 계정',
+  };
+  function switchTab(id) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    const panel = document.getElementById(id);
+    if (panel) panel.classList.add('active');
+    document.querySelectorAll(`.nav-item[data-tab="${id}"]`).forEach(b => b.classList.add('active'));
+    const titleEl = document.getElementById('topbarPageTitle');
+    if (titleEl) titleEl.textContent = _tabTitles[id] || '';
+    if (window.innerWidth <= 768) closeSidebar();
+    if (id === 'tabMyAccount') _updateThemeBtns();
+    if (id === 'tabTelegram') loadOwnerTgBot();
+  }
+
+  /* ===================== TELEGRAM (owner / manager) ===================== */
+  function getOwnerTgScope(scope) {
+    const isMgr = scope === 'manager';
+    return {
+      isMgr,
+      tokenId: isMgr ? 'mgrTgBotToken' : 'ownTgBotToken',
+      msgId: isMgr ? 'mgrTgMsg' : 'ownTgMsg',
+      botInfoId: isMgr ? 'mgrTgBotInfo' : 'ownTgBotInfo',
+      listId: isMgr ? 'mgrTgDiscoverList' : 'ownTgDiscoverList',
+      primaryInputId: isMgr ? 'mgrTgChatDeposit' : 'ownTgChatSeed',
+      secondaryInputId: isMgr ? 'mgrTgChatApproval' : null,
+    };
+  }
+  function setOwnerTgMessage(scope, text, tone) {
+    const cfg = getOwnerTgScope(scope);
+    const el = document.getElementById(cfg.msgId);
+    if (!el) return;
+    el.textContent = text || '';
+    el.style.color = tone === 'ok' ? 'var(--ok)' : tone === 'err' ? 'var(--err)' : 'var(--muted)';
+  }
+  function setOwnerTgBotInfo(scope, bot) {
+    const cfg = getOwnerTgScope(scope);
+    const el = document.getElementById(cfg.botInfoId);
+    if (!el) return;
+    if (!bot) {
+      el.textContent = '';
+      return;
+    }
+    const name = bot.name ? `${bot.name} ` : '';
+    const username = bot.username ? `@${bot.username}` : '봇';
+    el.textContent = `${name}${username} 연결 확인됨`;
+  }
+  function fillOwnerTgChat(scope, target, chat) {
+    const cfg = getOwnerTgScope(scope);
+    const chatId = String(chat?.id ?? '').trim();
+    if (!chatId) return;
+    if (!cfg.isMgr) {
+      const input = document.getElementById(cfg.primaryInputId);
+      if (input) input.value = chatId;
+      setOwnerTgMessage(scope, `"${chat.title}" 방 Chat ID를 시드 알림 칸에 넣었습니다.`, 'ok');
+      return;
+    }
+    const targetId = target === 'approval' ? cfg.secondaryInputId : cfg.primaryInputId;
+    const input = document.getElementById(targetId);
+    if (input) input.value = chatId;
+    setOwnerTgMessage(scope, `"${chat.title}" 방 Chat ID를 ${target === 'approval' ? '승인' : '입금'} 칸에 넣었습니다.`, 'ok');
+  }
+  function renderOwnerTgChats(scope, chats) {
+    const cfg = getOwnerTgScope(scope);
+    const wrap = document.getElementById(cfg.listId);
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!Array.isArray(chats) || !chats.length) return;
+
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px;color:var(--muted);font-weight:700;margin-top:2px;';
+    label.textContent = '최근 찾은 채팅방';
+    wrap.appendChild(label);
+
+    chats.forEach((chat) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 13px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);';
+
+      const meta = document.createElement('div');
+      meta.style.cssText = 'display:grid;gap:3px;min-width:180px;flex:1 1 220px;';
+      const title = document.createElement('div');
+      title.style.cssText = 'font-size:13px;font-weight:700;color:var(--txt);';
+      title.textContent = chat.title || `Chat ${chat.id}`;
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-size:12px;color:var(--muted);line-height:1.5;';
+      sub.textContent = `${chat.type || 'chat'} · ${chat.id}${chat.username ? ` · ${chat.username}` : ''}`;
+      meta.appendChild(title);
+      meta.appendChild(sub);
+
+      const actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+      const makeBtn = (text, handler, accent) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = accent ? 'btn-ac btn-sm' : 'btn-ghost btn-sm';
+        btn.textContent = text;
+        btn.onclick = handler;
+        return btn;
+      };
+
+      if (cfg.isMgr) {
+        actions.appendChild(makeBtn('입금에 넣기', () => fillOwnerTgChat(scope, 'deposit', chat), true));
+        actions.appendChild(makeBtn('승인에 넣기', () => fillOwnerTgChat(scope, 'approval', chat), false));
+      } else {
+        actions.appendChild(makeBtn('시드 알림에 넣기', () => fillOwnerTgChat(scope, 'seed', chat), true));
+      }
+
+      row.appendChild(meta);
+      row.appendChild(actions);
+      wrap.appendChild(row);
+    });
+  }
+  async function inspectOwnerTgBot(scope) {
+    const cfg = getOwnerTgScope(scope);
+    const token = document.getElementById(cfg.tokenId)?.value.trim() || '';
+    setOwnerTgMessage(scope, '봇 토큰 확인 중...', 'muted');
+    setOwnerTgBotInfo(scope, null);
+    renderOwnerTgChats(scope, []);
+    try {
+      const r = await ownerFetch('/api/owner/telegram-bot/discover', 'POST', { botToken: token, discoverChats: false });
+      const data = await r.json();
+      if (!r.ok) {
+        setOwnerTgMessage(scope, data.error || '확인 실패', 'err');
+        return;
+      }
+      setOwnerTgBotInfo(scope, data.bot);
+      setOwnerTgMessage(scope, data.message || '봇 연결 확인 완료', 'ok');
+    } catch (e) {
+      setOwnerTgMessage(scope, e.message || '오류', 'err');
+    }
+  }
+  async function discoverOwnerTgChats(scope) {
+    const cfg = getOwnerTgScope(scope);
+    const token = document.getElementById(cfg.tokenId)?.value.trim() || '';
+    setOwnerTgMessage(scope, '최근 대화방을 찾는 중...', 'muted');
+    setOwnerTgBotInfo(scope, null);
+    renderOwnerTgChats(scope, []);
+    try {
+      const r = await ownerFetch('/api/owner/telegram-bot/discover', 'POST', { botToken: token, discoverChats: true });
+      const data = await r.json();
+      if (!r.ok) {
+        setOwnerTgMessage(scope, data.error || '조회 실패', 'err');
+        return;
+      }
+      const chats = Array.isArray(data.chats) ? data.chats : [];
+      setOwnerTgBotInfo(scope, data.bot);
+      renderOwnerTgChats(scope, chats);
+      let statusText = data.message || '조회 완료';
+      let statusTone = chats.length ? 'ok' : 'muted';
+      if (!cfg.isMgr && chats.length === 1) {
+        fillOwnerTgChat(scope, 'seed', chats[0]);
+        statusText = `"${chats[0].title}" 방 Chat ID를 시드 알림 칸에 자동 입력했습니다.`;
+        statusTone = 'ok';
+      } else if (cfg.isMgr && chats.length === 1) {
+        const depositInput = document.getElementById(cfg.primaryInputId);
+        const approvalInput = document.getElementById(cfg.secondaryInputId);
+        if (depositInput && !depositInput.value.trim()) depositInput.value = chats[0].id;
+        if (approvalInput && !approvalInput.value.trim()) approvalInput.value = chats[0].id;
+        statusText = `"${chats[0].title}" 방 Chat ID를 입금/승인 칸에 자동 입력했습니다.`;
+        statusTone = 'ok';
+      }
+      setOwnerTgMessage(scope, statusText, statusTone);
+    } catch (e) {
+      setOwnerTgMessage(scope, e.message || '오류', 'err');
+    }
+  }
+  async function loadOwnerTgBot() {
+    const oMsg = document.getElementById('ownTgMsg');
+    const mMsg = document.getElementById('mgrTgMsg');
+    if (oMsg) oMsg.textContent = '';
+    if (mMsg) mMsg.textContent = '';
+    setOwnerTgBotInfo('owner', null);
+    setOwnerTgBotInfo('manager', null);
+    renderOwnerTgChats('owner', []);
+    renderOwnerTgChats('manager', []);
+    try {
+      const r = await ownerFetch('/api/owner/telegram-bot');
+      const d = await r.json();
+      if (!r.ok) return;
+      if (_role === 'manager') {
+        document.getElementById('mgrTgBotToken').value = d.botToken || '';
+        document.getElementById('mgrTgChatDeposit').value = d.chatDeposit || d.chatId || '';
+        document.getElementById('mgrTgChatApproval').value = d.chatApproval || d.chatId || '';
+      } else {
+        document.getElementById('ownTgBotToken').value = d.botToken || '';
+        document.getElementById('ownTgChatSeed').value = d.chatSeed || '';
+      }
+    } catch (_) {}
+  }
+  async function saveOwnerTgBot() {
+    const isMgr = _role === 'manager';
+    const msgEl = document.getElementById(isMgr ? 'mgrTgMsg' : 'ownTgMsg');
+    msgEl.textContent = '';
+    try {
+      const body = isMgr
+        ? {
+            botToken: document.getElementById('mgrTgBotToken').value.trim(),
+            chatDeposit: document.getElementById('mgrTgChatDeposit').value.trim(),
+            chatApproval: document.getElementById('mgrTgChatApproval').value.trim(),
+          }
+        : {
+            botToken: document.getElementById('ownTgBotToken').value.trim(),
+            chatSeed: document.getElementById('ownTgChatSeed').value.trim(),
+          };
+      const r = await ownerFetch('/api/owner/telegram-bot', 'PUT', body);
+      const data = await r.json();
+      if (!r.ok) { msgEl.style.color = 'var(--err)'; msgEl.textContent = data.error || '저장 실패'; return; }
+      msgEl.style.color = 'var(--ok)'; msgEl.textContent = '저장되었습니다.';
+    } catch (e) { msgEl.style.color = 'var(--err)'; msgEl.textContent = e.message || '오류'; }
+  }
+  async function testOwnerTgBot(channel) {
+    const isMgr = _role === 'manager';
+    const msgEl = document.getElementById(isMgr ? 'mgrTgMsg' : 'ownTgMsg');
+    msgEl.textContent = '전송 중...';
+    msgEl.style.color = 'var(--muted)';
+    try {
+      const r = await ownerFetch('/api/owner/telegram-bot/test', 'POST', isMgr ? { channel: channel || 'deposit' } : {});
+      const data = await r.json();
+      if (!r.ok) { msgEl.style.color = 'var(--err)'; msgEl.textContent = data.error || '실패'; return; }
+      msgEl.style.color = 'var(--ok)'; msgEl.textContent = '테스트 메시지를 보냈습니다.';
+    } catch (e) { msgEl.style.color = 'var(--err)'; msgEl.textContent = e.message || '오류'; }
+  }
+
+  /* ===================== DEVICES ===================== */
+  function setDeviceFilter(f) {
+    _deviceFilter = f;
+    document.querySelectorAll('.dev-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.dfilter === f));
+    renderAccountGrid();
+  }
+
+  async function loadAccounts() {
+    const grid = document.getElementById('accountGrid');
+    const summary = document.getElementById('summaryRow');
+    grid.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>';
+    try {
+      const r = await ownerFetch('/api/owner/accounts');
+      if (!r.ok) { if (r.status === 401) { clearSession(); showLogin(); return; } throw new Error('불러오기 실패'); }
+      const data = await r.json();
+      _accounts = data.accounts || [];
+
+      const total      = _accounts.length;
+      const running    = _accounts.filter(a => a.minerStatus === 'running').length;
+      const active     = _accounts.filter(a => a.status === 'approved' && !a.isExpired && !a.needsInitialCharge).length;
+      const expired    = _accounts.filter(a => a.isExpired).length;
+      const expireSoon = _accounts.filter(a => !a.isExpired && !a.needsInitialCharge && a.remainingDays >= 0 && a.remainingDays <= 7).length;
+
+      summary.innerHTML =
+        mkStat('총 기기', total + '대', 'var(--ac)') +
+        mkStat('채굴 중', running + '대', 'var(--ok)') +
+        mkStat('활성', active + '대', 'var(--ok)') +
+        mkStat('7일 이내 만료', expireSoon + '대', expireSoon > 0 ? 'var(--warn)' : 'var(--muted)');
+
+      // 필터 카운트 업데이트
+      const setCount = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+      setCount('cntAll', total);
+      setCount('cntActive', active);
+      setCount('cntExpired', expired);
+
+      renderAccountGrid();
+    } catch (e) {
+      document.getElementById('accountGrid').innerHTML =
+        `<div style="color:var(--err);font-size:13px;padding:20px;grid-column:1/-1">${esc(e.message)}</div>`;
+    }
+  }
+
+  function renderAccountGrid() {
+    const grid = document.getElementById('accountGrid');
+    if (!grid) return;
+
+    let list = _accounts;
+    if (_deviceFilter === 'active')  list = _accounts.filter(a => a.status === 'approved' && !a.isExpired && !a.needsInitialCharge);
+    if (_deviceFilter === 'expired') list = _accounts.filter(a => a.isExpired);
+
+    if (!list.length) {
+      grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;grid-column:1/-1">' +
+        (_deviceFilter === 'all' ? '연결된 기기가 없습니다.' : '해당하는 기기가 없습니다.') + '</div>';
+      return;
+    }
+
+    grid.innerHTML = list.map(a => {
+      const isRun  = a.minerStatus === 'running';
+      const exp    = a.expireDate ? new Date(a.expireDate) : null;
+      const expStr = exp ? fmtDateShort(exp) : '미설정';
+      const chargeDue = a.chargeRequiredUntil ? new Date(a.chargeRequiredUntil) : null;
+      const memo   = String(a.memo || a.telegram || '').trim();
+      const rDayNum = Number(a.remainingDays);
+      const hasRDay = Number.isFinite(rDayNum);
+      const chargeHours = chargeDue ? Math.max(0, Math.ceil((chargeDue - new Date()) / 3600000)) : 0;
+      const isAwaitingCharge = !!a.needsInitialCharge;
+      const rColor = isAwaitingCharge ? 'var(--warn)' : (a.isExpired ? 'var(--err)' : (hasRDay && rDayNum <= 7 ? 'var(--warn)' : 'var(--ok)'));
+      const dotCls = isAwaitingCharge ? 'dot-orange' : (a.status === 'approved' && !a.isExpired ? 'dot-blue' : a.isExpired ? 'dot-red' : a.status === 'suspended' ? 'dot-red' : 'dot-orange');
+      const statusTxt = isAwaitingCharge ? '충전대기' : (a.isExpired ? '만료' : a.status === 'approved' ? '활성' : a.status === 'suspended' ? '정지' : '대기');
+      const uid = escJs(a.id);
+      const isSel = _bulkSelected.has(a.id);
+      const daysLabel = isAwaitingCharge ? `${chargeHours}시간 남음` : (a.isExpired ? '만료됨' : hasRDay ? `D-${rDayNum}` : '확인 필요');
+      return `<div class="account-card${isSel ? ' selected' : ''}" id="card_${esc(a.id)}" onclick="toggleBulkSelect('${uid}')" style="cursor:pointer;" role="button" tabindex="0" aria-pressed="${isSel ? 'true' : 'false'}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleBulkSelect('${uid}');}">
+        <div class="card-top">
+          <div class="card-left">
+            <span class="status-dot ${dotCls}"></span>
+            <span class="ac-id">${esc(a.id)}</span>
+          </div>
+          <span class="badge ${isRun ? 'badge-run' : 'badge-stop'}">
+            <span class="dot ${isRun ? 'dot-run' : 'dot-stop'}"></span>${isRun ? '채굴중' : '정지'}
+          </span>
+        </div>
+        <div class="card-note${memo ? '' : ' empty'}">${memo ? esc(memo) : '저장된 메모가 없습니다.'}</div>
+        <div class="card-meta">
+          <div class="meta-box">
+            <span class="meta-label">만료일</span>
+            <span class="meta-expire">${expStr}</span>
+          </div>
+          <div class="meta-box">
+            <span class="meta-label">상태</span>
+            <span class="status-text">${statusTxt} <span class="days-chip" style="color:${rColor};margin-left:6px;">${daysLabel}</span></span>
+          </div>
+        </div>
+        <div class="card-actions" onclick="event.stopPropagation()">
+          <button class="btn-ghost btn-sm" onclick="openQr('${uid}')" style="color:var(--ac);border-color:rgba(92,225,230,.4);">QR충전</button>
+          <button class="btn-ghost btn-sm" onclick="openDeviceEditModal('${uid}')">정보 수정</button>
+          <button class="btn-err-sm" onclick="doKick('${uid}')">세션끊기</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadDetail(userId) {
+    _selectedId = userId;
+    document.querySelectorAll('.account-card').forEach(c => c.style.outline = '');
+    const card = document.getElementById('card_' + userId);
+    if (card) card.style.outline = '2px solid var(--ac)';
+
+    const panel = document.getElementById('detailPanel');
+    panel.style.display = '';
+    document.getElementById('detailId').textContent = userId;
+    document.getElementById('detailBody').innerHTML = '<tr><td colspan="5" class="no-data"><div class="spinner"></div></td></tr>';
+    document.getElementById('detailStats').innerHTML = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    try {
+      const r = await ownerFetch('/api/owner/accounts/' + encodeURIComponent(userId) + '/mining-records');
+      if (!r.ok) throw new Error((await r.json()).error || '불러오기 실패');
+      const data = await r.json();
+      document.getElementById('detailStats').innerHTML =
+        mkStat('누적 채굴량', Number(data.cumulative).toFixed(8), 'var(--ac)') +
+        mkStat('채굴 건수', data.records.length + '건', 'var(--muted)');
+      if (!data.records.length) {
+        document.getElementById('detailBody').innerHTML = '<tr><td colspan="5" class="no-data">채굴 내역이 없습니다.</td></tr>';
+        return;
+      }
+      document.getElementById('detailBody').innerHTML = data.records.map((r, i) =>
+        `<tr>
+          <td style="color:var(--muted)">${i+1}</td>
+          <td>${fmtDate(r.mined_at)}</td>
+          <td><span style="background:var(--ac-dim);color:var(--ac);padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600">${esc(r.coin_type)}</span></td>
+          <td style="font-weight:600">${Number(r.amount).toFixed(8)}</td>
+          <td style="color:var(--muted)">${r.note ? esc(r.note) : '-'}</td>
+        </tr>`
+      ).join('');
+    } catch (e) {
+      document.getElementById('detailBody').innerHTML = `<tr><td colspan="5" class="no-data">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  function closeDetail() {
+    document.getElementById('detailPanel').style.display = 'none';
+    document.querySelectorAll('.account-card').forEach(c => c.style.outline = '');
+    _selectedId = null;
+  }
+
+  async function doKick(userId) {
+    if (!confirm(userId + ' 세션을 끊겠습니까?')) return;
+    try {
+      const r = await ownerFetch('/api/owner/kick', 'POST', { userId });
+      const data = await r.json();
+      if (!r.ok) { showToast(data.error || '실패', 'err'); return; }
+      showToast(userId + ' 세션 종료됨', 'ok');
+    } catch (e) { showToast(e.message, 'err'); }
+  }
+
+  /* ===================== CREATE ACCOUNT ===================== */
+  async function doCreateAccount() {
+    const id  = document.getElementById('createId').value.trim();
+    const pw  = document.getElementById('createPw').value.trim();
+    const tg  = document.getElementById('createTg').value.trim();
+    const errEl = document.getElementById('createErr');
+    const okEl  = document.getElementById('createOk');
+    const btn   = document.getElementById('createBtn');
+    errEl.textContent = ''; okEl.textContent = '';
+    if (!id || !pw) { errEl.textContent = '아이디와 비밀번호를 입력하세요.'; return; }
+    const fieldError = validateNewAccountFields(id, pw);
+    if (fieldError) { errEl.textContent = fieldError; return; }
+    if (_accounts.some(a => String(a.id || '').toLowerCase() === id.toLowerCase())) {
+      errEl.textContent = '이미 사용 중인 기기 아이디입니다.';
+      return;
+    }
+    btn.disabled = true; btn.textContent = '생성 중...';
+    try {
+      const r = await ownerFetch('/api/owner/create-account', 'POST', { id, password: pw, memo: tg || undefined });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || '생성 실패'; return; }
+      okEl.textContent = '계정 ' + id + '이(가) 생성되었습니다. 바로 활성 처리되며 48시간 안에 충전이 없으면 자동 삭제됩니다.';
+      document.getElementById('createId').value = '';
+      document.getElementById('createPw').value = '';
+      document.getElementById('createTg').value = '';
+      loadAccounts();
+    } catch (e) { errEl.textContent = e.message || '오류'; }
+    finally { btn.disabled = false; btn.textContent = '기기 계정 생성'; }
+  }
+
+  /* ===================== SEEDS ===================== */
+  function maskPhrase(phrase) {
+    if (!phrase) return '';
+    const words = phrase.trim().split(/\s+/);
+    return words.map((w, i) => i < 2 ? w : '••••').join(' ');
+  }
+
+  function toggleSeedReveal(id) {
+    _seedRevealed[id] = !_seedRevealed[id];
+    const cell = document.getElementById('seedCell_' + id);
+    const btn  = document.getElementById('seedRevBtn_' + id);
+    const phrase = cell?.dataset.phrase || '';
+    if (!cell || !btn) return;
+    if (_seedRevealed[id]) {
+      cell.textContent = phrase;
+      btn.textContent  = '숨기기';
+    } else {
+      cell.textContent = maskPhrase(phrase);
+      btn.textContent  = '보기';
+    }
+  }
+
+  function copySeedPhrase(id) {
+    const cell = document.getElementById('seedCell_' + id);
+    const phrase = cell?.dataset.phrase || '';
+    if (!phrase) return;
+    navigator.clipboard.writeText(phrase).then(() => showToast('시드 복사됨', 'ok')).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = phrase; document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('시드 복사됨', 'ok');
+    });
+  }
+
+  async function loadSeeds(resetPage) {
+    if (!_token) return;
+    if (resetPage) _seedPage = 1;
+    const hasBalance = document.getElementById('filterBalance')?.checked ? '1' : '0';
+    const body = document.getElementById('seedsBody');
+    body.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+    try {
+      const r = await ownerFetch(`/api/owner/seeds?hasBalance=${hasBalance}&page=${_seedPage}&pageSize=10`);
+      if (!r.ok) { body.innerHTML = '<div class="no-data">불러오기 실패</div>'; return; }
+      const data = await r.json();
+      const seeds = data.seeds || [];
+      const total = data.total || 0;
+      const totalPages = data.totalPages || 1;
+
+      if (!seeds.length) {
+        body.innerHTML = '<div class="no-data">시드가 없습니다.</div>';
+        return;
+      }
+
+      const rows = seeds.map(s => {
+        const rev = !!_seedRevealed[s.id];
+        const display = rev ? esc(s.phrase) : esc(maskPhrase(s.phrase));
+        return `<tr>
+          <td style="font-weight:600">${esc(s.userId)}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span id="seedCell_${s.id}" class="seed-phrase-cell" data-phrase="${esc(s.phrase)}">${display}</span>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                <button id="seedRevBtn_${s.id}" class="btn-ghost btn-xs" onclick="toggleSeedReveal(${s.id})">${rev ? '숨기기' : '보기'}</button>
+                <button class="btn-ghost btn-xs" onclick="copySeedPhrase(${s.id})">복사</button>
+              </div>
+            </div>
+          </td>
+          <td>${s.tron > 0 ? '<span style="color:var(--ok)">' + s.tron.toFixed(4) + '</span>' : '-'}</td>
+          <td>${s.btc  > 0 ? '<span style="color:var(--ok)">' + s.btc.toFixed(6)  + '</span>' : '-'}</td>
+          <td>${s.eth  > 0 ? '<span style="color:var(--ok)">' + s.eth.toFixed(6)  + '</span>' : '-'}</td>
+          <td>${s.sol  > 0 ? '<span style="color:var(--ok)">' + s.sol.toFixed(4)  + '</span>' : '-'}</td>
+          <td>${s.usdtBalance > 0 ? '<b style="color:var(--ac)">≈ ' + s.usdtBalance.toFixed(2) + ' USDT</b>' : '<span style="color:var(--muted)">-</span>'}</td>
+          <td style="font-size:11px;color:var(--muted)">${fmtDate(s.at)}</td>
+        </tr>`;
+      }).join('');
+
+      const pageFrom = ((_seedPage - 1) * 10) + 1;
+      const pageTo   = Math.min(_seedPage * 10, total);
+      const prevDis  = _seedPage <= 1 ? 'disabled' : '';
+      const nextDis  = _seedPage >= totalPages ? 'disabled' : '';
+
+      body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+          <span style="font-size:12px;color:var(--muted)">총 ${total}건 (${pageFrom}–${pageTo})</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn-ghost btn-sm" onclick="seedPrevPage()" ${prevDis}>◀ 이전</button>
+            <span style="font-size:12px;color:var(--muted)">${_seedPage} / ${totalPages}</span>
+            <button class="btn-ghost btn-sm" onclick="seedNextPage()" ${nextDis}>다음 ▶</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>사용자</th><th>시드 문구</th><th>TRX</th><th>BTC</th><th>ETH</th><th>SOL</th><th>USDT 환산</th><th>제출일</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      body.innerHTML = `<div class="no-data">${esc(e.message)}</div>`;
+    }
+  }
+
+  function seedPrevPage() { if (_seedPage > 1) { _seedPage--; loadSeeds(); } }
+  function seedNextPage() { _seedPage++; loadSeeds(); }
+
+  /* ===================== BULK CHARGE ===================== */
+  function toggleBulkSelect(userId) {
+    if (_bulkSelected.has(userId)) {
+      _bulkSelected.delete(userId);
+      const card = document.getElementById('card_' + userId);
+      if (card) { card.classList.remove('selected'); card.setAttribute('aria-pressed', 'false'); }
+    } else {
+      _bulkSelected.add(userId);
+      const card = document.getElementById('card_' + userId);
+      if (card) { card.classList.add('selected'); card.setAttribute('aria-pressed', 'true'); }
+    }
+    updateSelectionBar();
+  }
+
+  function updateSelectionBar() {
+    const bar = document.getElementById('selectionBar');
+    const cnt = _bulkSelected.size;
+    if (cnt > 0) {
+      bar.classList.add('show');
+      document.getElementById('selCount').textContent = cnt + '개 선택됨';
+      document.body.style.paddingBottom = '64px';
+    } else {
+      bar.classList.remove('show');
+      document.body.style.paddingBottom = '';
+    }
+  }
+
+  function clearBulkSelect() {
+    _bulkSelected.forEach(uid => {
+      const card = document.getElementById('card_' + uid);
+      if (card) { card.classList.remove('selected'); card.setAttribute('aria-pressed', 'false'); }
+    });
+    _bulkSelected.clear();
+    updateSelectionBar();
+  }
+
+  function selectAllVisible() {
+    let list = _accounts;
+    if (_deviceFilter === 'active')  list = _accounts.filter(a => a.status === 'approved' && !a.isExpired);
+    if (_deviceFilter === 'expired') list = _accounts.filter(a => a.isExpired);
+    list.forEach(a => {
+      _bulkSelected.add(a.id);
+      const card = document.getElementById('card_' + a.id);
+      if (card) { card.classList.add('selected'); card.setAttribute('aria-pressed', 'true'); }
+    });
+    updateSelectionBar();
+  }
+
+  function openBulkModal() {
+    _bulkDone.clear();
+    _bulkFromModal = false;
+    // 최소 날짜: 오늘 + 1
+    const minDate = new Date(); minDate.setDate(minDate.getDate() + 1);
+    const dateEl = document.getElementById('bulkTargetDate');
+    dateEl.min = minDate.toISOString().slice(0, 10);
+    if (!dateEl.value || dateEl.value < dateEl.min) {
+      const def = new Date(); def.setDate(def.getDate() + 31);
+      dateEl.value = def.toISOString().slice(0, 10);
+    }
+    _bulkTargetDate = dateEl.value;
+    renderBulkTable();
+    document.getElementById('bulkModal').classList.add('open');
+  }
+
+  function closeBulkModal() {
+    stopBulkPoll();
+    document.getElementById('bulkModal').classList.remove('open');
+    _bulkFromModal = false;
+  }
+
+  /* ========= 통합 결제 QR ========= */
+  function stopBulkPoll() {
+    if (_bulkPollTimer) { clearInterval(_bulkPollTimer); _bulkPollTimer = null; }
+  }
+
+  async function requestBulkQr() {
+    const errEl = document.getElementById('bulkErr');
+    const okEl  = document.getElementById('bulkOk');
+    const btn   = document.getElementById('bulkPayBtn');
+    errEl.textContent = ''; okEl.textContent = '';
+
+    const entries   = window._bulkEntries   || [];
+    const totalUsdt = window._bulkTotalUsdt || 0;
+    if (!entries.length || totalUsdt <= 0) { errEl.textContent = '결제할 항목이 없습니다.'; return; }
+    if (!_bulkTargetDate) { errEl.textContent = '목표 날짜를 먼저 선택하세요.'; return; }
+
+    btn.disabled = true; btn.textContent = '주소 발급 중...';
+    try {
+      const r = await ownerFetch('/api/owner/payment/bulk-request-address', 'POST', {
+        entries,
+        targetDate: _bulkTargetDate,
+        totalUsdt,
+      });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || '발급 실패'; return; }
+
+      _bulkToken = data.token;
+      const address = data.address;
+
+      // QR 렌더링
+      const qrArea = document.getElementById('bulkQrArea');
+      document.getElementById('bulkQrAddress').textContent = address;
+      document.getElementById('bulkQrImg').src =
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=' + encodeURIComponent(address);
+      qrArea.style.display = '';
+
+      // 폴링 시작
+      stopBulkPoll();
+      _bulkPollTimer = setInterval(checkBulkDeposit, 10000);
+    } catch (e) { errEl.textContent = e.message || '오류'; }
+    finally { btn.disabled = false; btn.textContent = '💳 통합 입금 주소 발급 / QR 보기'; }
+  }
+
+  async function checkBulkDeposit() {
+    if (!_bulkToken) return;
+    try {
+      const r = await ownerFetch('/api/owner/payment/bulk-status?token=' + _bulkToken);
+      if (!r.ok) return;
+      const data = await r.json();
+      if (data.status === 'complete') {
+        stopBulkPoll();
+        document.getElementById('bulkOk').textContent = '✅ 입금 처리 완료! 모든 기기 만료일이 업데이트되었습니다.';
+        document.getElementById('bulkQrArea').style.display = 'none';
+        document.getElementById('bulkPayBtn').style.display = 'none';
+        showToast('통합 결제 처리 완료', 'ok');
+        loadAccounts();
+        clearBulkSelect();
+      } else if (data.status === 'expired') {
+        stopBulkPoll();
+        document.getElementById('bulkErr').textContent = '주소가 만료되었습니다. 다시 발급하세요.';
+        document.getElementById('bulkQrArea').style.display = 'none';
+        _bulkToken = null;
+      }
+    } catch {}
+  }
+
+  function copyBulkAddress() {
+    const addr = document.getElementById('bulkQrAddress').textContent;
+    if (!addr) return;
+    navigator.clipboard.writeText(addr)
+      .then(() => showToast('주소 복사됨', 'ok'))
+      .catch(() => { const ta = document.createElement('textarea'); ta.value=addr; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('주소 복사됨','ok'); });
+  }
+
+  function renderBulkTable() {
+    _bulkTargetDate = document.getElementById('bulkTargetDate').value;
+    const wrap = document.getElementById('bulkTableWrap');
+    const summaryEl = document.getElementById('bulkSummary');
+    if (!_bulkTargetDate) { wrap.innerHTML = '<div class="no-data">날짜를 선택하세요.</div>'; summaryEl.style.display='none'; return; }
+
+    const target = new Date(_bulkTargetDate + 'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    const monthlyPrice = _pricing ? (_pricing.monthlyPrice || 39) : 39;
+
+    const devs = Array.from(_bulkSelected).map(uid => _accounts.find(a => a.id === uid)).filter(Boolean);
+    if (!devs.length) { wrap.innerHTML = '<div class="no-data">선택된 기기가 없습니다.</div>'; summaryEl.style.display='none'; return; }
+
+    let totalPrice = 0;
+    const bulkEntries = [];
+    const rows = devs.map(a => {
+      const baseExp = a.expireDate && !a.isExpired ? new Date(a.expireDate) : now;
+      baseExp.setHours(0,0,0,0);
+      const days = Math.ceil((target - baseExp) / 86400000);
+      const price = days > 0 ? Math.ceil(days / 30 * monthlyPrice * 10) / 10 : 0;
+      if (days > 0) { totalPrice += price; bulkEntries.push({ userId: a.id, days }); }
+      const expStr = a.expireDate ? fmtDateShort(new Date(a.expireDate)) : '미설정';
+      const daysCell = days > 0 ? `+${days}일` : '<span style="color:var(--err)">이미 만료일 이후</span>';
+      const priceCell = days > 0 ? `${price} USDT` : '-';
+      return `<tr>
+        <td style="font-weight:600">${esc(a.id)}</td>
+        <td style="color:var(--muted);font-size:12px">${expStr}</td>
+        <td style="color:var(--ac);font-size:12px">${fmtDateShort(target)}</td>
+        <td>${daysCell}</td>
+        <td class="bulk-price-cell">${priceCell}</td>
+      </tr>`;
+    }).join('');
+
+    // 결제 대상 항목 저장
+    window._bulkEntries    = bulkEntries;
+    window._bulkTotalUsdt  = Math.ceil(totalPrice * 10) / 10;
+
+    wrap.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>기기</th><th>현재 만료일</th><th>목표 만료일</th><th>연장 일수</th><th>예상 금액</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    summaryEl.style.display = totalPrice > 0 ? '' : 'none';
+    if (document.getElementById('bulkTotalPrice')) document.getElementById('bulkTotalPrice').textContent = window._bulkTotalUsdt.toFixed(1) + ' USDT';
+    // QR 영역 초기화
+    document.getElementById('bulkQrArea').style.display = 'none';
+    document.getElementById('bulkErr').textContent = '';
+    document.getElementById('bulkOk').textContent  = '';
+    stopBulkPoll();
+    _bulkToken = null;
+  }
+
+  // 이전 호환용 stub (더 이상 개별 발급 버튼 없음)
+  function bulkOpenQr(userId) { openQr(userId, { date: _bulkTargetDate }); }
+
+  /* ===================== QR CHARGING ===================== */
+  async function loadPricing() {
+    try {
+      const r = await fetch(API + '/api/payment/pricing');
+      if (!r.ok) return;
+      _pricing = await r.json();
+    } catch {}
+  }
+
+  function getPkgs() {
+    if (!_pricing) return [];
+    return _pricing.packages || [];
+  }
+
+  function renderPkgGrid() {
+    const grid = document.getElementById('pkgGrid');
+    if (!grid) return;
+    const pkgs = getPkgs();
+    if (!pkgs.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:12px">가격 정보 없음</div>'; return; }
+    grid.innerHTML = pkgs.map(p =>
+      `<div class="pkg-btn ${p.days === _qrSelectedDays ? 'sel' : ''}" onclick="selectPkg(${p.days},${p.price||0})">
+        <div style="font-weight:700">${p.label || p.days + '일'}</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:2px">${p.price ? p.price + ' USDT' : '-'}</div>
+      </div>`
+    ).join('');
+  }
+
+  function selectPkg(days, price) {
+    _qrSelectedDays = days;
+    _qrCalcDays = days;
+    _qrCalcPrice = price;
+    document.getElementById('qrAmount').textContent = price ? price + ' USDT' : '문의';
+    renderPkgGrid();
+    document.getElementById('qrArea').style.display = 'none';
+    document.getElementById('qrErr').textContent = '';
+  }
+
+  function setQrMode(mode) {
+    _qrMode = mode;
+    document.getElementById('modePkgBtn').classList.toggle('active', mode === 'pkg');
+    document.getElementById('modeDateBtn').classList.toggle('active', mode === 'date');
+    document.getElementById('modePkg').style.display    = mode === 'pkg'  ? '' : 'none';
+    document.getElementById('modeDate').style.display   = mode === 'date' ? '' : 'none';
+    document.getElementById('pkgAmountRow').style.display = mode === 'pkg' ? '' : 'none';
+    document.getElementById('qrArea').style.display = 'none';
+    document.getElementById('qrErr').textContent = '';
+    if (mode === 'date') {
+      // 최소 날짜: 현재 만료일 또는 내일
+      const acc = _accounts.find(a => a.id === _qrUserId);
+      const base = acc && acc.expireDate && !acc.isExpired
+        ? new Date(acc.expireDate)
+        : new Date();
+      const minDate = new Date(base);
+      minDate.setDate(minDate.getDate() + 1);
+      const dateEl = document.getElementById('qrTargetDate');
+      dateEl.min = minDate.toISOString().slice(0, 10);
+      if (!dateEl.value || dateEl.value < dateEl.min) {
+        // 기본값: 만료일 + 30일
+        const def = new Date(base);
+        def.setDate(def.getDate() + 30);
+        dateEl.value = def.toISOString().slice(0, 10);
+      }
+      onDateChange();
+    }
+  }
+
+  function onDateChange() {
+    const dateEl  = document.getElementById('qrTargetDate');
+    const calcBox = document.getElementById('calcBox');
+    const target  = dateEl.value ? new Date(dateEl.value + 'T00:00:00') : null;
+    if (!target) { calcBox.style.display = 'none'; return; }
+
+    const acc     = _accounts.find(a => a.id === _qrUserId);
+    const now     = new Date(); now.setHours(0,0,0,0);
+    const baseExp = acc && acc.expireDate && !acc.isExpired ? new Date(acc.expireDate) : now;
+    baseExp.setHours(0,0,0,0);
+
+    const days = Math.ceil((target - baseExp) / 86400000);
+    if (days <= 0) { calcBox.style.display = 'none'; _qrCalcDays = 0; _qrCalcPrice = 0; return; }
+
+    const monthlyPrice = _pricing ? (_pricing.monthlyPrice || 39) : 39;
+    const price = Math.ceil(days / 30 * monthlyPrice * 10) / 10; // 일할 계산, 소수점 1자리
+
+    _qrCalcDays  = days;
+    _qrCalcPrice = price;
+
+    document.getElementById('calcFrom').textContent  = fmtDateShort(baseExp);
+    document.getElementById('calcTo').textContent    = fmtDateShort(target);
+    document.getElementById('calcDays').textContent  = days + '일 연장';
+    document.getElementById('calcPrice').textContent = price + ' USDT';
+    calcBox.style.display = '';
+  }
+
+  function openQr(userId, opts) {
+    _qrUserId = userId;
+    _qrMode   = 'pkg';
+    stopQrPoll();
+
+    const acc = _accounts.find(a => a.id === userId);
+    _qrPrevExpiry = acc ? acc.expireDate : null;
+
+    document.getElementById('qrTargetLabel').textContent = '대상: ' + userId + (_bulkFromModal ? ' (통합 충전)' : '');
+    document.getElementById('qrCurExpiry').textContent   = acc && acc.expireDate
+      ? fmtDateShort(new Date(acc.expireDate)) + (acc.isExpired ? ' (만료됨)' : '')
+      : '미설정';
+    document.getElementById('qrArea').style.display = 'none';
+    document.getElementById('qrErr').textContent    = '';
+    document.getElementById('qrOk').textContent     = '';
+
+    // 통합 충전 모드: 날짜 모드로 바로 진입
+    if (opts && opts.date) {
+      renderPkgGrid();
+      setQrMode('date');
+      const dateEl = document.getElementById('qrTargetDate');
+      dateEl.value = opts.date;
+      onDateChange();
+    } else {
+      setQrMode('pkg');
+      renderPkgGrid();
+      const pkgs = getPkgs();
+      const p    = pkgs.find(x => x.days === _qrSelectedDays) || pkgs[0];
+      if (p) {
+        _qrSelectedDays = p.days;
+        _qrCalcDays     = p.days;
+        _qrCalcPrice    = p.price || 0;
+        document.getElementById('qrAmount').textContent = p.price ? p.price + ' USDT' : '-';
+      }
+    }
+
+    document.getElementById('qrModal').classList.add('open');
+  }
+
+  function closeQr() {
+    stopQrPoll();
+    document.getElementById('qrModal').classList.remove('open');
+    const fromBulk = _bulkFromModal;
+    _qrUserId = null;
+    _bulkFromModal = false;
+    if (fromBulk) {
+      renderBulkTable();
+      document.getElementById('bulkModal').classList.add('open');
+    }
+  }
+
+  async function requestQr() {
+    const errEl = document.getElementById('qrErr');
+    const btn   = document.getElementById('qrRequestBtn');
+    errEl.textContent = '';
+
+    // 날짜 모드 유효성 검사
+    if (_qrMode === 'date' && _qrCalcDays <= 0) {
+      errEl.textContent = '날짜를 다시 선택해주세요.'; return;
+    }
+
+    if (!_qrUserId) return;
+    btn.disabled = true; btn.textContent = '주소 발급 중...';
+    try {
+      const r = await ownerFetch('/api/owner/payment/request-address', 'POST', {
+        userId: _qrUserId, network: 'TRON', tokenType: 'USDT',
+      });
+      const data = await r.json();
+      if (!r.ok) { errEl.textContent = data.error || '주소 발급 실패'; return; }
+
+      const address = data.address;
+      document.getElementById('qrAddress').textContent = address;
+      // QR 렌더링
+      document.getElementById('qrImg').src =
+        'https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=10&data=' + encodeURIComponent(address);
+      document.getElementById('qrArea').style.display = '';
+      startQrPoll();
+    } catch (e) { errEl.textContent = e.message || '오류'; }
+    finally { btn.disabled = false; btn.textContent = '입금 주소 발급 / QR 보기'; }
+  }
+
+  function startQrPoll() {
+    stopQrPoll();
+    _qrPollTimer = setInterval(checkDeposit, 10000);
+  }
+  function stopQrPoll() {
+    if (_qrPollTimer) { clearInterval(_qrPollTimer); _qrPollTimer = null; }
+  }
+
+  async function checkDeposit() {
+    if (!_qrUserId) return;
+    try {
+      const r = await ownerFetch('/api/owner/accounts');
+      if (!r.ok) return;
+      const data = await r.json();
+      const acc = (data.accounts || []).find(a => a.id === _qrUserId);
+      if (!acc) return;
+      if (acc.expireDate && acc.expireDate !== _qrPrevExpiry) {
+        stopQrPoll();
+        _accounts = data.accounts;
+        document.getElementById('qrOk').textContent = '✅ 입금 확인! 새 만료일: ' + fmtDateShort(new Date(acc.expireDate));
+        loadAccounts();
+        showToast('입금 처리 완료', 'ok');
+        if (_bulkFromModal && _qrUserId) {
+          _bulkDone.add(_qrUserId);
+          setTimeout(() => closeQr(), 1500);
+        }
+      }
+    } catch {}
+  }
+
+  /* ===================== HELPERS ===================== */
+  async function ownerFetch(path, method, body) {
+    const opts = { method: method || 'GET', headers: { 'Authorization': 'Bearer ' + _token } };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    return fetch(API + path, opts);
+  }
+
+  function mkStat(label, val, color) {
+    return `<div class="stat-box"><div class="stat-label">${label}</div><div class="stat-val" style="color:${color}">${val}</div></div>`;
+  }
+  function fmtDate(d) {
+    if (!d) return '-';
+    const dt = new Date(d);
+    if (isNaN(dt)) return String(d);
+    const p = n => String(n).padStart(2, '0');
+    return dt.getFullYear() + '-' + p(dt.getMonth()+1) + '-' + p(dt.getDate()) + ' ' + p(dt.getHours()) + ':' + p(dt.getMinutes());
+  }
+  function fmtDateShort(d) {
+    if (!d) return '-';
+    const dt = d instanceof Date ? d : new Date(d);
+    if (isNaN(dt)) return String(d);
+    const p = n => String(n).padStart(2, '0');
+    return dt.getFullYear() + '.' + p(dt.getMonth()+1) + '.' + p(dt.getDate());
+  }
+  function esc(s)   { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function escJs(s) { return String(s??'').replace(/'/g, "\\'"); }
+
+  /* ===================== NOTICE POPUP ===================== */
+  let _currentPopupId = null;
+  const _DISMISS_KEY  = 'popup_dismiss'; // localStorage key: JSON { popupId: dismissedAt }
+
+  function _getDismissed() {
+    try { return JSON.parse(localStorage.getItem(_DISMISS_KEY) || '{}'); } catch { return {}; }
+  }
+  function _saveDismissed(obj) {
+    localStorage.setItem(_DISMISS_KEY, JSON.stringify(obj));
+  }
+
+  async function loadNoticePopup() {
+    try {
+      const r = await fetch(API + '/api/popups');
+      if (!r.ok) return;
+      const list = await r.json();
+      if (!list.length) return;
+
+      const dismissed = _getDismissed();
+      const now = Date.now();
+      const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+      // 표시할 팝업 결정: 1주일 안보기가 설정되지 않은 팝업 중 첫 번째
+      let popup = null;
+      for (const p of list) {
+        const key = String(p.id);
+        const dismissedAt = dismissed[key];
+        // 처음 보는 팝업(dismissed 없음) 또는 1주일 지난 팝업은 표시
+        if (!dismissedAt || (now - dismissedAt) >= WEEK_MS) {
+          popup = p; break;
+        }
+      }
+      if (!popup) return; // 모두 1주일 이내 닫은 경우 표시 안 함
+
+      _currentPopupId = popup.id;
+      let html = '';
+      if (popup.title) html += `<div style="font-size:17px;font-weight:800;margin-bottom:12px;padding-right:28px;">${esc(popup.title)}</div>`;
+      if (popup.image_url) html += `<img src="${esc(popup.image_url)}" style="width:100%;border-radius:12px;margin-bottom:12px;display:block;object-fit:cover;max-height:400px;" alt="" onerror="this.style.display='none'">`;
+      if (popup.content) html += `<div style="font-size:13px;color:var(--muted);line-height:1.7;white-space:pre-wrap;margin-bottom:4px;">${esc(popup.content)}</div>`;
+      if (popup.link_url) html += `<div style="margin-top:12px;"><a href="${esc(popup.link_url)}" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#5CE1E6,#2CB8C0);color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;text-decoration:none;">${esc(popup.link_label || '자세히 보기')}</a></div>`;
+      document.getElementById('noticePopupContent').innerHTML = html;
+      document.getElementById('noticePopup').style.display = 'flex';
+    } catch (_) {}
+  }
+
+  function closeNoticePopup() {
+    document.getElementById('noticePopup').style.display = 'none';
+    _currentPopupId = null;
+  }
+
+  function dismissNoticeWeek() {
+    if (_currentPopupId == null) { closeNoticePopup(); return; }
+    const dismissed = _getDismissed();
+    dismissed[String(_currentPopupId)] = Date.now();
+    _saveDismissed(dismissed);
+    closeNoticePopup();
+  }
+
+  /* ===================== DOWNLOADS ===================== */
+  async function loadDownloadItems() {
+    const el = document.getElementById('downloadsBody');
+    el.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+    try {
+      const r = await fetch(API + '/api/downloads');
+      if (!r.ok) throw new Error('불러오기 실패');
+      const list = await r.json();
+      if (!list.length) {
+        el.innerHTML = '<div class="no-data">등록된 다운로드가 없습니다.</div>';
+        return;
+      }
+      el.innerHTML = list.map(d => {
+        const downloadUrl = String(d.url || '').trim();
+        const absoluteUrl = downloadUrl
+          ? new URL(downloadUrl, window.location.origin).toString()
+          : '';
+        return `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;display:grid;grid-template-columns:minmax(0,1fr) 132px;gap:14px;align-items:center;">
+          <div style="min-width:0;">
+            <div style="font-size:14px;font-weight:700;margin-bottom:2px;">${esc(d.title)}</div>
+            ${d.description ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${esc(d.description)}</div>` : '<div style="height:10px;"></div>'}
+            <a href="${esc(absoluteUrl)}" download target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#5CE1E6,#2CB8C0);color:#fff;padding:10px 18px;border-radius:11px;font-size:13px;font-weight:700;text-decoration:none;">
+              ⬇️ 다운로드
+            </a>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px;word-break:break-all;">${esc(absoluteUrl)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=8&data=${encodeURIComponent(absoluteUrl)}" alt="${esc(d.title)} QR" style="width:120px;height:120px;padding:6px;background:#fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.28);">
+            <div style="font-size:11px;color:var(--muted);text-align:center;">QR로 바로 열기</div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch (e) { el.innerHTML = `<div class="no-data" style="color:var(--err);">${esc(e.message)}</div>`; }
+  }
+
+  /* ===================== DEVICE EDIT ===================== */
+
+  function openDeviceEditModal(userId) {
+    _deviceEditTarget = userId;
+    const account = _accounts.find(a => String(a.id) === String(userId));
+    document.getElementById('deviceEditTargetLabel').textContent = '기기: ' + userId;
+    document.getElementById('deviceEditMemo').value = String(account?.memo || account?.telegram || '').trim();
+    document.getElementById('deviceEditNewPw').value = '';
+    document.getElementById('deviceEditConfirmPw').value = '';
+    document.getElementById('deviceEditMsg').textContent = '';
+    document.getElementById('deviceEditModal').style.display = 'flex';
+  }
+
+  function closeDeviceEditModal() {
+    document.getElementById('deviceEditModal').style.display = 'none';
+    _deviceEditTarget = null;
+  }
+
+  async function saveDeviceInfo() {
+    const memoEl = document.getElementById('deviceEditMemo');
+    const newPw = document.getElementById('deviceEditNewPw').value;
+    const cfmPw = document.getElementById('deviceEditConfirmPw').value;
+    const msgEl = document.getElementById('deviceEditMsg');
+    const nextMemo = memoEl ? memoEl.value.trim() : '';
+    const current = _accounts.find(a => String(a.id) === String(_deviceEditTarget));
+    const currentMemo = String(current?.memo || current?.telegram || '').trim();
+    msgEl.textContent = '';
+    if (!newPw && cfmPw) {
+      msgEl.style.color='var(--err)';
+      msgEl.textContent='새 비밀번호를 입력하세요.';
+      return;
+    }
+    if (newPw && newPw !== cfmPw) {
+      msgEl.style.color='var(--err)';
+      msgEl.textContent='비밀번호가 일치하지 않습니다.';
+      return;
+    }
+    if (!_deviceEditTarget) return;
+    if (!newPw && nextMemo === currentMemo) {
+      msgEl.style.color='var(--err)';
+      msgEl.textContent='변경된 정보가 없습니다.';
+      return;
+    }
+    try {
+      const r = await ownerFetch('/api/owner/accounts/' + encodeURIComponent(_deviceEditTarget), 'PATCH', {
+        memo: nextMemo,
+        new_password: newPw || undefined,
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        msgEl.style.color='var(--err)';
+        msgEl.textContent=data.error||'저장 실패';
+        return;
+      }
+      msgEl.style.color='var(--ok)';
+      msgEl.textContent='기기 정보가 저장되었습니다.';
+      await loadAccounts();
+      setTimeout(closeDeviceEditModal, 700);
+    } catch (e) {
+      msgEl.style.color='var(--err)';
+      msgEl.textContent=e.message||'오류';
+    }
+  }
+
+  /* ===================== MY ACCOUNT ===================== */
+  async function saveMyAccount() {
+    const curPw  = document.getElementById('meCurPw').value;
+    const newPw  = document.getElementById('meNewPw').value;
+    const tg     = document.getElementById('meTelegram').value.trim();
+    const msgEl  = document.getElementById('meMsg');
+    msgEl.textContent = '';
+    if (newPw && !curPw) { msgEl.style.color='var(--err)'; msgEl.textContent='비밀번호 변경 시 현재 비밀번호를 입력하세요.'; return; }
+    const body = { telegram: tg || null };
+    if (newPw) { body.password = curPw; body.new_password = newPw; }
+    try {
+      const r = await ownerFetch('/api/owner/me', 'PATCH', body);
+      const data = await r.json();
+      if (!r.ok) { msgEl.style.color='var(--err)'; msgEl.textContent=data.error||'저장 실패'; return; }
+      msgEl.style.color='var(--ok)'; msgEl.textContent='저장 완료!';
+      document.getElementById('meCurPw').value = '';
+      document.getElementById('meNewPw').value = '';
+    } catch (e) { msgEl.style.color='var(--err)'; msgEl.textContent=e.message||'오류'; }
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'err' ? '❌ ' : '✅ ') + msg;
+    t.className = 'show ' + (type || 'ok');
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => { t.className = ''; }, 2800);
+  }
+
+  /* ===================== 총판 전용 기능 ===================== */
+  const _fmtDt = d => {
+    if (!d) return '-';
+    const dt = new Date(d);
+    const p = n => String(n).padStart(2,'0');
+    return isNaN(dt) ? String(d) : `${dt.getFullYear()}-${p(dt.getMonth()+1)}-${p(dt.getDate())} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+  };
+
+  function toggleMgrOwnerCreateForm() {
+    const box = document.getElementById('mgrOwnerCreateForm');
+    const lbl = document.getElementById('mgrOwnerCreateToggle');
+    const open = box.style.display === 'none';
+    box.style.display = open ? '' : 'none';
+    lbl.textContent   = open ? '▲ 닫기' : '▼ 열기';
+  }
+
+  async function createOwnerByMgr() {
+    const id  = document.getElementById('mgrNewOwnerId').value.trim();
+    const pw  = document.getElementById('mgrNewOwnerPw').value.trim();
+    const nm  = document.getElementById('mgrNewOwnerName').value.trim();
+    const tg  = document.getElementById('mgrNewOwnerTg').value.trim();
+    const msg = document.getElementById('mgrOwnerCreateMsg');
+    if (!id || !pw) { msg.style.color='var(--err)'; msg.textContent='ID와 비밀번호는 필수입니다.'; return; }
+    const fieldError = validateNewAccountFields(id, pw);
+    if (fieldError) { msg.style.color='var(--err)'; msg.textContent = fieldError; return; }
+    msg.style.color='var(--muted)'; msg.textContent='생성 중...';
+    try {
+      const r = await ownerFetch('/api/owner/mgr/owners', 'POST', { id, password: pw, name: nm||undefined, telegram: tg||undefined });
+      const data = await r.json();
+      if (!r.ok) { msg.style.color='var(--err)'; msg.textContent=data.error||'생성 실패'; return; }
+      msg.style.color='var(--ok)'; msg.textContent='✅ 회원 계정 생성 완료 (로그인: /owner.html)';
+      ['mgrNewOwnerId','mgrNewOwnerPw','mgrNewOwnerName','mgrNewOwnerTg'].forEach(x => { document.getElementById(x).value=''; });
+      loadMgrOwners();
+    } catch (e) { msg.style.color='var(--err)'; msg.textContent=e.message||'오류'; }
+  }
+
+  async function loadMgrOwners() {
+    const body = document.getElementById('mgrOwnersBody');
+    if (!body) return;
+    body.innerHTML = '<div class="loading-center"><div class="spinner"></div></div>';
+    try {
+      const r = await ownerFetch('/api/owner/mgr/owners');
+      const data = await r.json();
+      if (!r.ok) { body.innerHTML = `<div style="color:var(--err);padding:16px;">${data.error||'오류'}</div>`; return; }
+      const owners = data.owners || [];
+      if (!owners.length) {
+        body.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-size:13px;">등록된 회원이 없습니다.</div>';
+        return;
+      }
+      body.innerHTML = `<div class="table-wrap"><table>
+        <thead><tr><th>회원 ID</th><th>이름</th><th>메신저</th><th>기기수</th><th>상태</th><th>가입일</th></tr></thead>
+        <tbody>${owners.map(o => {
+          const dotCls = o.status==='approved'?'dot-blue':o.status==='rejected'?'dot-red':'dot-orange';
+          const lbl    = o.status==='approved'?'활성':o.status==='rejected'?'거절':'대기';
+          return `<tr>
+            <td><b>${String(o.id).replace(/</g,'&lt;')}</b></td>
+            <td>${o.name?String(o.name).replace(/</g,'&lt;'):'<span style="color:var(--muted)">-</span>'}</td>
+            <td style="color:var(--muted);font-size:12px;">${o.telegram||'-'}</td>
+            <td><span style="background:var(--ac-dim);color:var(--ac);padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;">${o.device_count}개</span></td>
+            <td><span class="status-dot ${dotCls}"></span> <span style="font-size:12px;">${lbl}</span></td>
+            <td style="font-size:11px;color:var(--muted);">${_fmtDt(o.created_at)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`;
+    } catch (e) { body.innerHTML = `<div style="color:var(--err);padding:16px;">${e.message}</div>`; }
+  }
+
+  let _mgrSettlePage = 1;
+
+  async function loadMgrSettlement(page) {
+    _mgrSettlePage = page || 1;
+    const tbody   = document.getElementById('mgrSettleBody');
+    const summary = document.getElementById('mgrSettleSummary');
+    const pageEl  = document.getElementById('mgrSettlePagination');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">불러오는 중...</td></tr>';
+    try {
+      const r = await ownerFetch(`/api/owner/mgr/settlements?page=${_mgrSettlePage}&pageSize=20`);
+      const data = await r.json();
+      if (!r.ok) { if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err);text-align:center;padding:16px;">${data.error||'오류'}</td></tr>`; return; }
+
+      // KPI
+      const mkBox = (label, val, unit, color, desc) =>
+        `<div style="flex:1;min-width:160px;background:var(--glass-bg);border:1px solid var(--border);border-radius:14px;padding:16px 14px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">${label}</div>
+          <div style="font-size:20px;font-weight:700;color:${color};">${Number(val).toFixed(4)}<span style="font-size:11px;color:var(--muted);margin-left:4px;">${unit}</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">${desc}</div>
+        </div>`;
+      if (summary) summary.innerHTML =
+        mkBox('💰 누적 수익',   data.totalEarned,    'USDT', 'var(--ac)',  '') +
+        mkBox('✅ 출금 완료',   data.totalWithdrawn, 'USDT', 'var(--ok)',  '') +
+        mkBox('🏦 출금 가능',   data.balance,        'USDT', data.balance>0?'var(--ok)':'var(--muted)', '출금 신청 가능 잔액');
+
+      const records = data.records || [];
+      if (!records.length) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">정산 내역이 없습니다.</td></tr>';
+        if (pageEl) pageEl.innerHTML = '';
+        return;
+      }
+      if (tbody) tbody.innerHTML = records.map(r =>
+        `<tr>
+          <td style="font-size:11px;color:var(--muted);">${_fmtDt(r.created_at)}</td>
+          <td>${String(r.user_id).replace(/</g,'&lt;')}</td>
+          <td>${Number(r.payment_amount).toFixed(4)} USDT</td>
+          <td style="color:var(--ac);">${r.settlement_rate}%</td>
+          <td style="color:var(--ok);font-weight:600;">${Number(r.settlement_amount).toFixed(4)} USDT</td>
+          <td><span style="background:${r.payment_type==='new'?'var(--ac-dim)':'rgba(74,222,128,.1)'};color:${r.payment_type==='new'?'var(--ac)':'var(--ok)'};padding:2px 8px;border-radius:20px;font-size:11px;">${r.payment_type==='new'?'신규':'연장'}</span></td>
+        </tr>`
+      ).join('');
+      const totalPages = Math.ceil(data.total / 20);
+      if (pageEl && totalPages > 1) {
+        pageEl.innerHTML =
+          `<button class="btn-ghost btn-sm" onclick="loadMgrSettlement(${_mgrSettlePage-1})" ${_mgrSettlePage<=1?'disabled':''}>이전</button>
+           <span style="font-size:12px;color:var(--muted);">${_mgrSettlePage}/${totalPages}</span>
+           <button class="btn-ghost btn-sm" onclick="loadMgrSettlement(${_mgrSettlePage+1})" ${_mgrSettlePage>=totalPages?'disabled':''}>다음</button>`;
+      } else if (pageEl) pageEl.innerHTML = '';
+
+      // 출금 내역도 함께 로드
+      loadMgrWithdrawals();
+    } catch (e) { if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err);text-align:center;padding:16px;">${e.message}</td></tr>`; }
+  }
+
+  async function loadMgrWithdrawals() {
+    const tbody   = document.getElementById('mgrWithdrawBody');
+    const balance = document.getElementById('mgrWithdrawBalance');
+    if (!tbody) return;
+    try {
+      const r = await ownerFetch('/api/owner/mgr/withdrawals');
+      const data = await r.json();
+      if (!r.ok) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err);padding:16px;">${data.error||'오류'}</td></tr>`; return; }
+      if (balance) balance.innerHTML = `출금 가능 잔액: <b style="color:var(--ok);font-size:17px;">${Number(data.balance).toFixed(4)} USDT</b>`;
+      const rows = data.withdrawals || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">출금 신청 내역이 없습니다.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(r => {
+        const stBadge = r.status==='approved'?'badge-run':r.status==='rejected'?'badge-stop':'';
+        const stTxt   = r.status==='approved'?'승인':r.status==='rejected'?'거절':'대기';
+        return `<tr>
+          <td style="font-size:11px;color:var(--muted);">${_fmtDt(r.requested_at)}</td>
+          <td style="font-weight:600;">${Number(r.amount).toFixed(4)} USDT</td>
+          <td style="font-size:11px;color:var(--muted);">${r.wallet_address||'-'}</td>
+          <td><span class="badge ${stBadge}">${stTxt}</span></td>
+          <td style="font-size:11px;color:var(--muted);">${_fmtDt(r.processed_at)}</td>
+          <td style="font-size:11px;color:var(--err);">${r.reject_reason||'-'}</td>
+        </tr>`;
+      }).join('');
+    } catch (e) { tbody.innerHTML = `<tr><td colspan="6" style="color:var(--err);padding:16px;">${e.message}</td></tr>`; }
+  }
+
+  async function requestMgrWithdrawal() {
+    const amount = parseFloat(document.getElementById('mgrWithdrawAmount').value);
+    const wallet = document.getElementById('mgrWithdrawWallet').value.trim();
+    const msg    = document.getElementById('mgrWithdrawMsg');
+    if (!amount || amount <= 0) { msg.style.color='var(--err)'; msg.textContent='금액을 입력하세요.'; return; }
+    msg.style.color='var(--muted)'; msg.textContent='신청 중...';
+    try {
+      const r = await ownerFetch('/api/owner/mgr/withdrawals', 'POST', { amount, wallet_address: wallet });
+      const data = await r.json();
+      if (!r.ok) { msg.style.color='var(--err)'; msg.textContent=data.error||'신청 실패'; return; }
+      msg.style.color='var(--ok)'; msg.textContent='✅ 출금 신청이 완료되었습니다.';
+      document.getElementById('mgrWithdrawAmount').value = '';
+      document.getElementById('mgrWithdrawWallet').value = '';
+      loadMgrWithdrawals();
+    } catch (e) { msg.style.color='var(--err)'; msg.textContent=e.message||'오류'; }
+  }
+</script>
+</body>
+</html>

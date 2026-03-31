@@ -1,0 +1,85 @@
+name: deploy-remote
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy"
+        required: true
+        default: latest
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/polywatch-api
+  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/polywatch-web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' '${{ secrets.DEPLOY_SSH_KEY }}' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H '${{ secrets.DEPLOY_HOST }}' >> ~/.ssh/known_hosts
+
+      - name: Prepare remote env file
+        run: |
+          cat > deploy.env <<EOF
+          API_IMAGE=${API_IMAGE}
+          WEB_IMAGE=${WEB_IMAGE}
+          IMAGE_TAG=${{ inputs.image_tag }}
+          WEB_ORIGIN=${{ secrets.WEB_ORIGIN }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ADMIN_EMAILS=${{ secrets.ADMIN_EMAILS }}
+          ADMIN_USERNAMES=${{ secrets.ADMIN_USERNAMES }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          API_PUBLIC_PORT=${{ secrets.API_PUBLIC_PORT }}
+          WEB_PUBLIC_PORT=${{ secrets.WEB_PUBLIC_PORT }}
+          GAMMA_API_URL=${{ secrets.GAMMA_API_URL }}
+          CLOB_API_URL=${{ secrets.CLOB_API_URL }}
+          DATA_API_URL=${{ secrets.DATA_API_URL }}
+          DEEPL_API_KEY=${{ secrets.DEEPL_API_KEY }}
+          EOF
+
+      - name: Upload deployment bundle
+        run: |
+          ssh '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}' "mkdir -p '${{ secrets.DEPLOY_PATH }}'"
+          scp compose.ghcr.yaml deploy.env '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PATH }}/'
+
+      - name: Deploy on remote host
+        run: |
+          ssh '${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}' '
+            set -eu
+            cd "${{ secrets.DEPLOY_PATH }}"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker compose --env-file deploy.env -f compose.ghcr.yaml pull
+            docker compose --env-file deploy.env -f compose.ghcr.yaml up -d
+            curl -fsS "http://127.0.0.1:${{ secrets.API_PUBLIC_PORT }}/ready"
+            curl -fsS "http://127.0.0.1:${{ secrets.WEB_PUBLIC_PORT }}/healthz"
+          '
+
+      - name: Notify deployment status
+        if: ${{ always() && secrets.ALERT_WEBHOOK_URL != '' }}
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+          ALERT_FORMAT: ${{ vars.ALERT_FORMAT || 'generic' }}
+          ALERT_STATUS: ${{ job.status }}
+          ALERT_TITLE: Polywatch deploy-remote
+          ALERT_TEXT: repository=${{ github.repository }} ref=${{ github.ref_name }} actor=${{ github.actor }}
+          ALERT_SOURCE: deploy-remote
+          ALERT_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash scripts/ops-notify.sh
