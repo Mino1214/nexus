@@ -11,6 +11,7 @@ const {
   getMonthlyConvertedPoints,
   GAME_POINTS,
 } = require('../services');
+const { kstTodayString, kstYesterdayString, startOfKstMonth } = require('../kst');
 const { tryUploadVideoToS3 } = require('../s3upload');
 
 const router = express.Router();
@@ -69,6 +70,39 @@ router.get('/points', async (req, res) => {
   }
 });
 
+/** 포인트→캐쉬 전환 한도 (매월 1일 00:00 KST 리셋) */
+router.get('/points/convert-summary', async (req, res) => {
+  try {
+    const uid = userId(req);
+    const [[u]] = await db.pool.query(`SELECT operator_mu_user_id FROM users WHERE id = ? LIMIT 1`, [uid]);
+    if (!u) return res.status(404).json({ error: '유저 없음' });
+    const policy = await getConvertPolicy(u.operator_mu_user_id);
+    const used = await getMonthlyConvertedPoints(uid);
+    const bal = await getPointSum(uid);
+    const monthStart = startOfKstMonth();
+    res.json({
+      pointsBalance: bal,
+      monthlyLimit: Number(policy.monthly_limit),
+      monthlyUsed: used,
+      monthlyRemaining: Math.max(0, Number(policy.monthly_limit) - used),
+      convertRate: Number(policy.convert_rate),
+      kstMonthStartedAt: monthStart.toISOString(),
+      kstToday: kstTodayString(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** 폴리마켓형 포인트 예측·베팅 — API·DB 확장 예정 */
+router.get('/predictions/meta', (_req, res) => {
+  res.json({
+    enabled: false,
+    message: '포인트 예측·베팅(이벤트·정산)은 추후 오픈 예정입니다.',
+    phases: ['이벤트 생성', '스테이킹', '결과 확정·지급'],
+  });
+});
+
 router.get('/cash', async (req, res) => {
   try {
     const uid = userId(req);
@@ -83,26 +117,52 @@ router.get('/cash', async (req, res) => {
   }
 });
 
-/** POST /attendance */
+/** GET /attendance/status — KST 기준 오늘 출석 여부 */
+router.get('/attendance/status', async (req, res) => {
+  try {
+    const uid = userId(req);
+    const kstToday = kstTodayString();
+    const [[exists]] = await db.pool.query(
+      `SELECT id, points_earned, streak_count FROM market_attendance WHERE user_id = ? AND checked_date = ? LIMIT 1`,
+      [uid, kstToday],
+    );
+    const [[last]] = await db.pool.query(
+      `SELECT streak_count, checked_date FROM market_attendance WHERE user_id = ? ORDER BY checked_date DESC LIMIT 1`,
+      [uid],
+    );
+    res.json({
+      kstDate: kstToday,
+      checkedToday: !!exists,
+      todayPoints: exists ? exists.points_earned : null,
+      lastStreak: last?.streak_count ?? 0,
+      lastCheckDate: last?.checked_date ?? null,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST /attendance — 1일 1회, KST 자정 기준 일 교체 */
 router.post('/attendance', async (req, res) => {
   const conn = await db.pool.getConnection();
   try {
     const uid = userId(req);
     await conn.beginTransaction();
-    const [[{ todayStr }]] = await conn.query(`SELECT DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS todayStr`);
+    const kstToday = kstTodayString();
 
     const [[exists]] = await conn.query(
       `SELECT id FROM market_attendance WHERE user_id = ? AND checked_date = ? FOR UPDATE`,
-      [uid, todayStr],
+      [uid, kstToday],
     );
     if (exists) {
       await conn.rollback();
       return res.status(400).json({ error: '오늘은 이미 출석했습니다.' });
     }
 
+    const kstYest = kstYesterdayString();
     const [[y]] = await conn.query(
-      `SELECT streak_count FROM market_attendance WHERE user_id = ? AND checked_date = DATE_SUB(?, INTERVAL 1 DAY) LIMIT 1`,
-      [uid, todayStr],
+      `SELECT streak_count FROM market_attendance WHERE user_id = ? AND checked_date = ? LIMIT 1`,
+      [uid, kstYest],
     );
     let streak = 1;
     if (y && y.streak_count) streak = Number(y.streak_count) + 1;
@@ -112,14 +172,14 @@ router.post('/attendance', async (req, res) => {
 
     await conn.query(
       `INSERT INTO market_attendance (user_id, checked_date, points_earned, streak_count) VALUES (?, ?, ?, ?)`,
-      [uid, todayStr, pointsEarned, streak],
+      [uid, kstToday, pointsEarned, streak],
     );
     await conn.query(
       `INSERT INTO market_points (user_id, amount, type, description) VALUES (?, ?, 'attendance', ?)`,
-      [uid, pointsEarned, `streak ${streak}`],
+      [uid, pointsEarned, `streak ${streak} kst ${kstToday}`],
     );
     await conn.commit();
-    res.json({ ok: true, pointsEarned, streakCount: streak, date: todayStr });
+    res.json({ ok: true, pointsEarned, streakCount: streak, kstDate: kstToday });
   } catch (e) {
     try {
       await conn.rollback();

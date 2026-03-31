@@ -1,4 +1,5 @@
 const db = require('../db');
+const { startOfKstMonth } = require('./kst');
 
 async function getPointSum(userId) {
   const [[row]] = await db.pool.query(
@@ -33,12 +34,9 @@ async function getConvertPolicy(operatorMuUserId) {
   return global || { monthly_limit: 50000, convert_rate: 1.0 };
 }
 
-function startOfUtcMonth(d = new Date()) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
-}
-
 async function getMonthlyConvertedPoints(userId) {
-  const start = startOfUtcMonth();
+  /** 매월 1일 00:00 KST 기준으로 전환 사용량 리셋 (한국 시간) */
+  const start = startOfKstMonth();
   const [[row]] = await db.pool.query(
     `SELECT COALESCE(SUM(-amount),0) AS s FROM market_points
      WHERE user_id = ? AND type = 'point_convert' AND amount < 0 AND created_at >= ?`,
@@ -59,6 +57,5 @@ module.exports = {
   getCashBalance,
   getConvertPolicy,
   getMonthlyConvertedPoints,
-  startOfUtcMonth,
   GAME_POINTS,
 };

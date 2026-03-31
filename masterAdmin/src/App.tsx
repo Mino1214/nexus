@@ -8,6 +8,7 @@ import { Customers } from './pages/Customers';
 import { CustomerDetail } from './pages/CustomerDetail';
 import { Operators } from './pages/Operators';
 import { ModuleDeployments } from './pages/ModuleDeployments';
+import { PointsCashHub } from './pages/PointsCashHub';
 import { ModuleEmbed } from './pages/ModuleEmbed';
 import './index.css';
 
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="customers/:id" element={<CustomerDetail />} />
             <Route path="operators" element={<Operators />} />
             <Route path="deployments" element={<ModuleDeployments />} />
+            <Route path="rewards-hub" element={<PointsCashHub />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

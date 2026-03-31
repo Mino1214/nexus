@@ -1,0 +1,344 @@
+/* 총마켓 포털 — 금융/정보 플랫폼류 랜딩 (ezloan 스타일 참고, 밝은 톤) */
+:root {
+  --primary: #0f4c81;
+  --primary-light: #1a6cb5;
+  --accent: #00a3e0;
+  --ok: #0d9488;
+  --warn: #d97706;
+  --err: #dc2626;
+  --bg: #f3f6fb;
+  --surface: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(15, 76, 129, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+a {
+  color: var(--primary-light);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.portal-top {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.portal-top-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.portal-brand {
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+}
+
+.portal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+}
+
+.portal-nav a {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-decoration: none;
+}
+.portal-nav a:hover {
+  color: var(--primary);
+}
+.portal-nav a.active {
+  color: var(--primary);
+}
+
+.hero {
+  background: linear-gradient(135deg, #0f4c81 0%, #1a6cb5 45%, #00a3e0 100%);
+  color: #fff;
+  padding: 48px 20px 56px;
+}
+
+.hero-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.hero h1 {
+  font-size: clamp(1.6rem, 4vw, 2.25rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+
+.hero p {
+  opacity: 0.92;
+  font-size: 1.02rem;
+  max-width: 640px;
+  margin-bottom: 24px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.trust-strip {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+  font-size: 0.88rem;
+  margin-top: 28px;
+}
+
+.main-max {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.grid-modules {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.mod-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.mod-card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+.mod-card p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.mod-card .tag {
+  font-size: 0.75rem;
+  background: #e0f2fe;
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.feature-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  font-size: 0.9rem;
+}
+.feature-tile strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--primary);
+}
+
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.95rem;
+  background: var(--accent);
+  color: #fff;
+}
+.btn:hover {
+  filter: brightness(1.05);
+}
+
+.btn.secondary {
+  background: #fff;
+  color: var(--primary);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+.btn.outline {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.page-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.page-card h2 {
+  font-size: 1.05rem;
+  color: var(--primary);
+  margin-bottom: 14px;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+.field label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.err {
+  color: var(--err);
+  font-size: 0.9rem;
+}
+.ok {
+  color: var(--ok);
+  font-size: 0.9rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+table.data th,
+table.data td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+table.data th {
+  background: #f8fafc;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.disclaimer {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: 40px;
+  padding: 16px;
+  background: #f1f5f9;
+  border-radius: var(--radius);
+}
+
+.login-box {
+  min-height: 72vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  background: var(--surface);
+  width: 100%;
+  max-width: 420px;
+  padding: 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.login-card h1,
+.login-title {
+  font-size: 1.35rem;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+.login-sub {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 22px;
+}

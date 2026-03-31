@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const { resolveMarketTenant } = require('./middleware');
+const publicCatalogRoutes = require('./routes/publicCatalog');
 const authRoutes = require('./routes/auth');
 const masterRoutes = require('./routes/master');
 const operatorRoutes = require('./routes/operator');
@@ -11,6 +12,9 @@ const videoUploadDir = path.join(__dirname, '..', 'uploads', 'market-videos');
 function mountMarketApi(app) {
   fsEnsureDir(videoUploadDir);
   app.use('/market-static/videos', express.static(videoUploadDir));
+
+  app.use('/api/market/public', publicCatalogRoutes);
+  app.use('/market/public', publicCatalogRoutes);
 
   const market = express.Router();
   market.get('/ping', (_req, res) => {
