@@ -412,7 +412,7 @@ router.get('/videos', async (_req, res) => {
     const [rows] = await db.pool.query(
       `SELECT v.*, u.telegram FROM market_videos v
        LEFT JOIN users u ON u.id = v.user_id
-       WHERE v.status = 'pending' AND v.review_stage = 'master'
+       WHERE v.status = 'pending'
        ORDER BY v.id ASC LIMIT 500`,
     );
     res.json({ videos: rows });
@@ -435,13 +435,15 @@ router.patch('/videos/:id/review', async (req, res) => {
       await conn.rollback();
       return res.status(404).json({ error: '영상 없음' });
     }
-    if (v.review_stage !== 'master' || v.status !== 'pending') {
+    if (v.status !== 'pending') {
       await conn.rollback();
-      return res.status(400).json({ error: '마스터 검수 대기 상태가 아닙니다.' });
+      return res.status(400).json({ error: '검수 대기 상태가 아닙니다.' });
     }
     if (action === 'reject') {
       await conn.query(
-        `UPDATE market_videos SET status = 'rejected', reviewed_by_mu_user_id = NULL, reviewed_at = NOW() WHERE id = ?`,
+        `UPDATE market_videos
+         SET status = 'rejected', review_stage = 'master', reviewed_by_mu_user_id = NULL, reviewed_at = NOW()
+         WHERE id = ?`,
         [id],
       );
       await conn.commit();
@@ -449,7 +451,9 @@ router.patch('/videos/:id/review', async (req, res) => {
     }
     const pts = points != null ? parseInt(points, 10) : 500;
     await conn.query(
-      `UPDATE market_videos SET status = 'approved', points_earned = ?, reviewed_by_mu_user_id = NULL, reviewed_at = NOW() WHERE id = ?`,
+      `UPDATE market_videos
+       SET status = 'approved', review_stage = 'master', points_earned = ?, reviewed_by_mu_user_id = NULL, reviewed_at = NOW()
+       WHERE id = ?`,
       [pts, id],
     );
     await conn.query(

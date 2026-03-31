@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, marketPath } from '../api';
+import { api, API_BASE, marketPath } from '../api';
 
 type Policy = {
   id: number;
@@ -29,6 +29,14 @@ type PortalVid = {
   telegram: string | null;
 };
 
+function assetUrl(rel: string | null | undefined): string {
+  if (!rel?.trim()) return '';
+  const u = rel.trim();
+  if (/^https?:\/\//i.test(u)) return u;
+  const base = API_BASE.replace(/\/$/, '');
+  return `${base}${u.startsWith('/') ? u : `/${u}`}`;
+}
+
 function PortalRow({
   v,
   onSave,
@@ -53,6 +61,11 @@ function PortalRow({
     <tr>
       <td>{v.id}</td>
       <td>{v.title || '—'}</td>
+      <td>
+        <a href={assetUrl(v.file_url)} target="_blank" rel="noreferrer">
+          재생
+        </a>
+      </td>
       <td>
         <input type="checkbox" checked={feat} onChange={(e) => setFeat(e.target.checked)} />
       </td>
@@ -228,6 +241,7 @@ export function PointsCashHub() {
                   <tr>
                     <th>ID</th>
                     <th>제목</th>
+                    <th>재생</th>
                     <th>추천</th>
                     <th>정렬</th>
                     <th>홈 노출</th>
@@ -303,8 +317,22 @@ export function PointsCashHub() {
                   <div style={{ fontWeight: 700 }}>
                     #{v.id} · {v.user_id} · {v.title || '제목 없음'}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>
-                    {v.file_url}
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', wordBreak: 'break-all' }}>{v.file_url}</div>
+                  <div style={{ marginTop: 10 }}>
+                    <video
+                      src={assetUrl(v.file_url)}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      style={{ width: '100%', maxWidth: 520, borderRadius: 10, background: '#000' }}
+                    >
+                      <track kind="captions" />
+                    </video>
+                    <div style={{ marginTop: 6, fontSize: 12 }}>
+                      <a href={assetUrl(v.file_url)} target="_blank" rel="noreferrer">
+                        새 탭에서 열기
+                      </a>
+                    </div>
                   </div>
                   <div className="field" style={{ marginTop: 10 }}>
                     <label>승인 시 지급 포인트</label>
