@@ -27,8 +27,8 @@ export function Operators() {
 
   return (
     <div>
-      <h1>Pandora 운영자 (mu_users)</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+      <h1 className="page-heading">Pandora 운영자 (mu_users)</h1>
+      <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
         macroServer 마켓 API로 생성한 운영자입니다. 사이트 도메인은 테넌시 분기에 사용됩니다. API 베이스:{' '}
         <code>{API_BASE}</code>
       </p>

@@ -7,6 +7,8 @@ type Row = {
   display_name: string;
   contact_email: string | null;
   site_domain: string | null;
+  macro_user_id?: string | null;
+  market_user_id?: string | null;
   status: string;
   entitlement_count: number;
 };
@@ -58,8 +60,8 @@ export function Customers() {
 
   return (
     <div>
-      <h1>마켓 고객</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+      <h1 className="page-heading">마켓 고객</h1>
+      <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
         모듈을 구매·이용하는 주체입니다. 단일 DB에서는 이 레코드 + 권한 테이블이 «누가 어떤 모듈을 쓰는지»의 기준입니다.
       </p>
 
@@ -118,6 +120,8 @@ export function Customers() {
               <th>이름</th>
               <th>이메일</th>
               <th>도메인</th>
+              <th>Pandora id</th>
+              <th>마켓 id</th>
               <th>권한 수</th>
               <th></th>
             </tr>
@@ -129,6 +133,12 @@ export function Customers() {
                 <td>{r.display_name}</td>
                 <td>{r.contact_email ?? '—'}</td>
                 <td>{r.site_domain ?? '—'}</td>
+                <td>
+                  <code>{r.macro_user_id ?? '—'}</code>
+                </td>
+                <td>
+                  <code>{r.market_user_id ?? '—'}</code>
+                </td>
                 <td>{r.entitlement_count}</td>
                 <td>
                   <Link to={`/customers/${r.id}`} className="btn secondary" style={{ padding: '4px 10px', fontSize: 12 }}>

@@ -54,8 +54,8 @@ export function Modules() {
 
   return (
     <div>
-      <h1>판매 모듈 카탈로그</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+      <h1 className="page-heading">판매 모듈 카탈로그</h1>
+      <p style={{ color: 'var(--text-tertiary)', fontSize: 14 }}>
         Pandora, PolyMart 등 마켓에서 파는 제품 단위입니다. 진입 주소는 <code>/admin.html</code> 처럼{' '}
         <strong>경로만</strong> 적어도 되며, 콘솔에서 <code>{getMacroOrigin()}</code> 에 붙여 엽니다.
       </p>

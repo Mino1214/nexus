@@ -6,6 +6,14 @@ const { saveRefreshToken, consumeRefreshToken, pruneExpiredRefreshTokens } = req
 
 const router = express.Router();
 
+/** Pandora / masterAdmin과 동일. 운영에서는 반드시 .env 로 덮어쓸 것 */
+function masterCredentials() {
+  return {
+    id: process.env.MASTER_ID || 'master666',
+    pw: process.env.MASTER_PW || 'master666',
+  };
+}
+
 /**
  * GET /api/market/auth/login — 브라우저 주소창으로 열면 이것만 보임. 실제 로그인은 POST.
  */
@@ -28,7 +36,7 @@ function normalizeAccountId(value) {
 }
 
 async function isReservedAdminLikeId(normalized) {
-  const MASTER_ID = process.env.MASTER_ID || 'tlarbwjd';
+  const { id: MASTER_ID } = masterCredentials();
   if (normalized === String(MASTER_ID).trim().toLowerCase()) return true;
   const [[manager]] = await db.pool.query(
     'SELECT id FROM managers WHERE LOWER(id) = LOWER(?) LIMIT 1',
@@ -132,8 +140,7 @@ router.post('/login', async (req, res) => {
 
     const lid = String(login_id).trim();
     const pw = String(password).trim();
-    const MASTER_ID = process.env.MASTER_ID || 'tlarbwjd';
-    const MASTER_PW = process.env.MASTER_PW || 'tlarbwjd';
+    const { id: MASTER_ID, pw: MASTER_PW } = masterCredentials();
 
     if (normalizeAccountId(lid) === normalizeAccountId(MASTER_ID) && pw === MASTER_PW) {
       await issueTokensPair(

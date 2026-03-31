@@ -108,8 +108,8 @@ const app = express();
 app.set('trust proxy', 1); // nginx 뒤에서 X-Forwarded-For 기반 IP 신뢰
 const PORT = process.env.PORT || 3000;
 
-const MASTER_ID = process.env.MASTER_ID || 'tlarbwjd';
-const MASTER_PW = process.env.MASTER_PW || 'tlarbwjd';
+const MASTER_ID = process.env.MASTER_ID || 'master666';
+const MASTER_PW = process.env.MASTER_PW || 'master666';
 const POLYWATCH_ADMIN_URL = process.env.POLYWATCH_ADMIN_URL || 'http://127.0.0.1:43120/admin.html';
 const POLYWATCH_WEB_URL = process.env.POLYWATCH_WEB_URL || deriveWebUrlFromAdminUrl(POLYWATCH_ADMIN_URL);
 const POLYWATCH_API_URL = process.env.POLYWATCH_API_URL || 'http://127.0.0.1:43121';

@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { api, API_BASE, marketPath } from '../api';
+import { brandLogoUrl } from '../branding';
 
 export function Login() {
   const { authed, login } = useAuth();
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
+  const logo = brandLogoUrl();
 
   if (authed) return <Navigate to="/" replace />;
 
@@ -30,32 +32,52 @@ export function Login() {
   }
 
   return (
-    <div className="card" style={{ maxWidth: 400, margin: '48px auto' }}>
-      <h1>Master 로그인</h1>
-      <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-        macroServer와 동일한 Master 계정(환경변수 MASTER_ID / MASTER_PW)을 사용합니다.
-        <br />
-        API: <code>{API_BASE}</code>
-      </p>
-      <form onSubmit={onSubmit}>
-        <div className="field">
-          <label>login_id</label>
-          <input value={loginId} onChange={(e) => setLoginId(e.target.value)} autoComplete="username" />
+    <div className="login-box">
+      <div className="login-wrap">
+        <div className="login-card">
+          {logo ? (
+            <img src={logo} alt="" className="brand-logo" width={220} height={64} style={{ marginBottom: 8 }} />
+          ) : null}
+          <h1 className="login-title">총마켓 Master</h1>
+          <p className="login-sub">
+            nexus-market-api · <code style={{ color: 'var(--ac)' }}>MASTER_ID</code> /{' '}
+            <code style={{ color: 'var(--ac)' }}>MASTER_PW</code>
+            <br />
+            <span style={{ fontSize: 12, opacity: 0.85 }}>
+              POST{' '}
+              <code>
+                {API_BASE}
+                {marketPath('/auth/login')}
+              </code>
+            </span>
+          </p>
+          <form onSubmit={onSubmit}>
+            <div className="field">
+              <label htmlFor="ma-login-id">login_id</label>
+              <input
+                id="ma-login-id"
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                autoComplete="username"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="ma-login-pw">password</label>
+              <input
+                id="ma-login-pw"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+            {err ? <p className="err">{err}</p> : null}
+            <button type="submit" className="btn" style={{ width: '100%', marginTop: 8 }}>
+              로그인
+            </button>
+          </form>
         </div>
-        <div className="field">
-          <label>password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-        </div>
-        {err ? <p className="err">{err}</p> : null}
-        <button type="submit" className="btn">
-          로그인
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

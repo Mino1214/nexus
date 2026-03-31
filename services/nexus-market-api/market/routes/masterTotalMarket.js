@@ -4,8 +4,49 @@
  */
 const express = require('express');
 const db = require('../../db');
+const { hashPassword } = require('../password');
 
 const router = express.Router();
+
+const ACCOUNT_ID_REGEX = /^[a-z0-9][a-z0-9_-]{3,19}$/;
+const ACCOUNT_PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d!@#$%^&*()_\-+=\[\]{};:,.?]{8,24}$/;
+
+function normalizeAccountId(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+/**
+ * GET /module-deployments
+ * 구매 고객 × 모듈별 수동 배포 URL/메모 (감사·운영 기록용)
+ */
+router.get('/module-deployments', async (_req, res) => {
+  try {
+    const [rows] = await db.pool.query(
+      `SELECT
+         e.id AS entitlement_id,
+         e.customer_id,
+         c.display_name AS customer_name,
+         c.macro_user_id,
+         c.market_user_id,
+         c.site_domain AS customer_site_domain,
+         e.module_slug,
+         m.name AS module_name,
+         e.deployment_url,
+         e.deployment_notes,
+         e.can_admin,
+         e.can_operator,
+         e.updated_at
+       FROM master_customer_entitlements e
+       INNER JOIN master_market_customers c ON c.id = e.customer_id
+       INNER JOIN master_catalog_modules m ON m.slug = e.module_slug
+       ORDER BY e.updated_at DESC, e.id DESC
+       LIMIT 1000`,
+    );
+    res.json({ deployments: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /** GET /hub/summary */
 router.get('/hub/summary', async (_req, res) => {
@@ -138,17 +179,18 @@ router.get('/customers', async (_req, res) => {
 
 router.post('/customers', async (req, res) => {
   try {
-    const { display_name, contact_email, site_domain, notes, macro_user_id, status } = req.body || {};
+    const { display_name, contact_email, site_domain, notes, macro_user_id, market_user_id, status } = req.body || {};
     if (!display_name?.trim()) return res.status(400).json({ error: 'display_name 필요' });
     const [r] = await db.pool.query(
-      `INSERT INTO master_market_customers (display_name, contact_email, site_domain, notes, macro_user_id, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO master_market_customers (display_name, contact_email, site_domain, notes, macro_user_id, market_user_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         display_name.trim(),
         contact_email?.trim() || null,
         site_domain?.trim() || null,
         notes || null,
         macro_user_id?.trim() || null,
+        market_user_id?.trim() || null,
         ['active', 'suspended'].includes(status) ? status : 'active',
       ],
     );
@@ -172,7 +214,7 @@ router.get('/customers/:id', async (req, res) => {
 router.patch('/customers/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { display_name, contact_email, site_domain, notes, macro_user_id, status } = req.body || {};
+    const { display_name, contact_email, site_domain, notes, macro_user_id, market_user_id, status } = req.body || {};
     const fields = [];
     const vals = [];
     if (display_name?.trim()) {
@@ -194,6 +236,10 @@ router.patch('/customers/:id', async (req, res) => {
     if (macro_user_id !== undefined) {
       fields.push('macro_user_id = ?');
       vals.push(macro_user_id?.trim() || null);
+    }
+    if (market_user_id !== undefined) {
+      fields.push('market_user_id = ?');
+      vals.push(market_user_id?.trim() || null);
     }
     if (['active', 'suspended'].includes(status)) {
       fields.push('status = ?');
@@ -234,8 +280,60 @@ router.get('/customers/:id/entitlements', async (req, res) => {
 });
 
 /**
+ * POST /customers/:id/provision-market-user
+ * 마켓플레이스용 users 행 생성·연결 (가입 불가 id 예: master666 도 Master 가 여기서만 발급)
+ * body: { login_id, password, update_password?: bool — 기존 유저면 비밀번호 갱신 여부 }
+ */
+router.post('/customers/:id/provision-market-user', async (req, res) => {
+  try {
+    const cid = parseInt(req.params.id, 10);
+    const { login_id, password, update_password } = req.body || {};
+    const newId = normalizeAccountId(login_id);
+    if (!ACCOUNT_ID_REGEX.test(newId)) {
+      return res.status(400).json({ error: '아이디는 소문자·숫자·_- 만 4~20자, 첫 글자는 문자/숫자' });
+    }
+    if (!password?.trim() || !ACCOUNT_PASSWORD_REGEX.test(String(password))) {
+      return res.status(400).json({ error: '비밀번호 8~24자, 영문과 숫자 포함' });
+    }
+
+    const [[cust]] = await db.pool.query(`SELECT id FROM master_market_customers WHERE id = ?`, [cid]);
+    if (!cust) return res.status(404).json({ error: '고객 없음' });
+
+    const [[existing]] = await db.pool.query(`SELECT id FROM users WHERE id = ? LIMIT 1`, [newId]);
+    const pwHash = hashPassword(password.trim());
+
+    if (existing) {
+      if (update_password) {
+        await db.pool.query(`UPDATE users SET pw = ? WHERE id = ?`, [pwHash, newId]);
+      }
+    } else {
+      await db.pool.query(
+        `INSERT INTO users (id, pw, manager_id, telegram, status, owner_id, charge_required_until, operator_mu_user_id, market_status)
+         VALUES (?, ?, NULL, NULL, 'approved', NULL, NULL, NULL, 'active')`,
+        [newId, pwHash],
+      );
+      await db.pool.query(
+        `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0)
+         ON DUPLICATE KEY UPDATE user_id = user_id`,
+        [newId],
+      );
+    }
+
+    await db.pool.query(`UPDATE master_market_customers SET market_user_id = ? WHERE id = ?`, [newId, cid]);
+    res.json({
+      ok: true,
+      login_id: newId,
+      created: !existing,
+      passwordUpdated: !!existing && !!update_password,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
  * PUT /customers/:id/entitlements
- * body: { items: [ { module_slug, can_admin, can_operator, flags_json? } ] }
+ * body: { items: [ { module_slug, can_admin, can_operator, flags_json?, deployment_url?, deployment_notes? } ] }
  */
 router.put('/customers/:id/entitlements', async (req, res) => {
   const conn = await db.pool.getConnection();
@@ -261,10 +359,12 @@ router.put('/customers/:id/entitlements', async (req, res) => {
       const canO = it.can_operator === false || it.can_operator === 0 ? 0 : 1;
       let flags = it.flags_json;
       if (flags != null && typeof flags === 'object') flags = JSON.stringify(flags);
+      const depUrl = it.deployment_url != null ? String(it.deployment_url).trim() || null : null;
+      const depNotes = it.deployment_notes != null ? String(it.deployment_notes).trim() || null : null;
       await conn.query(
-        `INSERT INTO master_customer_entitlements (customer_id, module_slug, can_admin, can_operator, flags_json)
-         VALUES (?, ?, ?, ?, ?)`,
-        [id, slug, canA, canO, flags != null ? String(flags) : null],
+        `INSERT INTO master_customer_entitlements (customer_id, module_slug, can_admin, can_operator, flags_json, deployment_url, deployment_notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, slug, canA, canO, flags != null ? String(flags) : null, depUrl, depNotes],
       );
     }
 

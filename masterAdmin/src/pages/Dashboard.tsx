@@ -47,8 +47,8 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1>대시보드</h1>
-      <h2>총마켓 (모듈·고객)</h2>
+      <h1 className="page-heading">대시보드</h1>
+      <h2 className="section-label">총마켓 (모듈·고객)</h2>
       <div className="stats">
         <div className="stat">
           <div className="num">{hub?.activeCatalogModules ?? '—'}</div>
@@ -68,7 +68,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      <h2 style={{ marginTop: 28 }}>Pandora 내부 마켓 지표</h2>
+      <h2 className="section-label" style={{ marginTop: 8 }}>
+        Pandora 내부 마켓 지표
+      </h2>
       <div className="stats">
         <div className="stat">
           <div className="num">{stats?.operatorCount ?? '—'}</div>

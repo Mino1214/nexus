@@ -266,6 +266,8 @@ async function runMarketMigrations(pool) {
       can_admin TINYINT(1) NOT NULL DEFAULT 1,
       can_operator TINYINT(1) NOT NULL DEFAULT 1,
       flags_json TEXT,
+      deployment_url VARCHAR(500) DEFAULT NULL COMMENT '구매자 제공 URL(전체 경로 또는 도메인)',
+      deployment_notes VARCHAR(500) DEFAULT NULL COMMENT '수동 배포 메모',
       granted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uq_cust_module (customer_id, module_slug),
@@ -273,6 +275,50 @@ async function runMarketMigrations(pool) {
       INDEX idx_ent_slug (module_slug)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+
+  try {
+    if (!(await columnExists(pool, 'master_customer_entitlements', 'deployment_url'))) {
+      await pool.query(
+        "ALTER TABLE master_customer_entitlements ADD COLUMN deployment_url VARCHAR(500) DEFAULT NULL COMMENT '구매자 제공 URL'",
+      );
+      console.log('[market DB] master_customer_entitlements.deployment_url 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] deployment_url:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'master_customer_entitlements', 'deployment_notes'))) {
+      await pool.query(
+        'ALTER TABLE master_customer_entitlements ADD COLUMN deployment_notes VARCHAR(500) DEFAULT NULL COMMENT \'수동 배포 메모\'',
+      );
+      console.log('[market DB] master_customer_entitlements.deployment_notes 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] deployment_notes:', e.message);
+  }
+
+  try {
+    if (!(await columnExists(pool, 'master_market_customers', 'market_user_id'))) {
+      await pool.query(
+        "ALTER TABLE master_market_customers ADD COLUMN market_user_id VARCHAR(50) DEFAULT NULL COMMENT 'marketPlace users.id'",
+      );
+      try {
+        const [idx] = await pool.query(
+          "SHOW INDEX FROM master_market_customers WHERE Key_name = 'idx_mmc_market_user'",
+        );
+        if (idx.length === 0) {
+          await pool.query(
+            'CREATE INDEX idx_mmc_market_user ON master_market_customers (market_user_id)',
+          );
+        }
+      } catch (_ie) {
+        /* ignore */
+      }
+      console.log('[market DB] master_market_customers.market_user_id 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] market_user_id:', e.message);
+  }
 
   try {
     await pool.query(
