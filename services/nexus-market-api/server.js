@@ -1,5 +1,5 @@
 /**
- * Nexus Market API — 총마켓 + Pandora 마켓 JWT API (macroServer에서 분리)
+ * Nexus Market API — 총마켓 + Pandora 마켓 JWT API (레거시는 services/macro-server)
  */
 require('dotenv').config();
 const express = require('express');
@@ -27,6 +27,9 @@ const corsOptions = {
     'X-Operator-Id',
     'X-Forwarded-Host',
     'X-Requested-With',
+    /** FutureChart HTS / 운영 콘솔 — market/routes/htsAdmin.js, htsHub.js */
+    'X-HTS-Module',
+    'X-HTS-Module-Slug',
   ],
   optionsSuccessStatus: 204,
 };

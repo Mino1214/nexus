@@ -2102,6 +2102,42 @@
     }
   }
 
+  /** Pandora iframe·북마크: #sectionId 로 진입 시 탭·데이터 로드 */
+  function applyAdminHashDeepLink(isMaster) {
+    const deep = (location.hash || '').replace(/^#/, '');
+    if (!deep || !document.getElementById(deep)) return;
+    showTab(deep);
+    switch (deep) {
+      case 'sectionApproval':
+        loadApprovalTab();
+        break;
+      case 'sectionUsers':
+        loadOwners();
+        break;
+      case 'sectionMyTgBot':
+        if (isMaster) loadMasterTgBot();
+        else loadMyTgBot();
+        break;
+      case 'sectionMySettlement':
+        loadMySettlement(1);
+        break;
+      case 'sectionWithdraw':
+        loadWithdrawHistory();
+        break;
+      case 'sectionSettleMgmt':
+        loadSettleMgmt();
+        break;
+      case 'sectionPopups':
+        loadPopups();
+        break;
+      case 'sectionDownloads':
+        loadDownloads();
+        break;
+      default:
+        break;
+    }
+  }
+
   function showDashboard() {
     document.getElementById('loginBox').style.display = 'none';
     const dash = document.getElementById('dashboard');
@@ -2169,6 +2205,10 @@
     showTab('sectionUsers');
     loadAll();
     startWebSessionWatch();
+
+    try {
+      applyAdminHashDeepLink(isMaster);
+    } catch (_) {}
   }
 
   /* ===== AUTH ===== */

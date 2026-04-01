@@ -1,6 +1,6 @@
 /**
  * Pandora와 동일 MariaDB (users, mu_users, market_* 테이블 공유)
- * 환경변수 미설정 시 macroServer 기본값과 동일하게 동작
+ * 환경변수 미설정 시 services/macro-server 기본값과 유사하게 동작
  */
 const mysql = require('mysql2/promise');
 require('dotenv').config();

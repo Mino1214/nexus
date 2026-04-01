@@ -1,0 +1,279 @@
+/**
+ * macroServer public/admin.html 과 동일한 Pandora 디자인 토큰·로그인 UI.
+ * 지갑·시드·시드지급은 HTS 모듈에서 제외(기능만), 레이아웃/DB는 masterAdmin·macroServer와 통일.
+ */
+
+/* ===== DESIGN SYSTEM (admin.html 과 동일) ===== */
+:root {
+  color-scheme: dark;
+  --bg-page: #050e11;
+  --surface-1: #0a1518;
+  --surface-2: #0f1c20;
+  --surface-3: #152428;
+  --surface-4: #1a2e34;
+  --bg: #050e11;
+  --bg2: #0a1518;
+  --bg3: #152428;
+  --border: rgba(92, 225, 230, 0.14);
+  --border-hover: rgba(92, 225, 230, 0.32);
+  --ac: #5ce1e6;
+  --ac-dim: rgba(92, 225, 230, 0.1);
+  --ac-soft: rgba(92, 225, 230, 0.18);
+  --ac-glow: rgba(92, 225, 230, 0.3);
+  --ac-strong: #8ff5fa;
+  --text-primary: #ededff;
+  --text-secondary: #9aa3bb;
+  --text-tertiary: #6b7280;
+  --fg: #ededff;
+  --muted: #6b7280;
+  --ok: #4ade80;
+  --warn: #fb923c;
+  --err: #f87171;
+  --info: #60a5fa;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-ac: 0 4px 20px rgba(92, 225, 230, 0.28), 0 2px 8px rgba(92, 225, 230, 0.18);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-card: 16px;
+  --sidebar-w: 240px;
+  --topbar-h: 52px;
+
+  /* futureChart 기존 컴포넌트 호환 */
+  --bg-app: var(--bg-page);
+  --bg-panel: var(--surface-1);
+  --bg-panel-2: var(--surface-2);
+  --bg-toolbar: var(--surface-2);
+  --bg-soft: var(--surface-2);
+  --bg-soft-2: var(--surface-3);
+  --text: var(--text-primary);
+  --text-dim: var(--text-secondary);
+  --text-muted: var(--text-tertiary);
+  --border-2: color-mix(in oklab, var(--text-tertiary) 22%, var(--surface-1));
+  --accent: var(--ac);
+  --chart-bg: var(--surface-1);
+  --chart-grid: color-mix(in oklab, var(--ac) 18%, var(--surface-3));
+  --chart-text: var(--text-secondary);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+  --bg-page: #f2f3f9;
+  --surface-1: #ffffff;
+  --surface-2: #f0f1f8;
+  --surface-3: #e6e8f2;
+  --surface-4: #dcdff0;
+  --bg: #f2f3f9;
+  --bg2: #ffffff;
+  --bg3: #e6e8f2;
+  --border: rgba(40, 150, 160, 0.18);
+  --border-hover: rgba(50, 170, 180, 0.35);
+  --text-primary: #151625;
+  --text-secondary: #45506e;
+  --text-tertiary: #8892aa;
+  --fg: #151625;
+  --muted: #8892aa;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.13), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-ac: 0 4px 20px rgba(92, 225, 230, 0.28), 0 2px 8px rgba(92, 225, 230, 0.18);
+  --border-2: color-mix(in oklab, var(--text-tertiary) 22%, var(--surface-1));
+  --chart-text: var(--text-secondary);
+}
+
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  font-family:
+    'SUIT',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-weight: 600;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body.light {
+  /* admin.html과 동일하게 JS에서도 토글 가능 */
+}
+
+/* ===== SCROLLBAR (admin.html) ===== */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(92, 225, 230, 0.22);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(92, 225, 230, 0.42);
+}
+
+/* ===== LOGIN (admin.html #loginBox) ===== */
+#loginBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(92, 225, 230, 0.08) 0%, transparent 60%);
+}
+
+.login-wrap {
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 40px 32px;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(92, 225, 230, 0.04);
+}
+
+.brand-logo {
+  height: 72px;
+  width: auto;
+  max-width: 340px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 8px;
+  filter: drop-shadow(0 0 12px rgba(92, 225, 230, 0.25));
+}
+
+.login-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--ac);
+  text-align: center;
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+
+.login-sub {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin-bottom: 32px;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.pandora-login label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 5px;
+}
+
+.pandora-login input[type='text'],
+.pandora-login input[type='password'] {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+}
+
+.pandora-login input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.pandora-login input:focus {
+  border-color: var(--ac);
+  box-shadow: 0 0 0 3px rgba(92, 225, 230, 0.14), 0 0 12px rgba(92, 225, 230, 0.07);
+}
+
+.pandora-login .btn-ac {
+  width: 100%;
+  padding: 12px;
+  margin-top: 4px;
+}
+
+.pandora-login .login-error {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--err);
+}
+
+.pandora-login .login-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.pandora-login .login-actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== BUTTONS (admin.html) — 로그인·명시 클래스만 (앱 셸 버튼과 충돌 방지) ===== */
+#loginBox button {
+  padding: 9px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  font-family: inherit;
+}
+
+.btn-ac {
+  background: linear-gradient(135deg, #5ce1e6 0%, #2cb8c0 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(92, 225, 230, 0.35);
+}
+
+.btn-ac:hover {
+  background: linear-gradient(135deg, #7eecf1 0%, #4dc8cf 100%);
+  box-shadow: var(--shadow-ac);
+  transform: translateY(-1px);
+}
+
+.btn-ac:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 6px rgba(92, 225, 230, 0.25);
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-tertiary);
+}
+
+.btn-ghost:hover {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: var(--ac-dim);
+}

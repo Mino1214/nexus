@@ -9,6 +9,86 @@ async function columnExists(pool, table, col) {
   return rows.length > 0;
 }
 
+/**
+ * masterAdmin 총판 허브에 보이는 데모 고객 + 모듈 배포 URL + HTS 로그인용 users.id.
+ * contact_email 이 이미 있으면 고객 INSERT 만 스킵하고 연결·권한은 보강합니다.
+ */
+async function seedNexusHubDemo(pool) {
+  const MARKER_EMAIL = 'demo-tenant@nexus.local';
+  const SEED_NOTE = 'SEED:nexus-hub-demo-v1';
+  try {
+    const { hashPassword } = require('./password');
+    const userPwHash = hashPassword('HtsDemo12');
+    const opPwHash = hashPassword('OpDemo12');
+
+    let customerId;
+    const [[custRow]] = await pool.query(
+      'SELECT id FROM master_market_customers WHERE contact_email = ? LIMIT 1',
+      [MARKER_EMAIL],
+    );
+    if (!custRow) {
+      const [ins] = await pool.query(
+        `INSERT INTO master_market_customers (display_name, contact_email, site_domain, notes, status, macro_user_id, market_user_id)
+         VALUES (?, ?, ?, ?, 'active', NULL, NULL)`,
+        ['데모 테넌트 (Pandora·FutureChart)', MARKER_EMAIL, 'demo-tenant.nexus.local', SEED_NOTE],
+      );
+      customerId = ins.insertId;
+      console.log('[market DB] nexus 허브 데모 고객 생성 id=', customerId);
+    } else {
+      customerId = custRow.id;
+    }
+
+    let opId;
+    const [[opRow]] = await pool.query(
+      `SELECT id FROM mu_users WHERE login_id = ? AND market_role = 'operator' LIMIT 1`,
+      ['demo_op'],
+    );
+    if (!opRow) {
+      const [oins] = await pool.query(
+        `INSERT INTO mu_users (name, login_id, password_hash, role, status, market_role, site_domain, is_site_active)
+         VALUES (?, ?, ?, 'USER', 'active', 'operator', ?, 1)`,
+        ['데모 총판(Pandora)', 'demo_op', opPwHash, 'demo-tenant.nexus.local'],
+      );
+      opId = oins.insertId;
+      console.log('[market DB] nexus 데모 운영자 demo_op id=', opId);
+    } else {
+      opId = opRow.id;
+    }
+
+    const [[uRow]] = await pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', ['htsdemo']);
+    if (!uRow) {
+      await pool.query(
+        `INSERT INTO users (id, pw, manager_id, telegram, status, owner_id, charge_required_until, operator_mu_user_id, market_status)
+         VALUES (?, ?, NULL, NULL, 'approved', NULL, NULL, ?, 'active')`,
+        ['htsdemo', userPwHash, opId],
+      );
+      await pool.query(
+        `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0) ON DUPLICATE KEY UPDATE user_id = user_id`,
+        ['htsdemo'],
+      );
+      console.log('[market DB] nexus 데모 마켓 유저 htsdemo / 비밀번호 HtsDemo12');
+    }
+
+    await pool.query(`UPDATE master_market_customers SET market_user_id = ? WHERE id = ?`, ['htsdemo', customerId]);
+
+    await pool.query(
+      `INSERT IGNORE INTO master_customer_entitlements
+        (customer_id, module_slug, can_admin, can_operator, flags_json, deployment_url, deployment_notes)
+       VALUES
+        (?, 'pandora', 1, 1, NULL, 'http://127.0.0.1:3000', 'services/macro-server — admin.html'),
+        (?, 'hts_future_trade', 1, 1, NULL, 'http://127.0.0.1:5180', 'FutureChart Vite'),
+        (?, 'polymart', 1, 0, NULL, NULL, '선택 모듈')`,
+      [
+        customerId,
+        customerId,
+        customerId,
+      ],
+    );
+  } catch (e) {
+    console.warn('[market DB] nexus 허브 데모 시드:', e.message);
+  }
+}
+
 async function runMarketMigrations(pool) {
   // users 테넌시·상태
   try {
@@ -444,11 +524,82 @@ async function runMarketMigrations(pool) {
     await pool.query(
       `INSERT IGNORE INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active)
        VALUES
-         ('pandora', 'Pandora (macroServer)', '시드·총판·장비 등 macroServer 단', 10, '/admin.html', '/owner.html', 1),
-         ('polymart', 'PolyMart / Polywatch', '폴리마켓 연동 웹/API 모듈', 20, NULL, NULL, 1)`,
+         ('pandora', 'Pandora (macro-server)', '레거시 HTTP 앱 — 저장소 services/macro-server', 10, '/admin.html', '/owner.html', 1),
+         ('polymart', 'PolyMart / Polywatch', '폴리마켓 연동 웹/API 모듈', 20, NULL, NULL, 1),
+         ('hts_future_trade', 'FutureTrade HTS', '선물 HTS 운영 API — market_* 공용 테이블 + module_code', 15, NULL, NULL, 1)`,
     );
   } catch (e) {
     console.warn('[market DB] master catalog seed:', e.message);
+  }
+
+  /**
+   * 고객 권한 탭·GET /master/customers/:id/entitlements 의 catalog 는
+   * master_catalog_modules WHERE is_active=1 만 노출한다.
+   * 기존 DB 에 hts_future_trade 행이 없거나 꺼져 있으면 FutureTrade 가 안 보이므로 upsert 로 고정한다.
+   */
+  try {
+    await pool.query(
+      `INSERT INTO master_catalog_modules (slug, name, description, sort_order, admin_entry_url, ops_entry_url, is_active)
+       VALUES ('hts_future_trade', 'FutureTrade HTS', '선물 HTS — Pandora·FutureChart (VITE_HTS_MODULE_SLUG, module_code)', 12, NULL, NULL, 1)
+       ON DUPLICATE KEY UPDATE
+         name = VALUES(name),
+         description = VALUES(description),
+         sort_order = VALUES(sort_order),
+         is_active = 1`,
+    );
+    console.log('[market DB] master_catalog_modules: hts_future_trade 보강(고객 권한 탭 노출)');
+  } catch (e) {
+    console.warn('[market DB] hts_future_trade upsert:', e.message);
+  }
+
+  try {
+    await pool.query(
+      `UPDATE master_catalog_modules SET name = ?, description = ? WHERE slug = 'pandora'`,
+      ['Pandora (macro-server)', '레거시 HTTP 앱 — 저장소 services/macro-server'],
+    );
+  } catch (_e) {
+    /* ignore */
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_charge_requests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      amount INT NOT NULL,
+      memo VARCHAR(500) DEFAULT NULL,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      module_code VARCHAR(64) DEFAULT NULL,
+      operator_mu_user_id INT DEFAULT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      decided_at DATETIME DEFAULT NULL,
+      INDEX idx_hts_cr_user (user_id),
+      INDEX idx_hts_cr_status (status),
+      INDEX idx_hts_cr_op (operator_mu_user_id),
+      INDEX idx_hts_cr_module (module_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  /** 동일 DB·다른 서비스(FutureTrade HTS 등) 구분용 — 조회 시 module_code 로 필터 */
+  const moduleCols = [
+    ['market_cash_transactions', 'module_code', 'idx_mct_module'],
+    ['market_points', 'module_code', 'idx_mp_module'],
+  ];
+  for (const [table, col, idxName] of moduleCols) {
+    try {
+      if (!(await columnExists(pool, table, col))) {
+        await pool.query(
+          `ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` VARCHAR(64) NULL DEFAULT NULL COMMENT '서비스 모듈(slug), 예: hts_future_trade'`,
+        );
+        console.log(`[market DB] ${table}.${col} 추가`);
+      }
+      const [ixrows] = await pool.query(`SHOW INDEX FROM \`${table}\` WHERE Key_name = ?`, [idxName]);
+      if (ixrows.length === 0) {
+        await pool.query(`CREATE INDEX \`${idxName}\` ON \`${table}\` (\`${col}\`)`);
+        console.log(`[market DB] ${table} 인덱스 ${idxName}`);
+      }
+    } catch (e) {
+      console.error(`[market DB] ${table}.${col}:`, e.message);
+    }
   }
 
   /** users.id 와 VARCHAR user_id 컬럼 collation 불일치 시 Illegal mix of collations 방지 */
@@ -497,6 +648,55 @@ async function runMarketMigrations(pool) {
   } catch (e) {
     console.warn('[market DB] user_id collation sync:', e.message);
   }
+
+  try {
+    if (!(await columnExists(pool, 'users', 'approval_status'))) {
+      await pool.query(
+        `ALTER TABLE users ADD COLUMN approval_status ENUM('approved','pending','rejected') NOT NULL DEFAULT 'approved' COMMENT '총판 소속 가입 승인'`,
+      );
+      console.log('[market DB] users.approval_status 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] users.approval_status:', e.message);
+  }
+
+  try {
+    if (!(await columnExists(pool, 'users', 'created_at'))) {
+      await pool.query(
+        `ALTER TABLE users ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+      );
+      console.log('[market DB] users.created_at 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] users.created_at:', e.message);
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_operator_withdrawals (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      operator_mu_user_id INT NOT NULL,
+      amount INT NOT NULL,
+      wallet_address VARCHAR(200) NOT NULL,
+      status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      reject_reason VARCHAR(500) DEFAULT NULL,
+      requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME DEFAULT NULL,
+      INDEX idx_how_op (operator_mu_user_id),
+      INDEX idx_how_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_hub_notify_settings (
+      scope_key VARCHAR(96) NOT NULL PRIMARY KEY,
+      bot_token VARCHAR(220) DEFAULT NULL,
+      chat_deposit VARCHAR(64) DEFAULT NULL,
+      chat_signup VARCHAR(64) DEFAULT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await seedNexusHubDemo(pool);
 
   console.log('[market DB] 마이그레이션 완료');
 }

@@ -1,0 +1,281 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.menubar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg-toolbar) 92%, var(--accent)) 0%, var(--bg-toolbar) 100%);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--text) 10%, transparent);
+}
+
+.menubarBrand {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.menubarBrand--home {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.menubarBrand--home:hover .menubarTitle {
+  color: var(--accent);
+}
+
+.menubarLogo {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, #0b1220) 100%);
+}
+
+.menubarTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+.menubarBadge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.12rem 0.35rem;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--bg-toolbar) 85%, var(--border));
+  color: var(--text-muted);
+}
+
+.menubarNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin-left: 0.5rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid var(--border);
+}
+
+.menubarItem {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.menubarItem:hover {
+  color: var(--text);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+.menubarItem--active {
+  color: var(--accent);
+  font-weight: 700;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+
+.menubarSpacer {
+  flex: 1;
+  min-width: 0.25rem;
+}
+
+.menubarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.menubarItem--route {
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg-toolbar) 88%, var(--accent));
+}
+
+.menubarHint {
+  margin-left: auto;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  max-width: 20rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.themeBtn {
+  appearance: none;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, var(--text-muted));
+  background: color-mix(in oklab, var(--bg-toolbar) 90%, var(--accent));
+  color: var(--text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.28rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.themeBtn:hover {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.55rem 0.55rem;
+  overflow: auto;
+}
+
+.simpleSheet {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1rem 1.1rem 1.5rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+}
+
+.simpleSheet__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.simpleSheet__muted {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.simpleSheet__hint {
+  margin: 1rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.simpleSheet__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.simpleSheet__list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-2);
+  font-size: 0.88rem;
+}
+
+.simpleSheet__list strong {
+  display: inline-block;
+  min-width: 4.5rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.simpleSheet__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.simpleSheet__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.simpleSheet__field input {
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+}
+
+.simpleSheet__btn {
+  margin-top: 0.75rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.simpleSheet__btn--primary {
+  background: color-mix(in oklab, var(--accent) 22%, var(--bg-toolbar));
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border));
+  color: var(--text);
+}
+
+.simpleSheet__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .simpleSheet__split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.simpleSheet__card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+}
+
+.simpleTableWrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.simpleTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.simpleTable th {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  background: var(--bg-toolbar);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.simpleTable td {
+  padding: 0.45rem 0.55rem;
+  border-top: 1px solid var(--border-2);
+}
+
+.simpleTable__empty {
+  text-align: center;
+  color: var(--text-muted);
+}

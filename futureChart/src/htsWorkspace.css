@@ -1,0 +1,305 @@
+/* HTS / IDE 스타일: 좌(차트+하단탭) · 중(호가+주문) · 우(관심) · 하 상태줄 */
+
+.htsWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem) minmax(17rem, 20rem);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'left center right'
+    'status status status';
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-panel-2);
+}
+
+.htsLeft {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg-panel);
+}
+
+.htsCenter {
+  grid-area: center;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.htsRight {
+  grid-area: right;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg-panel);
+}
+
+.htsMainToolbar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-toolbar);
+}
+
+.htsMainToolbar .symLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.htsMainToolbar .symInput {
+  width: 5.5rem;
+  padding: 0.28rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.htsMainToolbar .symBtn {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.72rem;
+}
+
+.htsMainMeta {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-2);
+}
+
+.htsMainMeta .chartLabel {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.htsMainMeta .htsWatchMeta {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+}
+
+.htsMainMeta .chartWs {
+  font-variant-numeric: tabular-nums;
+}
+
+.htsTfBar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid var(--border-2);
+  background: var(--bg-soft);
+}
+
+.htsTfBarLabel {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-right: 0.25rem;
+}
+
+.htsTfBtn {
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text-dim);
+  padding: 0.22rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.htsTfBtn:hover {
+  color: var(--text);
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-toolbar));
+}
+
+.htsTfBtn--active {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 15%, transparent);
+}
+
+.htsChartWrap {
+  flex: 1;
+  min-height: 200px;
+  min-width: 0;
+  position: relative;
+}
+
+.htsTabBody {
+  height: 9rem;
+  min-height: 9rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft-2);
+  padding: 0.55rem 0.6rem;
+  overflow: auto;
+}
+
+.htsPanelTitle {
+  font-size: 0.75rem;
+  color: var(--text);
+  margin: 0 0 0.4rem 0;
+}
+
+.htsMuted {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.htsOrderWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  padding: 0.55rem 0.6rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+.htsOrderGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+}
+
+.htsOrderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.htsOrderRow label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.htsOrderRow input,
+.htsOrderRow select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.32rem 0.45rem;
+  font-size: 0.8rem;
+}
+
+.htsOrderActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.htsOrderBtn {
+  padding: 0.48rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.htsOrderBtn--buy {
+  background: rgba(63, 182, 139, 0.18);
+  border-color: rgba(63, 182, 139, 0.45);
+  color: #15803d;
+}
+
+[data-theme='dark'] .htsOrderBtn--buy {
+  color: #bff7df;
+}
+
+.htsOrderBtn--sell {
+  background: rgba(239, 83, 80, 0.18);
+  border-color: rgba(239, 83, 80, 0.45);
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .htsOrderBtn--sell {
+  color: #ffd0cf;
+}
+
+.htsStatusBar {
+  grid-area: status;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  background: var(--bg-app);
+  border-top: 1px solid var(--border);
+}
+
+.htsStatusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  background: color-mix(in oklab, var(--text-muted) 80%, transparent);
+}
+
+.htsStatusDot--ok {
+  background: #3fb68b;
+}
+
+.htsStatusDot--warn {
+  background: #eab308;
+}
+
+.htsStatusDot--err {
+  background: #ef5350;
+}
+
+.htsStatusSep {
+  color: color-mix(in oklab, var(--text-muted) 65%, transparent);
+  user-select: none;
+}
+
+.htsSymFeed {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .htsWorkspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(260px, 45vh) auto auto auto;
+    grid-template-areas:
+      'left'
+      'center'
+      'right'
+      'status';
+  }
+
+  .htsCenter {
+    border-left: none;
+    border-right: none;
+  }
+}

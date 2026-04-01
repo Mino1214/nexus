@@ -35,12 +35,20 @@ export function Register() {
         password,
       };
       if (opId.trim()) body.operator_mu_user_id = opId.trim();
-      const j = await api<{ accessToken: string; role: string }>(marketPath('/auth/register'), {
-        method: 'POST',
-        json: body,
-      });
-      if (j.role !== 'user') {
-        setErr('예상치 못한 역할입니다.');
+      const j = await api<{ accessToken?: string; role?: string; pendingApproval?: boolean; message?: string }>(
+        marketPath('/auth/register'),
+        {
+          method: 'POST',
+          json: body,
+        },
+      );
+      if (j.pendingApproval) {
+        setErr('');
+        alert(j.message || '가입 신청이 접수되었습니다. 총판 승인 후 로그인할 수 있습니다.');
+        return;
+      }
+      if (j.role !== 'user' || !j.accessToken) {
+        setErr('예상치 못한 응답입니다.');
         return;
       }
       login(j.accessToken, j.role);

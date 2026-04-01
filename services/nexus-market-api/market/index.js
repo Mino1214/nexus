@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth');
 const masterRoutes = require('./routes/master');
 const operatorRoutes = require('./routes/operator');
 const userRoutes = require('./routes/user');
+const htsAdminRoutes = require('./routes/htsAdmin');
+const htsHubRoutes = require('./routes/htsHub');
 
 const videoUploadDir = path.join(__dirname, '..', 'uploads', 'market-videos');
 const catalogUploadDir = path.join(__dirname, '..', 'uploads', 'market-catalog');
@@ -28,6 +30,8 @@ function mountMarketApi(app) {
   market.use('/master', masterRoutes);
   market.use('/operator', operatorRoutes);
   market.use('/user', userRoutes);
+  market.use('/hts/hub', htsHubRoutes);
+  market.use('/hts', htsAdminRoutes);
 
   /**
    * - 정상: /api/market/auth/login

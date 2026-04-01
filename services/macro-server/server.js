@@ -2791,6 +2791,7 @@ async function listApkCandidates() {
     path.join(os.homedir(), 'Desktop'),
     path.join(os.homedir(), 'Desktop', 'nexus'),
     path.join(os.homedir(), 'Desktop', 'nexus', 'macroApp'),
+    path.join(os.homedir(), 'Desktop', 'nexus', 'services', 'macro-server'),
     path.join(os.homedir(), 'Desktop', 'nexus', 'macroServer'),
     path.join(os.homedir(), 'Downloads'),
     __dirname,

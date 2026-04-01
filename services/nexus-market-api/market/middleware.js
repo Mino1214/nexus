@@ -33,6 +33,20 @@ async function resolveMarketTenant(req, res, next) {
   next();
 }
 
+function requireMarketToken(req, res, next) {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) return res.status(401).json({ error: '인증이 필요합니다.' });
+  try {
+    const decoded = verifyAccess(token);
+    if (decoded.typ !== 'market') return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+    req.marketAuth = decoded;
+    next();
+  } catch (_e) {
+    return res.status(401).json({ error: '액세스 토큰이 만료되었거나 유효하지 않습니다.' });
+  }
+}
+
 function requireMarketRoles(...allowed) {
   return (req, res, next) => {
     const auth = req.headers.authorization || '';
@@ -66,6 +80,7 @@ function operatorMustOwnParam(paramName = 'operatorId') {
 
 module.exports = {
   resolveMarketTenant,
+  requireMarketToken,
   requireMarketRoles,
   operatorMustOwnParam,
 };

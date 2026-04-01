@@ -3,6 +3,9 @@ const db = require('../../db');
 const { hashPassword, verifyUserStoredPassword } = require('../password');
 const { signAccess, signRefresh, verifyRefreshToken } = require('../jwtMarket');
 const { saveRefreshToken, consumeRefreshToken, pruneExpiredRefreshTokens } = require('../refreshStore');
+const { resolveHtsContextForLogin, fetchHtsEntitlementForMarketUser } = require('../htsEntitlement');
+const { verifyAccess } = require('../jwtMarket');
+const { requireMarketToken } = require('../middleware');
 
 const router = express.Router();
 
@@ -45,7 +48,8 @@ async function isReservedAdminLikeId(normalized) {
   return !!manager;
 }
 
-async function issueTokensPair(res, payload, subjectType, usersId, muUserId) {
+async function issueTokensPair(res, payload, subjectType, usersId, muUserId, loginExtra = {}) {
+  const { hts = null, displayName: dnExtra = null } = loginExtra;
   const access = signAccess(payload);
   const refresh = signRefresh({ sub: payload.sub, role: payload.role, muUserId: payload.muUserId });
   const expMs = 7 * 24 * 60 * 60 * 1000;
@@ -57,12 +61,18 @@ async function issueTokensPair(res, payload, subjectType, usersId, muUserId) {
     muUserId,
     expiresAt,
   });
+  const displayName =
+    dnExtra ||
+    (payload.role === 'master' ? 'MASTER' : payload.role === 'operator' ? `운영자 ${payload.sub}` : String(payload.sub));
   res.json({
     accessToken: access,
     refreshToken: refresh,
     role: payload.role,
+    sub: payload.sub,
+    displayName,
     muUserId: payload.muUserId ?? null,
     operatorMuUserId: payload.operatorMuUserId ?? null,
+    ...(hts != null ? { hts } : {}),
   });
 }
 
@@ -104,11 +114,36 @@ router.post('/register', async (req, res) => {
       if (!op) return res.status(400).json({ error: '유효하지 않은 운영자입니다.' });
     }
 
+    const htsSlugPriv = String(req.headers['x-hts-module'] || process.env.HTS_MODULE_SLUG || 'hts_future_trade').trim();
+    let privilegedRegister = false;
+    const authHdr = req.headers.authorization;
+    if (authHdr?.startsWith('Bearer ')) {
+      try {
+        const d = verifyAccess(authHdr.slice(7).trim());
+        if (d.typ === 'market') {
+          if (d.role === 'master' || d.role === 'operator') privilegedRegister = true;
+          else if (d.role === 'user') {
+            const ent = await fetchHtsEntitlementForMarketUser(d.sub, htsSlugPriv);
+            if (ent?.canAdmin) privilegedRegister = true;
+          }
+        }
+      } catch (_e) {
+        /* 공개 가입 */
+      }
+    }
+
+    let approvalStatus = 'approved';
+    let issueLoginTokens = true;
+    if (opId != null && !privilegedRegister) {
+      approvalStatus = 'pending';
+      issueLoginTokens = false;
+    }
+
     const pwHash = hashPassword(password.trim());
     await db.pool.query(
-      `INSERT INTO users (id, pw, manager_id, telegram, status, owner_id, charge_required_until, operator_mu_user_id, market_status)
-       VALUES (?, ?, NULL, NULL, 'approved', NULL, NULL, ?, 'active')`,
-      [newId, pwHash, opId],
+      `INSERT INTO users (id, pw, manager_id, telegram, status, owner_id, charge_required_until, operator_mu_user_id, market_status, approval_status)
+       VALUES (?, ?, NULL, NULL, 'approved', NULL, NULL, ?, 'active', ?)`,
+      [newId, pwHash, opId, approvalStatus],
     );
 
     await db.pool.query(
@@ -117,38 +152,59 @@ router.post('/register', async (req, res) => {
       [newId],
     );
 
+    if (!issueLoginTokens) {
+      return res.status(201).json({
+        ok: true,
+        pendingApproval: true,
+        message: '가입 신청이 접수되었습니다. 총판 승인 후 로그인할 수 있습니다.',
+      });
+    }
+
     const accessPayload = {
       sub: newId,
       role: 'user',
       muUserId: null,
       operatorMuUserId: opId,
     };
-    await issueTokensPair(res, accessPayload, 'user', newId, null);
+    await issueTokensPair(res, accessPayload, 'user', newId, null, { displayName: newId });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
 });
 
-/** POST /api/market/auth/login */
+/** POST /api/market/auth/login
+ *  body: { login_id, password, hts_module_slug?: string }
+ *  hts_module_slug 가 있으면 masterAdmin 모듈 권한(master_customer_entitlements)을 검사합니다.
+ */
 router.post('/login', async (req, res) => {
   try {
-    const { login_id, password } = req.body || {};
+    const { login_id, password, hts_module_slug } = req.body || {};
     if (!login_id?.trim() || !password?.trim()) {
       return res.status(400).json({ error: '아이디와 비밀번호를 입력하세요.' });
     }
+
+    const htsSlug = hts_module_slug != null ? String(hts_module_slug).trim() : '';
 
     const lid = String(login_id).trim();
     const pw = String(password).trim();
     const { id: MASTER_ID, pw: MASTER_PW } = masterCredentials();
 
     if (normalizeAccountId(lid) === normalizeAccountId(MASTER_ID) && pw === MASTER_PW) {
+      const htsRes = await resolveHtsContextForLogin({
+        role: 'master',
+        sub: 'master',
+        htsModuleSlug: htsSlug,
+        displayNameFallback: 'MASTER',
+      });
+      if (htsRes.error) return res.status(403).json({ error: htsRes.error });
       await issueTokensPair(
         res,
         { sub: 'master', role: 'master', muUserId: null, operatorMuUserId: null },
         'master',
         null,
         null,
+        { hts: htsRes.hts, displayName: htsRes.displayName },
       );
       return;
     }
@@ -161,26 +217,49 @@ router.post('/login', async (req, res) => {
     );
     if (mu) {
       if (mu.status !== 'active') return res.status(403).json({ error: '비활성 계정입니다.' });
+      const htsRes = await resolveHtsContextForLogin({
+        role: 'operator',
+        sub: String(mu.id),
+        htsModuleSlug: htsSlug,
+        operatorLoginId: lid,
+        displayNameFallback: lid,
+      });
+      if (htsRes.error) return res.status(403).json({ error: htsRes.error });
       await issueTokensPair(
         res,
         { sub: String(mu.id), role: 'operator', muUserId: mu.id, operatorMuUserId: mu.id },
         'operator',
         null,
         mu.id,
+        { hts: htsRes.hts, displayName: htsRes.displayName },
       );
       return;
     }
 
     const uid = normalizeAccountId(lid);
     const [[user]] = await db.pool.query(
-      'SELECT id, pw, operator_mu_user_id, market_status FROM users WHERE id = ? LIMIT 1',
+      'SELECT id, pw, operator_mu_user_id, market_status, approval_status FROM users WHERE id = ? LIMIT 1',
       [uid],
     );
     if (!user) return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     if (user.market_status === 'suspended') return res.status(403).json({ error: '정지된 계정입니다.' });
+    if (user.approval_status === 'pending') {
+      return res.status(403).json({ error: '가입 승인 대기 중입니다. 승인 후 다시 로그인하세요.' });
+    }
+    if (user.approval_status === 'rejected') {
+      return res.status(403).json({ error: '가입이 거절된 계정입니다.' });
+    }
     if (!verifyUserStoredPassword(user.pw, pw)) {
       return res.status(401).json({ error: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
+
+    const htsRes = await resolveHtsContextForLogin({
+      role: 'user',
+      sub: user.id,
+      htsModuleSlug: htsSlug,
+      displayNameFallback: user.id,
+    });
+    if (htsRes.error) return res.status(403).json({ error: htsRes.error });
 
     await issueTokensPair(
       res,
@@ -193,7 +272,48 @@ router.post('/login', async (req, res) => {
       'user',
       user.id,
       null,
+      { hts: htsRes.hts, displayName: htsRes.displayName },
     );
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** GET /api/market/auth/me?hts_module_slug=… — 액세스 토큰 + HTS 권한 재확인 */
+router.get('/me', requireMarketToken, async (req, res) => {
+  try {
+    const a = req.marketAuth;
+    const slug = String(
+      req.query.hts_module_slug || req.headers['x-hts-module'] || req.headers['x-hts-module-slug'] || '',
+    ).trim();
+    const base = {
+      ok: true,
+      role: a.role,
+      sub: a.sub,
+      muUserId: a.muUserId ?? null,
+      operatorMuUserId: a.operatorMuUserId ?? null,
+    };
+    if (!slug) {
+      return res.json({
+        ...base,
+        displayName: a.role === 'master' ? 'MASTER' : String(a.sub),
+        hts: null,
+      });
+    }
+    const htsRes = await resolveHtsContextForLogin({
+      role: a.role,
+      sub: String(a.sub),
+      htsModuleSlug: slug,
+      operatorLoginId: null,
+      displayNameFallback: a.role === 'master' ? 'MASTER' : String(a.sub),
+    });
+    if (htsRes.error) return res.status(403).json({ error: htsRes.error, ...base });
+    return res.json({
+      ...base,
+      displayName: htsRes.displayName || String(a.sub),
+      hts: htsRes.hts,
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -252,6 +372,8 @@ router.post('/refresh', async (req, res) => {
       accessToken: signAccess(accessPayload),
       refreshToken: refresh,
       role: accessPayload.role,
+      sub: String(sub),
+      displayName: accessPayload.role === 'master' ? 'MASTER' : String(sub),
       muUserId: accessPayload.muUserId,
       operatorMuUserId: accessPayload.operatorMuUserId,
     });
