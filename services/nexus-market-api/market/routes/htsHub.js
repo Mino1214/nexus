@@ -7,6 +7,7 @@ const db = require('../../db');
 const { requireMarketToken } = require('../middleware');
 const { fetchHtsEntitlementForMarketUser } = require('../htsEntitlement');
 const { hashPassword } = require('../password');
+const { createUniqueOperatorReferralCode, parseSettlementRate } = require('../operatorReferral');
 
 const router = express.Router();
 router.use(requireMarketToken);
@@ -142,15 +143,17 @@ router.get('/operators', async (req, res) => {
   try {
     const op = scopedOperatorId(req);
     if (op != null && !Number.isNaN(op)) {
-      const [rows] = await db.pool.query(
-        `SELECT id, name, login_id, role, status, market_role, site_domain, is_site_active
-         FROM mu_users WHERE id = ? AND market_role = 'operator' LIMIT 1`,
+    const [rows] = await db.pool.query(
+      `SELECT id, name, login_id, role, status, market_role, site_domain, is_site_active,
+              referral_code, settlement_rate
+       FROM mu_users WHERE id = ? AND market_role = 'operator' LIMIT 1`,
         [op],
       );
       return res.json({ operators: rows });
     }
     const [rows] = await db.pool.query(
-      `SELECT id, name, login_id, role, status, market_role, site_domain, is_site_active
+      `SELECT id, name, login_id, role, status, market_role, site_domain, is_site_active,
+              referral_code, settlement_rate
        FROM mu_users WHERE market_role = 'operator' ORDER BY id DESC LIMIT 500`,
     );
     res.json({ operators: rows });
@@ -163,7 +166,7 @@ router.get('/operators', async (req, res) => {
 /** POST /operators — 총판 생성 */
 router.post('/operators', requireHubMaster, async (req, res) => {
   try {
-    const { name, login_id, password, site_domain } = req.body || {};
+    const { name, login_id, password, site_domain, settlement_rate } = req.body || {};
     if (!name?.trim() || !login_id?.trim() || !password?.trim()) {
       return res.status(400).json({ error: '이름, 로그인 ID, 비밀번호가 필요합니다.' });
     }
@@ -175,13 +178,15 @@ router.post('/operators', requireHubMaster, async (req, res) => {
       );
       if (dup) return res.status(409).json({ error: '이미 사용 중인 사이트 도메인입니다.' });
     }
+    const rate = parseSettlementRate(settlement_rate, 10);
     const ph = hashPassword(password.trim());
+    const refCode = await createUniqueOperatorReferralCode(db.pool);
     const [r] = await db.pool.query(
-      `INSERT INTO mu_users (name, login_id, password_hash, role, status, market_role, site_domain, is_site_active)
-       VALUES (?, ?, ?, 'USER', 'active', 'operator', ?, 1)`,
-      [name.trim(), login_id.trim(), ph, domain],
+      `INSERT INTO mu_users (name, login_id, password_hash, role, status, market_role, site_domain, is_site_active, referral_code, settlement_rate)
+       VALUES (?, ?, ?, 'USER', 'active', 'operator', ?, 1, ?, ?)`,
+      [name.trim(), login_id.trim(), ph, domain, refCode, rate],
     );
-    res.status(201).json({ ok: true, id: r.insertId });
+    res.status(201).json({ ok: true, id: r.insertId, referral_code: refCode, settlement_rate: rate });
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: '중복된 로그인 ID입니다.' });
     console.error(e);
@@ -200,7 +205,7 @@ router.patch('/operators/:id', requireHubMaster, async (req, res) => {
     );
     if (!op) return res.status(404).json({ error: '운영자를 찾을 수 없습니다.' });
 
-    const { name, password, site_domain, is_site_active, status } = req.body || {};
+    const { name, password, site_domain, is_site_active, status, settlement_rate } = req.body || {};
     const fields = [];
     const vals = [];
     if (name?.trim()) {
@@ -210,6 +215,10 @@ router.patch('/operators/:id', requireHubMaster, async (req, res) => {
     if (password?.trim()) {
       fields.push('password_hash = ?');
       vals.push(hashPassword(password.trim()));
+    }
+    if (settlement_rate !== undefined && settlement_rate !== null && settlement_rate !== '') {
+      fields.push('settlement_rate = ?');
+      vals.push(parseSettlementRate(settlement_rate, 10));
     }
     if (site_domain !== undefined) {
       const domain = site_domain?.trim() || null;

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AdminSession } from '../../admin/types';
-import { hubApproveWithdrawal, hubListWithdrawals, hubRejectWithdrawal, type HubWithdrawalRow } from '../hubApiClient';
+import {
+  hubApproveWithdrawal,
+  hubListOperators,
+  hubListWithdrawals,
+  hubPatchOperator,
+  hubRejectWithdrawal,
+  type HubOperatorRow,
+  type HubWithdrawalRow,
+} from '../hubApiClient';
 import { HubPanelShell } from '../HubPanelShell';
 import { HubGate } from '../HubGate';
 
@@ -13,6 +21,8 @@ function fmt(dt: string | undefined) {
 export function SettleMgmtHubPanel({ session }: { session: AdminSession }) {
   const isMasterUi = session.role === 'master';
   const [rows, setRows] = useState<HubWithdrawalRow[]>([]);
+  const [operators, setOperators] = useState<HubOperatorRow[]>([]);
+  const [rateDraft, setRateDraft] = useState<Record<number, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -20,8 +30,14 @@ export function SettleMgmtHubPanel({ session }: { session: AdminSession }) {
     setLoading(true);
     setErr(null);
     try {
-      const w = await hubListWithdrawals(session);
+      const [w, o] = await Promise.all([hubListWithdrawals(session), hubListOperators(session)]);
       setRows(w);
+      setOperators(o);
+      const next: Record<number, string> = {};
+      for (const op of o) {
+        next[op.id] = String(op.settlement_rate ?? 10);
+      }
+      setRateDraft(next);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -45,7 +61,7 @@ export function SettleMgmtHubPanel({ session }: { session: AdminSession }) {
     <HubGate session={session}>
       <HubPanelShell
         title="정산관리"
-        subtitle="총판 출금 신청 목록 (hts_operator_withdrawals)"
+        subtitle="총판 정산 비율 · 출금 신청 (판도라 정산관리와 동일 개념)"
         actions={
           <button type="button" className="btn-ghost btn-sm" onClick={() => void load()} disabled={loading}>
             새로고침
@@ -53,6 +69,69 @@ export function SettleMgmtHubPanel({ session }: { session: AdminSession }) {
         }
       >
         {err ? <p className="hub-err">{err}</p> : null}
+        <section className="hub-section" style={{ marginBottom: 24 }}>
+          <h3 className="hub-section-title">총판 정산 비율</h3>
+          <p className="tab-panel-muted" style={{ marginBottom: 8 }}>
+            <code>mu_users.settlement_rate</code> — 신규 총판은 «회원» 탭 생성 시 지정 가능합니다.
+          </p>
+          <div className="hub-table-wrap">
+            <table className="hub-table">
+              <thead>
+                <tr>
+                  <th>총판</th>
+                  <th>레퍼럴</th>
+                  <th>정산율 %</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {operators.map((o) => (
+                  <tr key={o.id}>
+                    <td>
+                      {o.name} <span className="tab-panel-muted">({o.login_id})</span>
+                    </td>
+                    <td>
+                      <code style={{ fontSize: 12 }}>{o.referral_code || '—'}</code>
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.1}
+                        style={{ width: 72 }}
+                        value={rateDraft[o.id] ?? String(o.settlement_rate ?? 10)}
+                        onChange={(e) => setRateDraft((d) => ({ ...d, [o.id]: e.target.value }))}
+                      />
+                    </td>
+                    <td className="hub-actions">
+                      <button
+                        type="button"
+                        className="btn-ghost btn-sm"
+                        onClick={async () => {
+                          const v = parseFloat(rateDraft[o.id] ?? '');
+                          if (Number.isNaN(v) || v < 0 || v > 100) {
+                            setErr('정산율은 0~100 사이로 입력하세요.');
+                            return;
+                          }
+                          try {
+                            await hubPatchOperator(session, o.id, { settlement_rate: v });
+                            await load();
+                          } catch (e) {
+                            setErr(e instanceof Error ? e.message : String(e));
+                          }
+                        }}
+                      >
+                        저장
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <h3 className="hub-section-title">출금 신청</h3>
         <div className="hub-table-wrap">
           <table className="hub-table">
             <thead>

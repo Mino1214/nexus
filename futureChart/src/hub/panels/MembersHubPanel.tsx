@@ -23,6 +23,7 @@ export function MembersHubPanel({ session }: { session: AdminSession }) {
   const [opLogin, setOpLogin] = useState('');
   const [opPw, setOpPw] = useState('');
   const [opDomain, setOpDomain] = useState('');
+  const [opSettle, setOpSettle] = useState(10);
 
   const [nuId, setNuId] = useState('');
   const [nuPw, setNuPw] = useState('');
@@ -84,22 +85,39 @@ export function MembersHubPanel({ session }: { session: AdminSession }) {
                 <span>사이트 도메인 (선택)</span>
                 <input value={opDomain} onChange={(e) => setOpDomain(e.target.value)} placeholder="demo.example.com" />
               </label>
+              <label className="hub-field">
+                <span>정산 비율 (%)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={opSettle}
+                  onChange={(e) => setOpSettle(Number(e.target.value))}
+                  title="판도라 정산관리의 총판 정산 비율과 동일"
+                />
+              </label>
             </div>
             <button
               type="button"
               className="btn-ghost btn-sm"
               onClick={async () => {
                 try {
-                  await hubCreateOperator(session, {
+                  const created = await hubCreateOperator(session, {
                     name: opName,
                     login_id: opLogin,
                     password: opPw,
                     site_domain: opDomain || undefined,
+                    settlement_rate: opSettle,
                   });
+                  window.alert(
+                    `총판이 등록되었습니다.\n레퍼럴 코드: ${created.referral_code}\n정산 비율: ${created.settlement_rate}%`,
+                  );
                   setOpName('');
                   setOpLogin('');
                   setOpPw('');
                   setOpDomain('');
+                  setOpSettle(10);
                   await reload();
                 } catch (e) {
                   setErr(e instanceof Error ? e.message : String(e));
@@ -121,6 +139,8 @@ export function MembersHubPanel({ session }: { session: AdminSession }) {
                     <th>ID</th>
                     <th>이름</th>
                     <th>로그인</th>
+                    <th>레퍼럴</th>
+                    <th>정산%</th>
                     <th>도메인</th>
                     <th>상태</th>
                     <th>작업</th>
@@ -132,6 +152,10 @@ export function MembersHubPanel({ session }: { session: AdminSession }) {
                       <td>{o.id}</td>
                       <td>{o.name}</td>
                       <td>{o.login_id}</td>
+                      <td>
+                        <code style={{ fontSize: 12 }}>{o.referral_code || '—'}</code>
+                      </td>
+                      <td>{o.settlement_rate != null ? `${Number(o.settlement_rate)}%` : '—'}</td>
                       <td>{o.site_domain || '—'}</td>
                       <td>{o.status}</td>
                       <td className="hub-actions">

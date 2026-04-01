@@ -156,6 +156,27 @@ async function runMarketMigrations(pool) {
     console.warn('[market DB] mu_users site_domain index:', e.message);
   }
 
+  try {
+    if (!(await columnExists(pool, 'mu_users', 'referral_code'))) {
+      await pool.query(
+        `ALTER TABLE mu_users ADD COLUMN referral_code VARCHAR(20) NULL DEFAULT NULL COMMENT '총판 레퍼럴(가입 필수, Pandora managers.referral_code 와 동일 역할)'`,
+      );
+      console.log('[market DB] mu_users.referral_code 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] mu_users.referral_code:', e.message);
+  }
+  try {
+    if (!(await columnExists(pool, 'mu_users', 'settlement_rate'))) {
+      await pool.query(
+        `ALTER TABLE mu_users ADD COLUMN settlement_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00 COMMENT '마스터 설정 정산 비율(%) — 판도라 정산관리 settlement_rate'`,
+      );
+      console.log('[market DB] mu_users.settlement_rate 추가');
+    }
+  } catch (e) {
+    console.error('[market DB] mu_users.settlement_rate:', e.message);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS market_points (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -579,6 +600,32 @@ async function runMarketMigrations(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  /** 레거시 hts_charge_requests (초기 스키마만 있는 경우) 컬럼 보강 — 없으면 GET /hts/charge-requests 가 500 */
+  try {
+    if (!(await columnExists(pool, 'hts_charge_requests', 'module_code'))) {
+      await pool.query(
+        `ALTER TABLE hts_charge_requests ADD COLUMN module_code VARCHAR(64) DEFAULT NULL COMMENT '서비스 모듈(slug)'`,
+      );
+      console.log('[market DB] hts_charge_requests.module_code 추가');
+    }
+    if (!(await columnExists(pool, 'hts_charge_requests', 'operator_mu_user_id'))) {
+      await pool.query(
+        `ALTER TABLE hts_charge_requests ADD COLUMN operator_mu_user_id INT DEFAULT NULL`,
+      );
+      const [opIx] = await pool.query(`SHOW INDEX FROM hts_charge_requests WHERE Key_name = 'idx_hts_cr_op'`);
+      if (opIx.length === 0) {
+        await pool.query('CREATE INDEX idx_hts_cr_op ON hts_charge_requests (operator_mu_user_id)');
+      }
+      console.log('[market DB] hts_charge_requests.operator_mu_user_id 추가');
+    }
+    const [htsIx] = await pool.query(`SHOW INDEX FROM hts_charge_requests WHERE Key_name = 'idx_hts_cr_module'`);
+    if (htsIx.length === 0) {
+      await pool.query('CREATE INDEX idx_hts_cr_module ON hts_charge_requests (module_code)');
+    }
+  } catch (e) {
+    console.warn('[market DB] hts_charge_requests 컬럼 보강:', e.message);
+  }
+
   /** 동일 DB·다른 서비스(FutureTrade HTS 등) 구분용 — 조회 시 module_code 로 필터 */
   const moduleCols = [
     ['market_cash_transactions', 'module_code', 'idx_mct_module'],
@@ -618,6 +665,8 @@ async function runMarketMigrations(pool) {
       ['market_orders', 'user_id'],
       ['market_mini_game_logs', 'user_id'],
       ['market_refresh_tokens', 'users_id'],
+      /** LEFT JOIN users u ON u.id = cr.user_id — collation 불일치 시 Illegal mix of collations → 500 */
+      ['hts_charge_requests', 'user_id'],
     ];
     for (const [table, col] of syncPairs) {
       const [[t]] = await pool.query(
@@ -697,6 +746,18 @@ async function runMarketMigrations(pool) {
   `);
 
   await seedNexusHubDemo(pool);
+
+  try {
+    const { normalizeOperatorReferralCodes } = require('./operatorReferral');
+    await normalizeOperatorReferralCodes(pool);
+    const [refIdx] = await pool.query("SHOW INDEX FROM mu_users WHERE Key_name = 'uq_mu_users_referral_code'");
+    if (refIdx.length === 0) {
+      await pool.query('CREATE UNIQUE INDEX uq_mu_users_referral_code ON mu_users (referral_code)');
+      console.log('[market DB] mu_users.referral_code UNIQUE 인덱스');
+    }
+  } catch (e) {
+    console.warn('[market DB] 총판 레퍼럴 정규화/UNIQUE:', e.message);
+  }
 
   console.log('[market DB] 마이그레이션 완료');
 }

@@ -60,6 +60,8 @@ export type HubOperatorRow = {
   status: string;
   site_domain: string | null;
   is_site_active: number;
+  referral_code?: string | null;
+  settlement_rate?: number | string | null;
 };
 
 export async function hubListOperators(session: AdminSession): Promise<HubOperatorRow[]> {
@@ -69,19 +71,34 @@ export async function hubListOperators(session: AdminSession): Promise<HubOperat
 
 export async function hubCreateOperator(
   session: AdminSession,
-  body: { name: string; login_id: string; password: string; site_domain?: string },
-): Promise<number> {
-  const j = await hubFetchJson<{ id: number }>(session, '/hts/hub/operators', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
-  return j.id;
+  body: { name: string; login_id: string; password: string; site_domain?: string; settlement_rate?: number },
+): Promise<{ id: number; referral_code: string; settlement_rate: number }> {
+  const j = await hubFetchJson<{ id: number; referral_code?: string; settlement_rate?: number }>(
+    session,
+    '/hts/hub/operators',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+  );
+  return {
+    id: j.id,
+    referral_code: String(j.referral_code || ''),
+    settlement_rate: Number(j.settlement_rate ?? 10),
+  };
 }
 
 export async function hubPatchOperator(
   session: AdminSession,
   id: number,
-  body: Partial<{ name: string; password: string; site_domain: string | null; is_site_active: boolean; status: string }>,
+  body: Partial<{
+    name: string;
+    password: string;
+    site_domain: string | null;
+    is_site_active: boolean;
+    status: string;
+    settlement_rate: number;
+  }>,
 ): Promise<void> {
   await hubFetchJson(session, `/hts/hub/operators/${id}`, {
     method: 'PATCH',

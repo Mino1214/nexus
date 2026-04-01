@@ -129,7 +129,7 @@ router.get('/charge-requests', async (req, res) => {
     );
     res.json({ requests: rows });
   } catch (e) {
-    console.error(e);
+    console.error('[hts/charge-requests GET]', e.code || '', e.message);
     res.status(500).json({ error: e.message });
   }
 });

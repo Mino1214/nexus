@@ -4,6 +4,7 @@ import type { AdminSession } from './admin/types';
 import { MODULE_CODE, MODULE_NAME } from './config/moduleContext';
 import { getEffectiveHtsModuleSlug, getHtsModuleSlug, isMarketHtsGateEnabled } from './config/htsModuleEnv';
 import { loginViaMarketApi } from './marketAuthLogin';
+import { marketPublicRegister } from './marketPublicRegister';
 
 type Props = {
   onSuccess: (session: AdminSession) => void;
@@ -15,6 +16,8 @@ type Props = {
 export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +29,24 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
       if (isMarketHtsGateEnabled()) {
         setLoading(true);
         try {
+          if (mode === 'signup') {
+            const reg = await marketPublicRegister(id, pw, referralCode);
+            if (!reg.ok) {
+              setErr(reg.error);
+              return;
+            }
+            if (reg.pendingApproval) {
+              setErr(null);
+              window.alert(reg.message);
+              setMode('login');
+              setPw('');
+              return;
+            }
+            setErr('가입이 즉시 승인되었습니다. 로그인해 주세요.');
+            setMode('login');
+            setPw('');
+            return;
+          }
           const r = await loginViaMarketApi(id, pw);
           if ('session' in r) {
             onSuccess(r.session);
@@ -50,7 +71,7 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
       }
       onSuccess({ ...session, authSource: 'demo' });
     },
-    [id, pw, onSuccess],
+    [id, pw, referralCode, mode, onSuccess],
   );
 
   return (
@@ -63,6 +84,31 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
             {MODULE_NAME} — 관리자 로그인 <span style={{ opacity: 0.75 }}>({MODULE_CODE})</span>
           </div>
           <form id="adminLoginForm" onSubmit={submit} autoComplete="off">
+            {isMarketHtsGateEnabled() ? (
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  style={{ marginRight: 8 }}
+                  onClick={() => {
+                    setMode('login');
+                    setErr(null);
+                  }}
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => {
+                    setMode('signup');
+                    setErr(null);
+                  }}
+                >
+                  회원가입
+                </button>
+              </div>
+            ) : null}
             <div className="form-group">
               <label htmlFor="fc-app-login-id">아이디</label>
               <input
@@ -92,17 +138,31 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
                 onChange={(e) => setPw(e.target.value)}
               />
             </div>
+            {isMarketHtsGateEnabled() && mode === 'signup' ? (
+              <div className="form-group">
+                <label htmlFor="fc-app-referral">레퍼럴 코드 (필수)</label>
+                <input
+                  id="fc-app-referral"
+                  type="text"
+                  placeholder="총판에서 받은 코드 또는 총판 로그인 ID"
+                  required
+                  autoComplete="off"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                />
+              </div>
+            ) : null}
             <button type="submit" className="btn-ac" disabled={loading}>
-              {loading ? '확인 중…' : '로그인'}
+              {loading ? '확인 중…' : mode === 'signup' ? '가입 신청' : '로그인'}
             </button>
             {err ? <p className="login-error">{err}</p> : null}
           </form>
           <p className="login-hint">
             {isMarketHtsGateEnabled() ? (
               <>
-                마켓 API 로그인 — HTS 모듈 <code>{getEffectiveHtsModuleSlug()}</code>
-                {getHtsModuleSlug() ? '' : ' (기본값, VITE_HTS_MODULE_SLUG 로 변경 가능)'} · 마켓 실패 시 데모 계정은
-                폴백됩니다. (표시 모듈 코드 {MODULE_CODE})
+                마켓 API — HTS 모듈 <code>{getEffectiveHtsModuleSlug()}</code>
+                {getHtsModuleSlug() ? '' : ' (기본값)'} · 공개 가입은 <strong>레퍼럴 코드 필수</strong>, 총판 승인 후
+                로그인됩니다. 마켓 실패 시 데모 계정 폴백. ({MODULE_CODE})
               </>
             ) : (
               <>

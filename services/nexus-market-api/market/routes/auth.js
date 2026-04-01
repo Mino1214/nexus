@@ -6,6 +6,7 @@ const { saveRefreshToken, consumeRefreshToken, pruneExpiredRefreshTokens } = req
 const { resolveHtsContextForLogin, fetchHtsEntitlementForMarketUser } = require('../htsEntitlement');
 const { verifyAccess } = require('../jwtMarket');
 const { requireMarketToken } = require('../middleware');
+const { resolveOperatorByReferral } = require('../operatorReferral');
 
 const router = express.Router();
 
@@ -76,10 +77,13 @@ async function issueTokensPair(res, payload, subjectType, usersId, muUserId, log
   });
 }
 
-/** POST /api/market/auth/register */
+/** POST /api/market/auth/register
+ *  공개 가입: referral_code 필수(총판 레퍼럴 또는 총판 로그인 ID) → 소속 총판에 승인 대기.
+ *  마스터·총판·can_admin Bearer: operator_mu_user_id 등 기존 대로 즉시 승인 가입 가능.
+ */
 router.post('/register', async (req, res) => {
   try {
-    const { id, password, operator_mu_user_id } = req.body || {};
+    const { id, password, operator_mu_user_id, referral_code } = req.body || {};
     const idError =
       !id?.trim()
         ? '아이디를 입력하세요.'
@@ -99,21 +103,6 @@ router.post('/register', async (req, res) => {
     const [[exists]] = await db.pool.query('SELECT id FROM users WHERE id = ? LIMIT 1', [newId]);
     if (exists) return res.status(409).json({ error: '이미 가입된 아이디입니다.' });
 
-    let opId =
-      operator_mu_user_id != null && operator_mu_user_id !== ''
-        ? parseInt(operator_mu_user_id, 10)
-        : null;
-    if (opId == null || Number.isNaN(opId)) {
-      opId = req.marketTenantOperatorId;
-    }
-    if (opId != null) {
-      const [[op]] = await db.pool.query(
-        `SELECT id FROM mu_users WHERE id = ? AND market_role = 'operator' LIMIT 1`,
-        [opId],
-      );
-      if (!op) return res.status(400).json({ error: '유효하지 않은 운영자입니다.' });
-    }
-
     const htsSlugPriv = String(req.headers['x-hts-module'] || process.env.HTS_MODULE_SLUG || 'hts_future_trade').trim();
     let privilegedRegister = false;
     const authHdr = req.headers.authorization;
@@ -130,6 +119,37 @@ router.post('/register', async (req, res) => {
       } catch (_e) {
         /* 공개 가입 */
       }
+    }
+
+    let opId = null;
+    if (privilegedRegister) {
+      let rawOp =
+        operator_mu_user_id != null && operator_mu_user_id !== ''
+          ? parseInt(String(operator_mu_user_id), 10)
+          : NaN;
+      if (!Number.isNaN(rawOp)) {
+        opId = rawOp;
+      } else {
+        opId = req.marketTenantOperatorId;
+      }
+      if (opId != null) {
+        const [[op]] = await db.pool.query(
+          `SELECT id FROM mu_users WHERE id = ? AND market_role = 'operator' LIMIT 1`,
+          [opId],
+        );
+        if (!op) return res.status(400).json({ error: '유효하지 않은 운영자입니다.' });
+      }
+    } else {
+      if (!referral_code?.trim()) {
+        return res.status(400).json({
+          error: '레퍼럴 코드를 입력하세요. 총판에서 발급된 코드(또는 총판 로그인 ID)가 필요합니다.',
+        });
+      }
+      const resolved = await resolveOperatorByReferral(db.pool, referral_code.trim());
+      if (!resolved) {
+        return res.status(400).json({ error: '레퍼럴 코드를 찾을 수 없습니다.' });
+      }
+      opId = resolved.id;
     }
 
     let approvalStatus = 'approved';

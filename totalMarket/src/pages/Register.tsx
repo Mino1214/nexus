@@ -11,7 +11,7 @@ export function Register() {
   const { authed, login } = useAuth();
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
-  const [opId, setOpId] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [err, setErr] = useState('');
   const logo = brandLogoUrl();
 
@@ -30,11 +30,15 @@ export function Register() {
       return;
     }
     try {
-      const body: { id: string; password: string; operator_mu_user_id?: string } = {
+      if (!referralCode.trim()) {
+        setErr('레퍼럴 코드를 입력하세요. 총판에서 발급받은 코드(또는 총판 로그인 ID)가 필요합니다.');
+        return;
+      }
+      const body = {
         id: nid,
         password,
+        referral_code: referralCode.trim(),
       };
-      if (opId.trim()) body.operator_mu_user_id = opId.trim();
       const j = await api<{ accessToken?: string; role?: string; pendingApproval?: boolean; message?: string }>(
         marketPath('/auth/register'),
         {
@@ -91,12 +95,13 @@ export function Register() {
               />
             </div>
             <div className="field">
-              <label htmlFor="mp-reg-op">운영자 mu_users id (선택)</label>
+              <label htmlFor="mp-reg-ref">레퍼럴 코드 (필수)</label>
               <input
-                id="mp-reg-op"
-                value={opId}
-                onChange={(e) => setOpId(e.target.value)}
-                placeholder="테넌트 연결 시"
+                id="mp-reg-ref"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+                placeholder="총판 코드 또는 총판 로그인 ID"
+                autoComplete="off"
               />
             </div>
             {err ? <p className="err">{err}</p> : null}
