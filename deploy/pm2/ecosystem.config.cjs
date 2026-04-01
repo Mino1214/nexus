@@ -1,21 +1,13 @@
 /**
- * Nexus PM2 묶음 — 프로세스 이름으로 역할이 한눈에 보이게 정리
+ * Nexus PM2 묶음 — 앱 이름 = 서비스 디렉터리/역할과 동일
  *
- * 도메인 그림 (예시):
- *   - 총괄 admin  → masterAdmin 정적 + (선택) 별도 API
- *   - 마켓        → nexus-market-api (+ totalMarket 등 프론트는 Nginx 정적)
- *   - A Pandora   → macro-server (웹은 Nginx → public/)
- *   - B Future    → future-chart-broker (WS) + FutureChart 정적
- *
- * DB: MariaDB 하나에 macro·market·users 공유 (지금 구조). A-1, A-2 스케일은
- *   동일 코드 + 다른 PORT / 다른 env(TELEGRAM 등)로 앱만 복제하면 됨.
+ *   macro-server, seed-checker, nexus-market-api, future-chart
  *
  * 사용:
- *   cd deploy/pm2 && pm2 start ecosystem.config.cjs
- *   pm2 save
+ *   cd deploy/pm2 && pm2 start ecosystem.config.cjs && pm2 save
  *
- * 그룹 보기: pm2 list | grep nx-
- * 재시작:   pm2 restart nx-core-market-api
+ * 레거시 이름(server, mynolab-server)에서 전환:
+ *   pm2 delete server mynolab-server && cd deploy/pm2 && pm2 start ecosystem.config.cjs
  */
 const path = require('path');
 
@@ -26,9 +18,9 @@ const NS = 'nexus';
 
 module.exports = {
   apps: [
-    /* ─── A: Pandora (macro-server) ─── */
+    /* ─── Pandora 코어 (services/macro-server) ─── */
     {
-      name: 'nx-a-pandora-api',
+      name: 'macro-server',
       namespace: NS,
       script: 'server.js',
       cwd: path.join(REPO, 'services/macro-server'),
@@ -45,7 +37,7 @@ module.exports = {
       },
     },
     {
-      name: 'nx-a-pandora-seedcheck',
+      name: 'seed-checker',
       namespace: NS,
       script: 'seed-checker.js',
       cwd: path.join(REPO, 'services/macro-server'),
@@ -60,9 +52,9 @@ module.exports = {
       },
     },
 
-    /* ─── 코어: 마켓 API (총판·JWT·HTS 연동) ─── */
+    /* ─── 총마켓 API (services/nexus-market-api) ─── */
     {
-      name: 'nx-core-market-api',
+      name: 'nexus-market-api',
       namespace: NS,
       script: 'server.js',
       cwd: path.join(REPO, 'services/nexus-market-api'),
@@ -79,9 +71,10 @@ module.exports = {
       },
     },
 
-    /* ─── B: FutureChart 브로커 (WS) — 미사용 시 주석 처리 ─── */
+    /*
+    ─── future-chart-broker (KIS_APP_KEY / KIS_APP_SECRET 필요) — 준비되면 주석 해제 ───
     {
-      name: 'nx-b-future-broker',
+      name: 'future-chart-broker',
       namespace: NS,
       script: 'src/index.js',
       cwd: path.join(REPO, 'services/future-chart-broker'),
@@ -91,8 +84,31 @@ module.exports = {
       watch: false,
       max_memory_restart: '300M',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      env: { NODE_ENV: 'production' },
+    },
+    */
+
+    /* ─── FutureChart Vite (외부 테스트: Nginx → /future-chart/) ─── */
+    {
+      name: 'future-chart',
+      namespace: NS,
+      cwd: path.join(REPO, 'futureChart'),
+      script: 'npm',
+      args: 'run dev:public',
+      interpreter: 'none',
+      instances: 1,
+      exec_mode: 'fork',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '600M',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
+        VITE_PUBLIC_BASE: '/future-chart/',
+        VITE_BIND_HOST: '0.0.0.0',
+        VITE_DEV_PORT: '5180',
+        /** Nginx/Cloudflare 등 프록시 Host — 막히면 all 로 전체 허용(테스트용) */
+        VITE_ALLOWED_HOSTS: 'all',
       },
     },
 

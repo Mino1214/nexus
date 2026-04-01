@@ -50,6 +50,9 @@ export function PortalLayout() {
             <NavLink to="/shop" className={({ isActive }) => (isActive ? 'active' : '')}>
               스토어
             </NavLink>
+            <a href="/master/" target="_blank" rel="noreferrer" className="btn outline" style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
+              MasterAdmin
+            </a>
             {authed ? (
               <NavLink to="/me" className={({ isActive }) => (isActive ? 'active' : '')}>
                 내 정보

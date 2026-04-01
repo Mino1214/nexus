@@ -154,7 +154,7 @@ echo ""
 echo "3. server.js를 MariaDB 버전으로 수정"
 echo ""
 echo "4. PM2로 재시작:"
-echo "   pm2 restart mynolab-server"
+echo "   pm2 restart macro-server"
 echo ""
 echo -e "${YELLOW}⚠️  중요: .env 파일의 비밀번호를 확인하세요!${NC}"
 

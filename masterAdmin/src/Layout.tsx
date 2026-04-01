@@ -186,6 +186,16 @@ export function Layout() {
             <span className="topbar-title">Master Console</span>
           </div>
           <div className="topbar-right">
+            <a
+              className="btn outline"
+              style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+              href="/market/"
+              target="_blank"
+              rel="noreferrer"
+              title="총마켓 포털(유저 화면)"
+            >
+              총마켓 포털
+            </a>
             <button type="button" className="theme-toggle" onClick={() => setLight((v) => !v)} title="테마">
               {light ? '🌙' : '☀️'}
             </button>

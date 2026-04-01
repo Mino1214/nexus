@@ -6,7 +6,7 @@
 module.exports = {
   apps: [
     {
-      name: 'mynolab-server',
+      name: 'macro-server',
       script: 'server.js',
       cwd: __dirname,
       instances: 1,

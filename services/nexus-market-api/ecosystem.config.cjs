@@ -6,7 +6,7 @@
 module.exports = {
   apps: [
     {
-      name: 'server',
+      name: 'nexus-market-api',
       script: 'server.js',
       cwd: __dirname,
       instances: 1,
