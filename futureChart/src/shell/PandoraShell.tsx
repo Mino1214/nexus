@@ -19,16 +19,18 @@ type Props = {
   onLogout: () => void;
 };
 
-function readInitialPandoraTab(): PandoraTabId {
+function readInitialTab(role: AdminSession['role']): PandoraTabId {
   try {
-    const raw = sessionStorage.getItem('fc_pandora_initial_tab');
-    if (!raw) return defaultTabForRole();
+    let raw = sessionStorage.getItem('fx_initial_tab');
+    if (!raw) raw = sessionStorage.getItem('fc_pandora_initial_tab');
+    if (!raw) return defaultTabForRole(role);
+    sessionStorage.removeItem('fx_initial_tab');
     sessionStorage.removeItem('fc_pandora_initial_tab');
     if (PANDORA_NAV.some((i) => i.id === raw)) return raw as PandoraTabId;
   } catch {
     /* ignore */
   }
-  return defaultTabForRole();
+  return defaultTabForRole(role);
 }
 
 function roleTag(role: AdminSession['role']): string {
@@ -38,13 +40,13 @@ function roleTag(role: AdminSession['role']): string {
 }
 
 export function PandoraShell({ session, theme, onToggleTheme, onLogout }: Props) {
-  const [activeTab, setActiveTab] = useState<PandoraTabId>(() => readInitialPandoraTab());
+  const [activeTab, setActiveTab] = useState<PandoraTabId>(() => readInitialTab(session.role));
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const vis = PANDORA_NAV.filter((i) => isNavItemVisible(i, session.role));
     if (!vis.some((i) => i.id === activeTab)) {
-      setActiveTab(defaultTabForRole());
+      setActiveTab(defaultTabForRole(session.role));
     }
   }, [session.role, activeTab]);
 
@@ -64,6 +66,7 @@ export function PandoraShell({ session, theme, onToggleTheme, onLogout }: Props)
   }, []);
 
   const activeTitle = PANDORA_NAV.find((i) => i.id === activeTab)?.label ?? '—';
+  const ref = session.referralCode?.trim();
 
   return (
     <div className="pa-dashboard">
@@ -75,11 +78,20 @@ export function PandoraShell({ session, theme, onToggleTheme, onLogout }: Props)
 
       <aside className={`sidebar${sidebarOpen ? ' open' : ''}`} aria-label="주 메뉴">
         <div className="sidebar-brand">
-          <img src="/logo.svg" alt="" className="brand-logo" width={200} height={56} />
-          <span className="brand-name">Pandora</span>
+          {/*<img src="/logo.svg" alt="" className="brand-logo" width={200} height={56} />*/}
+          <span className="brand-name">FX</span>
           <span className="brand-module">{MODULE_NAME}</span>
           <span className="brand-module-code">{MODULE_CODE}</span>
+          {/*<span className="brand-module">{MODULE_NAME}</span>*/}
+          {/*<span className="brand-module-code">{MODULE_CODE}</span>*/}
         </div>
+
+        {ref ? (
+            <div className="sidebar-referral" title="레퍼럴 코드 (admin.html과 동일)">
+              <span className="sidebar-referral-label">{session.role === 'master' ? '마스터 레퍼럴' : '내 레퍼럴'}</span>
+            <code className="sidebar-referral-code">{ref}</code>
+          </div>
+        ) : null}
 
         <div className="sidebar-kpi">
           <div className="kpi-item">
@@ -144,10 +156,10 @@ export function PandoraShell({ session, theme, onToggleTheme, onLogout }: Props)
                 <rect y="13" width="18" height="2" rx="1" fill="currentColor" />
               </svg>
             </button>
-            <div className="topbar-brand">
-              <img src="/logo.svg" alt="" className="brand-logo" width={190} height={46} aria-hidden />
-              <span>Pandora</span>
-            </div>
+            {/*<div className="topbar-brand">*/}
+            {/*  <img src="/logo.svg" alt="" className="brand-logo" width={190} height={46} aria-hidden />*/}
+            {/*  <span>FX</span>*/}
+            {/*</div>*/}
             <span className="topbar-title">{activeTitle}</span>
           </div>
           <div className="topbar-right">

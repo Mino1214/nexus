@@ -81,19 +81,49 @@ async function resolveHtsContextForLogin(p) {
   }
 
   const ent = await fetchHtsEntitlementForMarketUser(p.sub, slug);
-  if (!ent) {
+  if (ent) {
+    if (!ent.canAdmin && !ent.canOperator) {
+      return { error: '모듈 권한(can_admin / can_operator)이 비어 있습니다. masterAdmin에서 권한을 저장하세요.' };
+    }
     return {
-      error:
-        '이 HTS 모듈에 대한 사용 권한이 없습니다. masterAdmin에서 고객 등록·모듈 권한(총판/관리)·마켓 유저 발급을 확인하세요.',
+      hts: { kind: 'customer_user', ...ent },
+      displayName: ent.customerName || p.sub,
     };
   }
-  if (!ent.canAdmin && !ent.canOperator) {
-    return { error: '모듈 권한(can_admin / can_operator)이 비어 있습니다. masterAdmin에서 권한을 저장하세요.' };
+
+  /**
+   * 레퍼럴 가입 후 승인된 일반 유저: master_market_customers 행 없이도 HTS 로그인·차트 사용
+   * (총판 소속 operator_mu_user_id + 승인된 계정)
+   */
+  const [[u]] = await db.pool.query(
+    `SELECT id, approval_status, market_status, operator_mu_user_id FROM users WHERE id = ? LIMIT 1`,
+    [p.sub],
+  );
+  const appr = u ? String(u.approval_status || 'approved') : '';
+  if (
+    u &&
+    u.operator_mu_user_id != null &&
+    String(u.market_status || 'active') !== 'suspended' &&
+    appr !== 'pending' &&
+    appr !== 'rejected'
+  ) {
+    return {
+      hts: {
+        kind: 'market_user',
+        moduleSlug: slug,
+        canAdmin: false,
+        canOperator: false,
+        customerId: null,
+        customerName: null,
+        flagsJson: null,
+      },
+      displayName: String(u.id),
+    };
   }
 
   return {
-    hts: { kind: 'customer_user', ...ent },
-    displayName: ent.customerName || p.sub,
+    error:
+      '이 HTS 모듈에 대한 사용 권한이 없습니다. 총판 소속 가입 승인 여부·또는 masterAdmin 고객·모듈 권한을 확인하세요.',
   };
 }
 

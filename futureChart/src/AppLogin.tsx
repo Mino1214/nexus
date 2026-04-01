@@ -12,7 +12,7 @@ type Props = {
   onToggleTheme: () => void;
 };
 
-/** macroServer public/admin.html #loginBox 와 동일 구조 (지갑/시드·시드지급 없음) */
+/** macro-server public/owner.html #loginBox 과 동일 레이아웃(필드·라벨·인풋 폭) */
 export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
   const [id, setId] = useState('');
   const [pw, setPw] = useState('');
@@ -77,19 +77,21 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
   return (
     <div id="loginBox">
       <div className="login-wrap">
-        <div className="login-card pandora-login">
-          <img src="/logo.svg" alt="Pandora" className="brand-logo" width={300} height={72} />
-          <div className="login-title">Pandora</div>
+        <div className={`login-card owner-login${theme === 'light' ? ' owner-login--light' : ''}`}>
+          {/*<div className="login-logo">*/}
+          {/*  <img src="/logo.svg" alt="FX" width={320} height={76} />*/}
+          {/*</div>*/}
+          <div className="login-title">FX</div>
           <div className="login-sub">
-            {MODULE_NAME} — 관리자 로그인 <span style={{ opacity: 0.75 }}>({MODULE_CODE})</span>
+            {MODULE_NAME} — {mode === 'signup' ? '회원가입' : '로그인'}{' '}
+            <span style={{ opacity: 0.75 }}>({MODULE_CODE})</span>
           </div>
           <form id="adminLoginForm" onSubmit={submit} autoComplete="off">
             {isMarketHtsGateEnabled() ? (
-              <div className="form-group" style={{ marginBottom: 12 }}>
+              <div className="login-mode-row">
                 <button
                   type="button"
-                  className="btn-ghost"
-                  style={{ marginRight: 8 }}
+                  className={`btn-ghost${mode === 'login' ? ' active' : ''}`}
                   onClick={() => {
                     setMode('login');
                     setErr(null);
@@ -99,7 +101,7 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className={`btn-ghost${mode === 'signup' ? ' active' : ''}`}
                   onClick={() => {
                     setMode('signup');
                     setErr(null);
@@ -109,7 +111,7 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
                 </button>
               </div>
             ) : null}
-            <div className="form-group">
+            <div className="field">
               <label htmlFor="fc-app-login-id">아이디</label>
               <input
                 id="fc-app-login-id"
@@ -125,7 +127,7 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
                 onChange={(e) => setId(e.target.value)}
               />
             </div>
-            <div className="form-group">
+            <div className="field">
               <label htmlFor="fc-app-login-pw">비밀번호</label>
               <input
                 id="fc-app-login-pw"
@@ -139,12 +141,12 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
               />
             </div>
             {isMarketHtsGateEnabled() && mode === 'signup' ? (
-              <div className="form-group">
+              <div className="field">
                 <label htmlFor="fc-app-referral">레퍼럴 코드 (필수)</label>
                 <input
                   id="fc-app-referral"
                   type="text"
-                  placeholder="총판에서 받은 코드 또는 총판 로그인 ID"
+                  placeholder="총판 코드 또는 총판 로그인 ID"
                   required
                   autoComplete="off"
                   value={referralCode}
@@ -152,17 +154,16 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
                 />
               </div>
             ) : null}
-            <button type="submit" className="btn-ac" disabled={loading}>
+            <button type="submit" className="btn-ac btn-full" disabled={loading}>
               {loading ? '확인 중…' : mode === 'signup' ? '가입 신청' : '로그인'}
             </button>
-            {err ? <p className="login-error">{err}</p> : null}
+            {err ? <p className="errmsg">{err}</p> : <p className="errmsg" aria-hidden />}
           </form>
           <p className="login-hint">
             {isMarketHtsGateEnabled() ? (
               <>
-                마켓 API — HTS 모듈 <code>{getEffectiveHtsModuleSlug()}</code>
-                {getHtsModuleSlug() ? '' : ' (기본값)'} · 공개 가입은 <strong>레퍼럴 코드 필수</strong>, 총판 승인 후
-                로그인됩니다. 마켓 실패 시 데모 계정 폴백. ({MODULE_CODE})
+                마켓 API · HTS <code>{getEffectiveHtsModuleSlug()}</code>
+                {getHtsModuleSlug() ? '' : ' (기본)'} · 공개 가입은 레퍼럴 필수 · 모듈 {MODULE_CODE}
               </>
             ) : (
               <>
@@ -173,7 +174,7 @@ export function AppLogin({ onSuccess, theme, onToggleTheme }: Props) {
           </p>
           <div className="login-actions">
             <button type="button" className="btn-ghost" onClick={onToggleTheme}>
-              테마: {theme === 'dark' ? '라이트로' : '다크로'}
+              테마: {theme === 'dark' ? '라이트' : '다크'}
             </button>
           </div>
         </div>

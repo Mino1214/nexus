@@ -1,6 +1,5 @@
 import { HubConsolePanel } from '../hub/HubConsolePanel';
 import { AdminApp } from '../admin/AdminApp';
-import { StreamingChart } from '../StreamingChart';
 import type { AdminSession } from '../admin/types';
 import type { PandoraTabId } from './pandoraNav';
 import { tabProductLayer } from './pandoraSurfaceRegistry';
@@ -22,14 +21,6 @@ export function PandoraTabContent({
   onLogout,
   onNavigateTab,
 }: Props) {
-  if (tab === 'sectionChart') {
-    return (
-      <div className="hts-chart-tab-root">
-        <StreamingChart />
-      </div>
-    );
-  }
-
   if (tab === 'sectionHtsOps') {
     return (
       <div className="pandora-hts-embed-root">
@@ -39,7 +30,7 @@ export function PandoraTabContent({
           onLogout={onLogout}
           theme={theme}
           onToggleTheme={onToggleTheme}
-          onBackToChart={() => onNavigateTab('sectionChart')}
+          onBackToChart={() => onNavigateTab('sectionMemberDesk')}
         />
       </div>
     );

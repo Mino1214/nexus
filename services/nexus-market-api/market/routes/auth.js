@@ -18,6 +18,14 @@ function masterCredentials() {
   };
 }
 
+/** Pandora admin.html 마스터 레퍼럴과 동일 개념 — 가입 시 안내용 */
+function platformMasterReferralDisplay() {
+  const fromEnv = process.env.MASTER_REFERRAL_CODE?.trim();
+  if (fromEnv) return fromEnv.toUpperCase();
+  const { id: MASTER_ID } = masterCredentials();
+  return String(MASTER_ID).trim().toUpperCase();
+}
+
 /**
  * GET /api/market/auth/login — 브라우저 주소창으로 열면 이것만 보임. 실제 로그인은 POST.
  */
@@ -50,7 +58,7 @@ async function isReservedAdminLikeId(normalized) {
 }
 
 async function issueTokensPair(res, payload, subjectType, usersId, muUserId, loginExtra = {}) {
-  const { hts = null, displayName: dnExtra = null } = loginExtra;
+  const { hts = null, displayName: dnExtra = null, referral_code: referralOut = null } = loginExtra;
   const access = signAccess(payload);
   const refresh = signRefresh({ sub: payload.sub, role: payload.role, muUserId: payload.muUserId });
   const expMs = 7 * 24 * 60 * 60 * 1000;
@@ -65,6 +73,7 @@ async function issueTokensPair(res, payload, subjectType, usersId, muUserId, log
   const displayName =
     dnExtra ||
     (payload.role === 'master' ? 'MASTER' : payload.role === 'operator' ? `운영자 ${payload.sub}` : String(payload.sub));
+  const ref = referralOut != null && String(referralOut).trim() !== '' ? String(referralOut).trim() : null;
   res.json({
     accessToken: access,
     refreshToken: refresh,
@@ -74,6 +83,7 @@ async function issueTokensPair(res, payload, subjectType, usersId, muUserId, log
     muUserId: payload.muUserId ?? null,
     operatorMuUserId: payload.operatorMuUserId ?? null,
     ...(hts != null ? { hts } : {}),
+    ...(ref ? { referral_code: ref } : {}),
   });
 }
 
@@ -224,14 +234,18 @@ router.post('/login', async (req, res) => {
         'master',
         null,
         null,
-        { hts: htsRes.hts, displayName: htsRes.displayName },
+        {
+          hts: htsRes.hts,
+          displayName: htsRes.displayName,
+          referral_code: platformMasterReferralDisplay(),
+        },
       );
       return;
     }
 
     const hash = hashPassword(pw);
     const [[mu]] = await db.pool.query(
-      `SELECT id, market_role, status, site_domain FROM mu_users
+      `SELECT id, market_role, status, site_domain, referral_code FROM mu_users
        WHERE login_id = ? AND password_hash = ? AND market_role = 'operator' LIMIT 1`,
       [lid, hash],
     );
@@ -245,13 +259,18 @@ router.post('/login', async (req, res) => {
         displayNameFallback: lid,
       });
       if (htsRes.error) return res.status(403).json({ error: htsRes.error });
+      const opRef = mu.referral_code != null && String(mu.referral_code).trim() !== '' ? String(mu.referral_code).trim() : null;
       await issueTokensPair(
         res,
         { sub: String(mu.id), role: 'operator', muUserId: mu.id, operatorMuUserId: mu.id },
         'operator',
         null,
         mu.id,
-        { hts: htsRes.hts, displayName: htsRes.displayName },
+        {
+          hts: htsRes.hts,
+          displayName: htsRes.displayName,
+          ...(opRef ? { referral_code: opRef } : {}),
+        },
       );
       return;
     }

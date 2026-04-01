@@ -15,6 +15,8 @@ export type AdminSession = {
   operatorMuUserId?: number | null;
   htsCustomerId?: number;
   htsModuleSlug?: string;
+  /** 마스터·총판 로그인 시 마켓 API referral_code (Pandora admin 레퍼럴과 동일 UI) */
+  referralCode?: string;
 };
 
 export type ChargeStatus = 'pending' | 'approved' | 'rejected';

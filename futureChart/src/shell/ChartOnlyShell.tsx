@@ -15,7 +15,7 @@ export function ChartOnlyShell({ session, theme, onToggleTheme, onLogout }: Prop
     <div className="chart-only-shell">
       <header className="chart-only-bar">
         <div className="chart-only-left">
-          <span className="chart-only-brand">FutureChart</span>
+          <span className="chart-only-brand">FX</span>
           <span className="chart-only-badge">HTS</span>
         </div>
         <div className="chart-only-right">

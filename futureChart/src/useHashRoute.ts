@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type AppRoute = 'chart' | 'admin';
+/** 메인 셸 vs 콘솔 딥링크 (구 #/admin → #/fx/console) */
+export type AppRoute = 'main' | 'console';
 
 function parseHash(): AppRoute {
-  const h = window.location.hash.replace(/^#/, '');
-  if (h === '/admin' || h.startsWith('/admin')) return 'admin';
-  return 'chart';
+  const raw = window.location.hash.replace(/^#/, '').split('?')[0];
+  let h = raw.endsWith('/') && raw.length > 1 ? raw.slice(0, -1) : raw;
+  if (h === '' || h === '/') h = '/fx';
+  if (h === '/fx/console' || h.startsWith('/fx/console/')) return 'console';
+  if (h === '/admin' || h.startsWith('/admin')) return 'console';
+  return 'main';
 }
 
 export function useHashRoute() {
@@ -17,13 +21,13 @@ export function useHashRoute() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const goChart = useCallback(() => {
-    window.location.hash = '#/';
+  const goMain = useCallback(() => {
+    window.location.hash = '#/fx';
   }, []);
 
-  const goAdmin = useCallback(() => {
-    window.location.hash = '#/admin';
+  const goConsole = useCallback(() => {
+    window.location.hash = '#/fx/console';
   }, []);
 
-  return { route, goChart, goAdmin };
+  return { route, goMain, goConsole, goChart: goMain, goAdmin: goConsole };
 }

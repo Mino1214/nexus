@@ -10,6 +10,7 @@ type MarketLoginOk = {
   sub: string;
   displayName?: string;
   operatorMuUserId?: number | null;
+  referral_code?: string;
   hts?: {
     kind?: string;
     moduleSlug?: string;
@@ -43,6 +44,7 @@ function mapToAdminSession(j: MarketLoginOk): AdminSession {
           : 'd001'
       : undefined;
 
+  const ref = j.referral_code != null && String(j.referral_code).trim() !== '' ? String(j.referral_code).trim() : undefined;
   return {
     role: uiRole,
     id: j.sub,
@@ -55,6 +57,7 @@ function mapToAdminSession(j: MarketLoginOk): AdminSession {
     operatorMuUserId: j.operatorMuUserId ?? null,
     htsCustomerId: h?.customerId ?? undefined,
     htsModuleSlug: h?.moduleSlug || getEffectiveHtsModuleSlug(),
+    ...(ref ? { referralCode: ref } : {}),
   };
 }
 

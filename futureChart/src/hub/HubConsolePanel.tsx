@@ -1,8 +1,7 @@
 import type { AdminSession } from '../admin/types';
 import { PANDORA_NAV, type PandoraTabId } from '../shell/pandoraNav';
 import { HubPanelShell } from './HubPanelShell';
-import { ApprovalHubPanel } from './panels/ApprovalHubPanel';
-import { MembersHubPanel } from './panels/MembersHubPanel';
+import { MemberDeskHubPanel } from './panels/MemberDeskHubPanel';
 import { NotifyHubPanel } from './panels/NotifyHubPanel';
 import { LedgerHubPanel } from './panels/LedgerHubPanel';
 import { WithdrawHubPanel } from './panels/WithdrawHubPanel';
@@ -14,10 +13,8 @@ export function HubConsolePanel({ tabId, session }: PanelProps) {
   const label = PANDORA_NAV.find((i) => i.id === tabId)?.label ?? tabId;
 
   switch (tabId) {
-    case 'sectionApproval':
-      return <ApprovalHubPanel session={session} />;
-    case 'sectionUsers':
-      return <MembersHubPanel session={session} />;
+    case 'sectionMemberDesk':
+      return <MemberDeskHubPanel session={session} />;
     case 'sectionMyTgBot':
       return <NotifyHubPanel session={session} />;
     case 'sectionMySettlement':
@@ -35,7 +32,7 @@ export function HubConsolePanel({ tabId, session }: PanelProps) {
     case 'sectionTelegram':
       return (
         <HubPanelShell title={label} subtitle="총판 계정의 텔레그램 표시명 등">
-          <p className="tab-panel-muted">회원의 텔레그램은 «회원» 탭에서 수정합니다. 총판 본인 프로필은 mu_users / 별도 화면에서 다룰 수 있습니다.</p>
+          <p className="tab-panel-muted">회원의 텔레그램은 «회원·승인» 탭에서 수정합니다.</p>
         </HubPanelShell>
       );
     case 'sectionPopups':
@@ -47,7 +44,7 @@ export function HubConsolePanel({ tabId, session }: PanelProps) {
     case 'sectionDownloads':
       return (
         <HubPanelShell title={label} subtitle="배포 파일">
-          <p className="tab-panel-muted">파일 메타·S3 연동은 masterAdmin·스토리지 정책에 맞춰 단계적으로 추가합니다.</p>
+          <p className="tab-panel-muted">파일 메타·스토리지 연동은 masterAdmin 정책에 맞춰 단계적으로 추가합니다.</p>
         </HubPanelShell>
       );
     default:

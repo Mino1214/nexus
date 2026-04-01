@@ -23,7 +23,7 @@ export function HubPanelShell({ title, subtitle, actions, children }: Props) {
           {actions ? <div className="hub-console-actions">{actions}</div> : null}
         </header>
         <p className="hub-console-scope tab-panel-muted">
-          이 화면은 <strong>FutureChart 운영 콘솔</strong> 네이티브 UI입니다. API는 <code>nexus-market-api</code>·
+          이 화면은 <strong>FX 운영 콘솔</strong> 네이티브 UI입니다. API는 <code>nexus-market-api</code>·
           masterAdmin 정책에 맞춰 여기서만 연동합니다 (iframe·레거시 HTML 래핑 없음).
         </p>
         {ma || tm ? (

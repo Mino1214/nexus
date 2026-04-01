@@ -145,8 +145,24 @@ body.light {
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 40px 32px;
+  padding: 32px 28px;
   box-shadow: var(--shadow-lg), 0 0 0 1px rgba(92, 225, 230, 0.04);
+}
+
+/* macro-server owner.html #loginBox 과 동일 — 라벨·인풋 열 정렬 */
+.owner-login .login-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.owner-login .login-logo img {
+  height: 76px;
+  width: auto;
+  max-width: 320px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(92, 225, 230, 0.22));
 }
 
 .brand-logo {
@@ -159,70 +175,100 @@ body.light {
   filter: drop-shadow(0 0 12px rgba(92, 225, 230, 0.25));
 }
 
-.login-title {
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--ac);
+.owner-login .login-title {
+  font-size: 31px;
+  font-weight: 800;
+  color: var(--text-primary);
   text-align: center;
-  margin-bottom: 6px;
-  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+  letter-spacing: -0.4px;
 }
 
-.login-sub {
+.owner-login .login-sub {
   text-align: center;
   color: var(--text-tertiary);
   font-size: 13px;
-  margin-bottom: 32px;
+  margin-bottom: 26px;
+  line-height: 1.5;
 }
 
-.form-group {
+.owner-login .field {
+  margin-bottom: 12px;
+}
+
+.owner-login label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.owner-login input[type='text'],
+.owner-login input[type='password'] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 16px;
+  background: var(--surface-3);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 15px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.owner-login input::placeholder {
+  color: rgba(107, 114, 128, 0.45);
+}
+
+.owner-login input:focus {
+  border-color: var(--ac);
+  box-shadow: 0 0 0 3px rgba(92, 225, 230, 0.15), 0 0 12px rgba(92, 225, 230, 0.08);
+}
+
+.owner-login .btn-ac.btn-full {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  margin-top: 10px;
+  border-radius: 14px;
+  letter-spacing: -0.2px;
+}
+
+.owner-login .login-mode-row {
+  display: flex;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
-.pandora-login label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-bottom: 5px;
-}
-
-.pandora-login input[type='text'],
-.pandora-login input[type='password'] {
-  width: 100%;
-  padding: 10px 14px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  font-family: inherit;
-}
-
-.pandora-login input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.pandora-login input:focus {
-  border-color: var(--ac);
-  box-shadow: 0 0 0 3px rgba(92, 225, 230, 0.14), 0 0 12px rgba(92, 225, 230, 0.07);
-}
-
-.pandora-login .btn-ac {
-  width: 100%;
-  padding: 12px;
-  margin-top: 4px;
-}
-
-.pandora-login .login-error {
-  margin-top: 12px;
-  text-align: center;
+.owner-login .login-mode-row .btn-ghost {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
   font-size: 13px;
-  color: var(--err);
+  font-weight: 600;
+  border: 1.5px solid var(--border);
 }
 
-.pandora-login .login-hint {
+.owner-login .login-mode-row .btn-ghost.active {
+  border-color: var(--ac);
+  color: var(--ac);
+  background: rgba(92, 225, 230, 0.1);
+}
+
+.owner-login .errmsg {
+  color: var(--err);
+  font-size: 12px;
+  margin-top: 8px;
+  min-height: 16px;
+  text-align: center;
+}
+
+.owner-login .login-hint {
   margin-top: 14px;
   font-size: 12px;
   color: var(--text-tertiary);
@@ -230,7 +276,7 @@ body.light {
   line-height: 1.45;
 }
 
-.pandora-login .login-actions {
+.owner-login .login-actions {
   margin-top: 0.75rem;
   display: flex;
   justify-content: center;

@@ -8,7 +8,7 @@ import { PandoraShell } from './shell/PandoraShell';
 import { useHashRoute } from './useHashRoute';
 
 export default function App() {
-  const { route, goChart } = useHashRoute();
+  const { route, goMain } = useHashRoute();
   const [session, setSession] = useState<AdminSession | null>(() => readAuthWithMigration());
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('fc-theme');
@@ -23,22 +23,22 @@ export default function App() {
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f2f3f9' : '#061a1c');
   }, [theme]);
 
-  /** 유저는 #/admin 접근 불가. 마스터는 HTS 운영을 Pandora 탭으로만 연다 */
+  /** 유저는 #/fx/console 접근 불가. 마스터는 HTS 운영 탭으로만 연결 */
   useEffect(() => {
-    if (session?.role === 'user' && route === 'admin') {
-      goChart();
+    if (session?.role === 'user' && route === 'console') {
+      goMain();
     }
-    if (session?.role === 'master' && route === 'admin') {
-      sessionStorage.setItem('fc_pandora_initial_tab', 'sectionHtsOps');
-      goChart();
+    if (session?.role === 'master' && route === 'console') {
+      sessionStorage.setItem('fx_initial_tab', 'sectionHtsOps');
+      goMain();
     }
-  }, [session?.role, route, goChart]);
+  }, [session?.role, route, goMain]);
 
   const logout = useCallback(() => {
     saveAuth(null);
     setSession(null);
-    goChart();
-  }, [goChart]);
+    goMain();
+  }, [goMain]);
 
   const onLoginSuccess = useCallback((s: AdminSession) => {
     saveAuth(s);
@@ -64,21 +64,16 @@ export default function App() {
     onToggleTheme: toggleTheme,
   };
 
-  /* 유저: 차트(거래)만 — 운영 콘솔·Pandora 대시보드 없음 */
   if (session.role === 'user') {
     return <ChartOnlyShell session={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} />;
   }
 
-  /* 총판: HTS 운영 콘솔만 — 소속 유저만 관리(AdminApp 필터). 차트·마스터 대시보드 없음 */
   if (session.role === 'distributor') {
     return <AdminApp {...adminProps} />;
   }
 
-  /* 마스터: Pandora 안에 거래·차트 + HTS 운영(임베드) + macro 탭 */
   if (session.role === 'master') {
-    return (
-      <PandoraShell session={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} />
-    );
+    return <PandoraShell session={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} />;
   }
 
   return null;

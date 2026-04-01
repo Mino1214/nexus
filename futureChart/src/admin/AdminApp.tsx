@@ -53,15 +53,16 @@ export function AdminApp({
 }: {
   session: AdminSession;
   onLogout: () => void;
-  /** 마스터만: Pandora(차트)로 돌아가기. 총판 전용 운영만 쓸 때는 생략 */
+  /** 마스터만: FX 셸(회원·승인 등)로 돌아가기 */
   onBackToChart?: () => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
-  /** Pandora HTS 운영 탭에 넣을 때 사이드바 중복 제거 */
+  /** FX 셸 HTS 운영 탭에 넣을 때 사이드바 중복 제거 */
   layout?: 'standalone' | 'embedded';
 }) {
   const useApi = isHtsApiSession(session);
-  const [tab, setTab] = useState<TabId>('charge');
+  const isEmbeddedMasterInit = layout === 'embedded' && session.role === 'master';
+  const [tab, setTab] = useState<TabId>(() => (isEmbeddedMasterInit ? 'position' : 'charge'));
   const [charges, setCharges] = useState<ChargeRequest[]>(() => initialChargeRequests());
   const [positions, setPositions] = useState<PositionRow[]>(() => initialPositions());
   const [distOptions, setDistOptions] = useState<readonly { id: string; name: string }[]>(MOCK_DISTRIBUTORS);
@@ -136,12 +137,20 @@ export function AdminApp({
     void reloadHts();
   }, [useApi, reloadHts]);
 
+  /** 임베드 마스터는 충전·총판·유저 탭이 없음 — 상태가 남아 있으면 포지션으로 고정 */
+  useEffect(() => {
+    if (layout !== 'embedded' || session.role !== 'master') return;
+    if (tab === 'charge' || tab === 'distributor' || tab === 'users') {
+      setTab('position');
+    }
+  }, [layout, session.role, tab]);
+
   const logout = useCallback(() => {
     onLogout();
-    setTab('charge');
+    setTab(layout === 'embedded' && session.role === 'master' ? 'position' : 'charge');
     setDistFilter('');
     setSyncNotice(null);
-  }, [onLogout]);
+  }, [onLogout, layout, session.role]);
 
   const filteredCharges = useMemo(() => {
     let rows = charges;
@@ -223,12 +232,24 @@ export function AdminApp({
     setReqMemo('');
   }, [session, reqAmount, reqMemo, useApi, reloadHts]);
 
-  const canApprove = session.role === 'master' || session.role === 'distributor';
+  /** FX 셸 «회원·승인»과 겹침 제거: 임베드 마스터는 충전 승인·총판·유저 탭 숨김 */
+  const isEmbeddedMaster = layout === 'embedded' && session.role === 'master';
+  const canApprove =
+    (session.role === 'master' || session.role === 'distributor') && !isEmbeddedMaster;
 
   const chargeColCount = session.role === 'master' ? 6 : session.role === 'distributor' ? 5 : 3;
   const posColCount = session.role === 'master' ? 8 : session.role === 'distributor' ? 7 : 6;
 
-  const navButtons = (
+  const navButtons = isEmbeddedMaster ? (
+    <button
+      type="button"
+      className={`fc-admin__navBtn${tab === 'position' ? ' fc-admin__navBtn--active' : ''}`}
+      onClick={() => setTab('position')}
+    >
+      <span aria-hidden>📊</span>
+      포지션관리
+    </button>
+  ) : (
     <>
       <button
         type="button"
@@ -286,7 +307,7 @@ export function AdminApp({
             <>
               {onBackToChart ? (
                 <button type="button" className="fc-admin__btnGhost fc-admin__btnCompact" onClick={onBackToChart}>
-                  차트·대시보드
+                  FX 메인
                 </button>
               ) : null}
               <button type="button" className="fc-admin__btnGhost fc-admin__btnDanger fc-admin__btnCompact" onClick={logout}>
@@ -325,6 +346,13 @@ export function AdminApp({
           {useApi && apiLoading ? (
             <div className="fc-admin__hint" style={{ marginBottom: '0.75rem' }}>
               HTS 데이터 동기화 중…
+            </div>
+          ) : null}
+
+          {isEmbeddedMaster ? (
+            <div className="fc-admin__syncBanner" style={{ borderColor: 'var(--fc-muted, #666)' }}>
+              <strong>FX «회원·승인»</strong> 탭에서 가입 승인·충전·유저·총판을 관리합니다. 여기서는{' '}
+              <strong>포지션</strong>만 봅니다.
             </div>
           ) : null}
 
@@ -554,7 +582,7 @@ export function AdminApp({
         <div className="fc-admin__footer">
           {onBackToChart ? (
             <button type="button" className="fc-admin__btnGhost" onClick={onBackToChart}>
-              차트·대시보드로
+              FX 메인으로
             </button>
           ) : null}
           <button type="button" className="fc-admin__btnGhost fc-admin__btnDanger" onClick={logout}>
