@@ -1,5 +1,6 @@
 /**
- * PM2: nexus001.vip Nginx → localhost:3000 과 맞춤 (기존 mynolab-server 대체)
+ * (레거시 단독 설정) 통합 묶음: ../../deploy/pm2/ecosystem.config.cjs
+ * PM2: Nginx → localhost 와 PORT 맞출 것
  * 사용: pm2 start ecosystem.config.cjs && pm2 save
  */
 module.exports = {
