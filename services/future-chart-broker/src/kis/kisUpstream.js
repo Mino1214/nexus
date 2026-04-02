@@ -8,6 +8,7 @@ import {
   parseRealtimeFrame,
 } from './parseKisRealtime.js';
 import { normalizeKrxSymbol } from './symbolNormalize.js';
+import { seedKrxStockChartFromYahoo } from './krxYahooChartSeed.js';
 
 const MODES = /** @type {const} */ ({
   stock: { cnt: 'H0STCNT0', ob: 'H0STASP0', normalize: (s) => normalizeKrxSymbol(s) },
@@ -80,6 +81,13 @@ export function startKisUpstream({ config, hub }) {
   const subscribeSymbol = (key, sym, mode) => {
     sendPair(key, sym, mode, '1');
     hub.broadcast({ type: 'symbol', provider: providerForMode(mode), symbol: sym });
+    if (mode === 'stock') {
+      void seedKrxStockChartFromYahoo({
+        hub,
+        krxSymbol6: sym,
+        stillSubscribed: (s) => activeMode === 'stock' && activeSymbol === s,
+      });
+    }
   };
 
   const unsubscribeSymbol = (key, sym, mode) => {

@@ -71,8 +71,7 @@ module.exports = {
       },
     },
 
-    /*
-    ─── future-chart-broker (KIS_APP_KEY / KIS_APP_SECRET 필요) — 준비되면 주석 해제 ───
+    /* future-chart-broker — KIS 키 없으면 Yahoo .KS 폴백만(국내주식 데모) */
     {
       name: 'future-chart-broker',
       namespace: NS,
@@ -86,7 +85,6 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       env: { NODE_ENV: 'production' },
     },
-    */
 
     /* ─── FutureChart Vite (외부 테스트: Nginx → /future-chart/) ─── */
     {

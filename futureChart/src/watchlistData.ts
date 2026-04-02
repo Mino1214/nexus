@@ -29,6 +29,51 @@ export function impliedChangeAbs(price: number, changePct: number): number {
 }
 
 export const FUTURES_WATCHLIST: WatchInstrument[] = [
+  /** 데모용 국내주식(KIS) — 삼성·네이버·카카오 등 대형 IT/반도체 대표명은 제외 */
+  {
+    id: 'kr-005380',
+    code: '005380',
+    name: '현대차',
+    lastPrice: 198500,
+    priceDecimals: 0,
+    changePct: 0.38,
+    volume: 892456,
+    hue: 210,
+    krxSubscribeCode: '005380',
+  },
+  {
+    id: 'kr-068270',
+    code: '068270',
+    name: '셀트리온',
+    lastPrice: 162800,
+    priceDecimals: 0,
+    changePct: -0.21,
+    volume: 412300,
+    hue: 175,
+    krxSubscribeCode: '068270',
+  },
+  {
+    id: 'kr-373220',
+    code: '373220',
+    name: 'LG에너지솔루션',
+    lastPrice: 385500,
+    priceDecimals: 0,
+    changePct: 0.55,
+    volume: 156780,
+    hue: 320,
+    krxSubscribeCode: '373220',
+  },
+  {
+    id: 'kr-161390',
+    code: '161390',
+    name: '한국타이어앤테크놀로지',
+    lastPrice: 42500,
+    priceDecimals: 0,
+    changePct: 0.12,
+    volume: 245890,
+    hue: 30,
+    krxSubscribeCode: '161390',
+  },
   {
     id: 'f-202606',
     code: 'F 202606',

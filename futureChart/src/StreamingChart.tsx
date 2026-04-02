@@ -14,7 +14,21 @@ import './StreamingChart.css';
 
 /** TradingView 상용 Charting Library(위젯)는 별도 계약이 필요합니다. 동일 제작사의 오픈소스 lightweight-charts로 동일 계열 캔들 차트를 그립니다. */
 
-const defaultWs = 'ws://127.0.0.1:8787';
+/** future-chart-broker WebSocket. VITE_BROKER_WS_URL: explicit URL, or "auto"/empty → same host as the page + :8787 (wss if https). */
+function getBrokerWebSocketUrl(): string {
+  const raw = import.meta.env.VITE_BROKER_WS_URL;
+  const trimmed = raw != null ? String(raw).trim() : '';
+  if (trimmed !== '' && trimmed !== 'auto') return trimmed;
+
+  if (typeof window === 'undefined') return 'ws://127.0.0.1:8787';
+
+  const { protocol, hostname } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'ws://127.0.0.1:8787';
+  }
+  const wsProto = protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${wsProto}//${hostname}:8787`;
+}
 
 type TickPayload = {
   type: 'tick';
@@ -145,6 +159,22 @@ function normalizeSymbol(raw: string): string | null {
   return d.padStart(6, '0');
 }
 
+/** WS 메시지 심볼과 현재 구독 심볼 매칭(KIS는 6자리 정규화, 선물·해외·Yahoo는 trim 일치) */
+function messageMatchesFeed(
+  msgProvider: string,
+  msgSymbol: string,
+  curProvider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo',
+  curSymbol: string,
+): boolean {
+  if (msgProvider !== curProvider) return false;
+  if (curProvider === 'kis') {
+    const a = normalizeSymbol(msgSymbol);
+    const b = normalizeSymbol(curSymbol);
+    return a != null && b != null && a === b;
+  }
+  return msgSymbol.trim() === curSymbol.trim();
+}
+
 function statusDotClass(ws: string, kis: string | null): string {
   if (ws === 'error') return 'htsStatusDot--err';
   if (ws === 'closed') return 'htsStatusDot--warn';
@@ -164,13 +194,13 @@ export function StreamingChart() {
   const wsRef = useRef<WebSocket | null>(null);
   const feedRef = useRef<{ provider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo'; symbol: string }>({
     provider: 'kis',
-    symbol: '005930',
+    symbol: '005380',
   });
   const lastBookRef = useRef<Record<string, { asks: BookLevel[]; bids: BookLevel[] }>>({});
 
   const [feedProvider, setFeedProvider] = useState<'kis' | 'kis-index' | 'kis-overseas' | 'yahoo'>('kis');
-  const [feedSymbol, setFeedSymbol] = useState('005930');
-  const [symbolInput, setSymbolInput] = useState('005930');
+  const [feedSymbol, setFeedSymbol] = useState('005380');
+  const [symbolInput, setSymbolInput] = useState('005380');
   const [wsState, setWsState] = useState<'idle' | 'open' | 'closed' | 'error'>('idle');
   const [lastTick, setLastTick] = useState<string | null>(null);
   const [kisState, setKisState] = useState<string | null>(null);
@@ -180,13 +210,16 @@ export function StreamingChart() {
   const [obRev, setObRev] = useState(0);
   const [tickRev, setTickRev] = useState(0);
   const [now, setNow] = useState(() => new Date());
-  const [selectedWatchId, setSelectedWatchId] = useState(FUTURES_WATCHLIST[0]?.id ?? '');
+  /** 첫 국내주식 행 기준으로 초기 선택(시연용) */
+  const [selectedWatchId, setSelectedWatchId] = useState(
+    FUTURES_WATCHLIST.find((w) => w.krxSubscribeCode)?.id ?? FUTURES_WATCHLIST[0]?.id ?? '',
+  );
   const [chartUiTheme, setChartUiTheme] = useState<'light' | 'dark'>(readHtmlTheme);
   const [timeframe, setTimeframe] = useState<ChartTf>('1');
   const tfRef = useRef<ChartTf>('1');
   tfRef.current = timeframe;
 
-  const wsUrl = import.meta.env.VITE_BROKER_WS_URL || defaultWs;
+  const wsUrl = getBrokerWebSocketUrl();
 
   feedRef.current = { provider: feedProvider, symbol: feedSymbol };
 
@@ -406,7 +439,8 @@ export function StreamingChart() {
           const msgProvider =
             'provider' in msg && (msg as any).provider ? String((msg as any).provider) : 'kis';
           const msgSymbol = 'symbol' in msg ? String((msg as any).symbol) : '';
-          const isForCurrent = msgSymbol && msgSymbol === cur.symbol && msgProvider === cur.provider;
+          const isForCurrent =
+            !!msgSymbol && messageMatchesFeed(msgProvider, msgSymbol, cur.provider, cur.symbol);
 
           if (msg.type === 'history' && 'bars' in msg && isForCurrent) {
             applyHistory((msg as HistoryPayload).bars);
@@ -527,7 +561,7 @@ export function StreamingChart() {
             className="symInput"
             value={symbolInput}
             onChange={(e) => setSymbolInput(e.target.value)}
-            placeholder="005930"
+            placeholder="005380"
             maxLength={12}
             autoComplete="off"
             onKeyDown={(e) => e.key === 'Enter' && applySymbol()}

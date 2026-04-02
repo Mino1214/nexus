@@ -33,7 +33,7 @@ export function createBrokerServer({ port, hub, onClientMessage }) {
       JSON.stringify({
         type: 'hello',
         message:
-          '구독 변경: {"op":"subscribe","provider":"kis","symbol":"005930"} | 지수선물: {"op":"subscribe","provider":"kis-index","symbol":"101W09"} | 해외선물옵션: {"op":"subscribe","provider":"kis-overseas","symbol":"DNASAAPL"} | Yahoo: {"op":"subscribe","provider":"yahoo","symbol":"CL=F"}',
+          '구독 변경: {"op":"subscribe","provider":"kis","symbol":"005380"} | 지수선물: {"op":"subscribe","provider":"kis-index","symbol":"101W09"} | 해외선물옵션: {"op":"subscribe","provider":"kis-overseas","symbol":"DNASAAPL"} | Yahoo: {"op":"subscribe","provider":"yahoo","symbol":"CL=F"}',
       })
     );
     ws.on('message', (buf) => {

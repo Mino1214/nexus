@@ -2,8 +2,9 @@ import { loadConfig } from './config.js';
 import { initTickStore } from './db/tickStore.js';
 import { createStreamHub } from './hub/streamHub.js';
 import { createBrokerServer } from './http/brokerServer.js';
-import { startKisUpstream } from './kis/kisUpstream.js';
 import { startYahooStream } from './ext/yahooStream.js';
+import { startKisDomesticYahooFallback } from './kis/kisDomesticYahooFallback.js';
+import { startKisUpstream } from './kis/kisUpstream.js';
 
 await initTickStore();
 const config = loadConfig();
@@ -45,12 +46,16 @@ const broker = createBrokerServer({
 });
 
 await broker.listen();
-console.log(
-  `[broker] HTTP + WS http://127.0.0.1:${config.port} (health: /health) | KIS symbol=${config.symbol} paper=${config.paper}`
-);
 
-const upstream = startKisUpstream({ config, hub });
+const upstream = config.kisEnabled
+  ? startKisUpstream({ config, hub })
+  : startKisDomesticYahooFallback({ hub, defaultSymbol: config.symbol });
+
 upstreamRef = upstream;
+
+console.log(
+  `[broker] HTTP + WS http://127.0.0.1:${config.port} (health: /health) | KIS=${config.kisEnabled ? `on symbol=${config.symbol} paper=${config.paper}` : 'off (Yahoo .KS 폴백)'}`
+);
 
 const yahoo = startYahooStream({ hub });
 yahooRef = yahoo;

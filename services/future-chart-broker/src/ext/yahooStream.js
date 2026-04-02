@@ -23,7 +23,7 @@ function isFiniteNum(v) {
  * @param {string} symbol
  * @returns {Promise<{ bars: Bar[], lastTick: { price: number, volume: number, tsMs: number } | null, metaTick: { price: number, volume: number, tsMs: number } | null }>}
  */
-async function fetchYahoo1d1m(symbol) {
+export async function fetchYahoo1d1m(symbol) {
   const url =
     'https://query1.finance.yahoo.com/v8/finance/chart/' +
     encodeURIComponent(symbol) +
