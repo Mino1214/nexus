@@ -36,9 +36,11 @@ function getBrokerWebSocketUrl(): string {
   return `${wsProto}//${hostname}:8787`;
 }
 
+type KisFeedProvider = 'kis' | 'kis-index' | 'kis-overseas';
+
 type TickPayload = {
   type: 'tick';
-  provider?: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo';
+  provider?: KisFeedProvider;
   symbol: string;
   price: number;
   volume: number;
@@ -64,13 +66,13 @@ type StatusPayload = {
 
 type SymbolPayload = {
   type: 'symbol';
-  provider?: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo';
+  provider?: KisFeedProvider;
   symbol: string;
 };
 
 type HistoryPayload = {
   type: 'history';
-  provider?: 'yahoo' | 'kis';
+  provider?: 'kis';
   symbol: string;
   bars: Array<{ time: number; open: number; high: number; low: number; close: number }>;
 };
@@ -165,11 +167,11 @@ function normalizeSymbol(raw: string): string | null {
   return d.padStart(6, '0');
 }
 
-/** WS 메시지 심볼과 현재 구독 심볼 매칭(KIS는 6자리 정규화, 선물·해외·Yahoo는 trim 일치) */
+/** WS 메시지 심볼과 현재 구독 심볼 매칭(KIS는 6자리 정규화, 선물·해외는 trim 일치) */
 function messageMatchesFeed(
   msgProvider: string,
   msgSymbol: string,
-  curProvider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo',
+  curProvider: KisFeedProvider,
   curSymbol: string,
 ): boolean {
   if (msgProvider !== curProvider) return false;
@@ -198,13 +200,13 @@ export function StreamingChart() {
   const bucketRef = useRef<number | null>(null);
   const barRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const feedRef = useRef<{ provider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo'; symbol: string }>({
+  const feedRef = useRef<{ provider: KisFeedProvider; symbol: string }>({
     provider: 'kis',
     symbol: '005380',
   });
   const lastBookRef = useRef<Record<string, { asks: BookLevel[]; bids: BookLevel[] }>>({});
 
-  const [feedProvider, setFeedProvider] = useState<'kis' | 'kis-index' | 'kis-overseas' | 'yahoo'>('kis');
+  const [feedProvider, setFeedProvider] = useState<KisFeedProvider>('kis');
   const [feedSymbol, setFeedSymbol] = useState('005380');
   const [symbolInput, setSymbolInput] = useState('005380');
   const [wsState, setWsState] = useState<'idle' | 'open' | 'closed' | 'error'>('idle');
@@ -246,8 +248,6 @@ export function StreamingChart() {
     () => FUTURES_WATCHLIST.find((w) => w.id === selectedWatchId) ?? null,
     [selectedWatchId],
   );
-
-  const isYahoo = feedProvider === 'yahoo';
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 1000);
@@ -456,7 +456,7 @@ export function StreamingChart() {
           if (msg.type === 'tick' && 'price' in msg && msgSymbol) {
             const t = msg as TickPayload;
             const p = (t.provider ?? 'kis') as BrokerSyncFeed['provider'];
-            if (p === 'kis' || p === 'kis-index' || p === 'kis-overseas' || p === 'yahoo') {
+            if (p === 'kis' || p === 'kis-index' || p === 'kis-overseas') {
               const ids = watchInstrumentIdsForBrokerTick(FUTURES_WATCHLIST, p, t.symbol);
               if (ids.length > 0) {
                 setLiveById((prev) => {
@@ -496,9 +496,6 @@ export function StreamingChart() {
               setFeedProvider(p);
               setFeedSymbol(s);
               if (p === 'kis') setSymbolInput(s);
-            } else if (p === 'yahoo') {
-              setFeedProvider('yahoo');
-              setFeedSymbol(s);
             }
           }
         } catch {
@@ -561,11 +558,6 @@ export function StreamingChart() {
       setFeedSymbol(kisOverseas);
       return;
     }
-    const y = item.yahooSymbol?.trim();
-    if (y) {
-      setFeedProvider('yahoo');
-      setFeedSymbol(y);
-    }
   }, []);
 
   const timeStr = now.toLocaleTimeString('ko-KR', { hour12: false });
@@ -579,27 +571,15 @@ export function StreamingChart() {
     liveRow?.lastPrice ??
     selectedWatchInstrument?.lastPrice ??
     null;
-  const synthYahoo = isYahoo && pxForSynth != null ? synthBook(pxForSynth, 10) : null;
+  const hasKisBook = bookAsks.length > 0 || bookBids.length > 0;
+  const synthAroundPx = !hasKisBook && pxForSynth != null ? synthBook(pxForSynth, 10) : null;
 
-  const hasKisBook = !isYahoo && (bookAsks.length > 0 || bookBids.length > 0);
-  const synthKis =
-    !isYahoo && !hasKisBook && pxForSynth != null ? synthBook(pxForSynth, 10) : null;
-
-  const obAsks = isYahoo
-    ? (synthYahoo?.asks ?? [])
-    : hasKisBook
-      ? bookAsks
-      : (synthKis?.asks ?? cached?.asks ?? []);
-  const obBids = isYahoo
-    ? (synthYahoo?.bids ?? [])
-    : hasKisBook
-      ? bookBids
-      : (synthKis?.bids ?? cached?.bids ?? []);
+  const obAsks = hasKisBook ? bookAsks : (synthAroundPx?.asks ?? cached?.asks ?? []);
+  const obBids = hasKisBook ? bookBids : (synthAroundPx?.bids ?? cached?.bids ?? []);
 
   const obLastPx = lastTradePx ?? liveRow?.lastPrice ?? null;
 
-  const obPriceDecimals =
-    selectedWatchInstrument?.priceDecimals ?? (feedProvider === 'kis' ? 0 : 5);
+  const obPriceDecimals = selectedWatchInstrument?.priceDecimals ?? (feedProvider === 'kis' ? 0 : 5);
 
   return (
     <section className="htsWorkspace" aria-label="HTS 작업 영역">
@@ -631,11 +611,9 @@ export function StreamingChart() {
                 ? ' · 실시간(KIS 지수선물)'
                 : (selectedWatchInstrument as any).kisOverseasSeriesCode
                   ? ' · 실시간(KIS 해외선물옵션)'
-                  : selectedWatchInstrument.yahooSymbol
-                    ? ' · 실시간(Yahoo)'
-                    : selectedWatchInstrument.krxSubscribeCode
-                      ? ' · 실시간(KIS)'
-                      : ''}
+                  : selectedWatchInstrument.krxSubscribeCode
+                    ? ' · 실시간(KIS)'
+                    : ''}
             </span>
           ) : null}
           <span className="chartWs">

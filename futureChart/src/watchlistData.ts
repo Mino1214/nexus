@@ -11,11 +11,9 @@ export type WatchInstrument = {
   indexTag?: boolean;
   /** 한투 국내주식 6자리 — 있으면 클릭 시 차트 구독 연동 */
   krxSubscribeCode?: string;
-  /** 외부 시세 공급자 심볼 (예: Yahoo "ES=F", "^HSI") */
-  yahooSymbol?: string;
   /** 한투 지수선물(국내선물옵션) 실시간 TR 키 (예: "101W09") */
   kisIndexFuturesCode?: string;
-  /** 한투 해외선물옵션 실시간 TR 키 (예: "DNASAAPL") */
+  /** 한투 해외선물옵션 실시간 series_cd (HTS/API 종목마스터 기준 — 틀리면 시세·차트 없음) */
   kisOverseasSeriesCode?: string;
   /** 썸네일 색상 (hue) */
   hue?: number;
@@ -97,7 +95,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     volume: 91242,
     indexTag: true,
     hue: 200,
-    yahooSymbol: '^HSI',
+    kisOverseasSeriesCode: 'DHSIJ26',
   },
   {
     id: 'nqm26',
@@ -109,7 +107,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     volume: 57840,
     indexTag: true,
     hue: 265,
-    yahooSymbol: 'NQ=F',
+    kisOverseasSeriesCode: 'CNQM26',
   },
   {
     id: 'esm26',
@@ -121,7 +119,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     volume: 97882,
     indexTag: true,
     hue: 250,
-    yahooSymbol: 'ES=F',
+    kisOverseasSeriesCode: 'CESM26',
   },
   {
     id: 'clk26',
@@ -132,7 +130,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: -1.93,
     volume: 41492,
     hue: 30,
-    yahooSymbol: 'CL=F',
+    kisOverseasSeriesCode: 'CCLM26',
   },
   {
     id: 'gcm26',
@@ -143,7 +141,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.77,
     volume: 47182,
     hue: 45,
-    yahooSymbol: 'GC=F',
+    kisOverseasSeriesCode: 'CGCM26',
   },
   {
     id: 'sik26',
@@ -154,7 +152,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: -0.43,
     volume: 8620,
     hue: 195,
-    yahooSymbol: 'SI=F',
+    kisOverseasSeriesCode: 'CSIM26',
   },
   {
     id: '6am26',
@@ -165,7 +163,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.32,
     volume: 36624,
     hue: 160,
-    yahooSymbol: '6A=F',
+    kisOverseasSeriesCode: 'C6AM26',
   },
   {
     id: '6bm26',
@@ -176,7 +174,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.45,
     volume: 14660,
     hue: 340,
-    yahooSymbol: '6B=F',
+    kisOverseasSeriesCode: 'C6BM26',
   },
   {
     id: '6cm26',
@@ -187,7 +185,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.06,
     volume: 8851,
     hue: 175,
-    yahooSymbol: '6C=F',
+    kisOverseasSeriesCode: 'C6CM26',
   },
   {
     id: '6em26',
@@ -198,7 +196,7 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.28,
     volume: 29081,
     hue: 220,
-    yahooSymbol: '6E=F',
+    kisOverseasSeriesCode: 'C6EM26',
   },
   {
     id: '6jm26',
@@ -210,12 +208,12 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     changePct: 0.18,
     volume: 12450,
     hue: 130,
-    yahooSymbol: '6J=F',
+    kisOverseasSeriesCode: 'C6JM26',
   },
 ];
 
 export type BrokerSyncFeed = {
-  provider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo';
+  provider: 'kis' | 'kis-index' | 'kis-overseas';
   symbol: string;
 };
 
@@ -236,8 +234,6 @@ export function buildBrokerSyncFeeds(items: readonly WatchInstrument[] = FUTURES
     if (ki) out.push({ provider: 'kis-index', symbol: ki });
     const ko = it.kisOverseasSeriesCode?.trim();
     if (ko) out.push({ provider: 'kis-overseas', symbol: ko });
-    const y = it.yahooSymbol?.trim();
-    if (y) out.push({ provider: 'yahoo', symbol: y });
   }
   return out;
 }
@@ -259,8 +255,6 @@ export function watchInstrumentIdsForBrokerTick(
     } else if (provider === 'kis-index' && it.kisIndexFuturesCode?.trim() === sym) {
       ids.push(it.id);
     } else if (provider === 'kis-overseas' && it.kisOverseasSeriesCode?.trim() === sym) {
-      ids.push(it.id);
-    } else if (provider === 'yahoo' && it.yahooSymbol?.trim() === sym) {
       ids.push(it.id);
     }
   }

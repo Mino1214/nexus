@@ -8,7 +8,7 @@ import {
   parseRealtimeFrame,
 } from './parseKisRealtime.js';
 import { normalizeKrxSymbol } from './symbolNormalize.js';
-import { seedKrxStockChartFromYahoo } from './krxYahooChartSeed.js';
+import { seedKrxStockChartFromKisRest } from './krxKisChartSeed.js';
 
 const MODES = /** @type {const} */ ({
   stock: { cnt: 'H0STCNT0', ob: 'H0STASP0', normalize: (s) => normalizeKrxSymbol(s) },
@@ -244,8 +244,12 @@ export function startKisUpstream({ config, hub }) {
     hub.broadcast({ type: 'symbol', provider: providerForMode(m), symbol: sym });
 
     if (m === 'stock') {
-      void seedKrxStockChartFromYahoo({
+      void seedKrxStockChartFromKisRest({
         hub,
+        restBase: config.restBase,
+        appKey: config.appKey,
+        secretKey: config.secretKey,
+        paper: config.paper,
         krxSymbol6: sym,
         stillSubscribed: (s) => focus.mode === 'stock' && focus.sym === s,
       });

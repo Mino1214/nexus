@@ -2,7 +2,6 @@ import { loadConfig } from './config.js';
 import { initTickStore } from './db/tickStore.js';
 import { createStreamHub } from './hub/streamHub.js';
 import { createBrokerServer } from './http/brokerServer.js';
-import { startYahooStream } from './ext/yahooStream.js';
 import { startKisDomesticYahooFallback } from './kis/kisDomesticYahooFallback.js';
 import { startKisUpstream } from './kis/kisUpstream.js';
 
@@ -12,9 +11,6 @@ const hub = createStreamHub();
 
 /** @type {{ setSymbol?: (s: string) => void, syncWatchlistFeeds?: (f: unknown[]) => void } | null} */
 let upstreamRef = null;
-/** @type {{ setSymbol?: (s: string) => void, setWatchSymbols?: (s: string[]) => void, stop?: () => void } | null} */
-let yahooRef = null;
-
 const broker = createBrokerServer({
   port: config.port,
   hub,
@@ -32,11 +28,6 @@ const broker = createBrokerServer({
           ['kis', 'kis-index', 'kis-overseas'].includes(String(/** @type {any} */ (f).provider)),
       );
       upstreamRef?.syncWatchlistFeeds?.(kisFeeds);
-      const yahooSyms = feeds
-        .filter((f) => f && typeof f === 'object' && String(/** @type {any} */ (f).provider) === 'yahoo')
-        .map((f) => String(/** @type {any} */ (f).symbol ?? '').trim())
-        .filter(Boolean);
-      yahooRef?.setWatchSymbols?.(yahooSyms);
       return;
     }
 
@@ -46,11 +37,6 @@ const broker = createBrokerServer({
     const provider = providerRaw ? String(providerRaw) : 'kis';
     const sym = /** @type {any} */ (data).symbol;
     if (sym == null) return;
-
-    if (provider === 'yahoo') {
-      yahooRef?.setSymbol?.(String(sym));
-      return;
-    }
 
     if (provider === 'kis-index') {
       upstreamRef?.setSubscription?.(String(sym), 'index_futures');
@@ -74,15 +60,11 @@ const upstream = config.kisEnabled
 upstreamRef = upstream;
 
 console.log(
-  `[broker] HTTP + WS http://127.0.0.1:${config.port} (health: /health) | KIS=${config.kisEnabled ? `on symbol=${config.symbol} paper=${config.paper}` : 'off (Yahoo .KS 폴백)'}`
+  `[broker] HTTP + WS http://127.0.0.1:${config.port} (health: /health) | KIS=${config.kisEnabled ? `on symbol=${config.symbol} paper=${config.paper}` : 'off (키 없음)'}`
 );
-
-const yahoo = startYahooStream({ hub });
-yahooRef = yahoo;
 
 const shutdown = async () => {
   upstream.stop();
-  yahoo.stop?.();
   await broker.close();
   process.exit(0);
 };
