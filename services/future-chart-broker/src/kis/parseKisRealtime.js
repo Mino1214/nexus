@@ -135,8 +135,8 @@ export function extractOrderbookFromRow(row) {
     return { symbol, asks, bids, ts: Date.now() };
   }
 
-  // 지수선물(H0IFASP0) — 1~5단
-  if (row.futs_shrn_iscd && row.futs_askp1) {
+  // 지수선물(H0IFASP0) — 1~5단 (체결만 있고 매도1호가가 비는 구간도 있음)
+  if (row.futs_shrn_iscd) {
     const symbol = row.futs_shrn_iscd?.trim();
     if (!symbol) return null;
     /** @type {{ price: number; qty: number }[]} */
@@ -155,7 +155,7 @@ export function extractOrderbookFromRow(row) {
   }
 
   // 해외선물옵션(HDFFF010) — 1~5단
-  if (row.series_cd && row.ask_price_1) {
+  if (row.series_cd) {
     const symbol = row.series_cd?.trim();
     if (!symbol) return null;
     /** @type {{ price: number; qty: number }[]} */

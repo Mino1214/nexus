@@ -573,12 +573,33 @@ export function StreamingChart() {
 
   const obSymbol = selectedWatchInstrument?.code ?? feedSymbol;
   const cached = lastBookRef.current[`${feedProvider}:${feedSymbol}`];
-  const pxForSynth = lastTradePx ?? selectedWatchInstrument?.lastPrice ?? null;
-  const synth = pxForSynth != null ? synthBook(pxForSynth, 10) : null;
+  const liveRow = selectedWatchId ? liveById[selectedWatchId] : undefined;
+  const pxForSynth =
+    lastTradePx ??
+    liveRow?.lastPrice ??
+    selectedWatchInstrument?.lastPrice ??
+    null;
+  const synthYahoo = isYahoo && pxForSynth != null ? synthBook(pxForSynth, 10) : null;
 
-  const obAsks = isYahoo ? (synth?.asks ?? []) : (bookAsks.length ? bookAsks : cached?.asks ?? []);
-  const obBids = isYahoo ? (synth?.bids ?? []) : (bookBids.length ? bookBids : cached?.bids ?? []);
-  const obLastPx = lastTradePx;
+  const hasKisBook = !isYahoo && (bookAsks.length > 0 || bookBids.length > 0);
+  const synthKis =
+    !isYahoo && !hasKisBook && pxForSynth != null ? synthBook(pxForSynth, 10) : null;
+
+  const obAsks = isYahoo
+    ? (synthYahoo?.asks ?? [])
+    : hasKisBook
+      ? bookAsks
+      : (synthKis?.asks ?? cached?.asks ?? []);
+  const obBids = isYahoo
+    ? (synthYahoo?.bids ?? [])
+    : hasKisBook
+      ? bookBids
+      : (synthKis?.bids ?? cached?.bids ?? []);
+
+  const obLastPx = lastTradePx ?? liveRow?.lastPrice ?? null;
+
+  const obPriceDecimals =
+    selectedWatchInstrument?.priceDecimals ?? (feedProvider === 'kis' ? 0 : 5);
 
   return (
     <section className="htsWorkspace" aria-label="HTS 작업 영역">
@@ -654,6 +675,7 @@ export function StreamingChart() {
           lastTradePrice={obLastPx}
           obRevision={obRev}
           tickRevision={tickRev}
+          priceDecimals={obPriceDecimals}
         />
         <div className="htsOrderWrap" aria-label="주문하기">
           <p className="htsPanelTitle">주문하기</p>

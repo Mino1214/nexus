@@ -14,10 +14,16 @@ type Props = {
   lastTradePrice?: number | null;
   obRevision?: number;
   tickRevision?: number;
+  /** 호가·현재가 소수 자릿수 (선물/FX는 2~5 권장, 국내 주식 0) */
+  priceDecimals?: number;
 };
 
-function fmtPx(n: number) {
-  return Math.round(n).toLocaleString('ko-KR');
+function formatObPrice(n: number, decimals: number) {
+  const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
+  return n.toLocaleString('ko-KR', {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
+  });
 }
 
 /** 매도: 위에서 아래로 고가→저가 (호가1이 시세에 가깝게 아래쪽) */
@@ -43,6 +49,7 @@ export function OrderBookPanel({
   lastTradePrice = null,
   obRevision = 0,
   tickRevision = 0,
+  priceDecimals = 2,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -146,9 +153,9 @@ export function OrderBookPanel({
       </div>
 
       <div className="obHeroPx" aria-label="현재가">
-        {displayPx != null ? fmtPx(displayPx) : '—'}
+        {displayPx != null ? formatObPrice(displayPx, priceDecimals) : '—'}
         {spread != null && spread >= 0 ? (
-          <span className="obHeroSpread"> 스프레드 {fmtPx(spread)}</span>
+          <span className="obHeroSpread"> 스프레드 {formatObPrice(spread, priceDecimals)}</span>
         ) : null}
       </div>
 
@@ -163,7 +170,7 @@ export function OrderBookPanel({
             >
               <div className="obStackCell obStackCell--bidZone" />
               <div className="obStackCell obStackCell--price">
-                {level ? level.price.toLocaleString('ko-KR') : '—'}
+                {level ? formatObPrice(level.price, priceDecimals) : '—'}
               </div>
               <div className="obStackCell obStackCell--askZone">
                 {level ? (
@@ -185,11 +192,11 @@ export function OrderBookPanel({
         <span className="obGoldMid">
           {midPrice != null ? (
             <>
-              평균 {fmtPx(midPrice)}
+              평균 {formatObPrice(midPrice, priceDecimals)}
               {bestAsk != null && bestBid != null ? (
                 <span className="obGoldHint">
                   {' '}
-                  (매도1 {fmtPx(bestAsk)} / 매수1 {fmtPx(bestBid)})
+                  (매도1 {formatObPrice(bestAsk, priceDecimals)} / 매수1 {formatObPrice(bestBid, priceDecimals)})
                 </span>
               ) : null}
             </>
@@ -220,7 +227,7 @@ export function OrderBookPanel({
                 )}
               </div>
               <div className="obStackCell obStackCell--price">
-                {level ? level.price.toLocaleString('ko-KR') : '—'}
+                {level ? formatObPrice(level.price, priceDecimals) : '—'}
               </div>
               <div className="obStackCell obStackCell--askZone" />
             </li>
@@ -270,11 +277,16 @@ export function OrderBookPanel({
           {virtualAvgPx != null && virtualQty > 0 ? (
             <>
               {' '}
-              · 평단 <strong>{fmtPx(virtualAvgPx)}</strong>원
+              · 평단 <strong>{formatObPrice(virtualAvgPx, priceDecimals)}</strong>
+              {priceDecimals === 0 ? '원' : ''}
             </>
           ) : null}
           {execPrice != null ? (
-            <span className="obVirtualExec"> · 체결기준 {fmtPx(execPrice)}원</span>
+            <span className="obVirtualExec">
+              {' '}
+              · 체결기준 {formatObPrice(execPrice, priceDecimals)}
+              {priceDecimals === 0 ? '원' : ''}
+            </span>
           ) : null}
         </p>
       </div>
