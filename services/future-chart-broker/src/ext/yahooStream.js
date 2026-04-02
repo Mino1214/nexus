@@ -1,9 +1,5 @@
 /**
- * Yahoo Finance v8 chart 스트리밍.
- * - chart: 1일/1분 히스토리 + meta.regularMarketPrice(실시간에 가까운 현재가)
- * - (선택) v7 quote — 일부 환경에서 Unauthorized → 무시하고 chart/meta만 사용
- *
- * 이전 버그: 1분 봉 timestamp만 보고 중복 제거하면 같은 분 안에서 가격이 바뀌어도 틱이 안 나가 차트가 멈춘 것처럼 보임.
+ * Yahoo Finance v8 chart — 거래소식 배치: 마켓워치 다종목 폴링 + 포커스 종목은 초기 히스토리(1d/1m) 송신.
  */
 
 import { recordTick } from '../db/tickStore.js';
@@ -117,7 +113,6 @@ async function fetchYahooQuote(symbol) {
 }
 
 /**
- * meta(현재가) > v7 quote > 1분 봉 마지막 — 같은 초(ts)면 우선순위로 결정
  * @param {{ price: number, volume: number, tsMs: number } | null} metaTick
  * @param {{ price: number, volume: number, tsMs: number } | null} lastTick
  * @param {{ price: number, volume: number, tsMs: number } | null} quote
@@ -152,12 +147,14 @@ function tickEquals(a, b) {
  */
 export function startYahooStream({ hub, pollMs = 2500 }) {
   let stopped = false;
+  /** @type {string[]} */
+  let watchSymbols = [];
   /** @type {string | null} */
-  let activeSymbol = null;
+  let focusSymbol = null;
   /** @type {ReturnType<typeof setInterval> | null} */
   let timer = null;
-  /** @type {{ price: number, volume: number, tsMs: number } | null} */
-  let lastSent = null;
+  /** @type {Map<string, { price: number, volume: number, tsMs: number }>} */
+  const lastSent = new Map();
 
   const clear = () => {
     if (timer) {
@@ -176,81 +173,110 @@ export function startYahooStream({ hub, pollMs = 2500 }) {
    */
   async function resolveBestTick(sym) {
     const [chartData, quote] = await Promise.all([fetchYahoo1d1m(sym), fetchYahooQuote(sym)]);
-    if (stopped || activeSymbol !== sym) return null;
-
+    if (stopped) return null;
     const best = mergeYahooTicks(chartData.metaTick, chartData.lastTick, quote);
     return { chart: chartData, best };
   }
 
   /**
+   * @param {string} sym
+   * @param {{ sendHistory?: boolean }} [opts]
+   */
+  async function pollOne(sym, opts = {}) {
+    const { sendHistory = false } = opts;
+    try {
+      const resolved = await resolveBestTick(sym);
+      if (stopped || !resolved) return;
+
+      const { chart, best } = resolved;
+
+      if (sendHistory && chart.bars.length) {
+        hub.broadcast({ type: 'history', provider: 'yahoo', symbol: sym, bars: chart.bars });
+      }
+
+      if (best) {
+        const prev = lastSent.get(sym);
+        if (!prev || !tickEquals(prev, best)) {
+          lastSent.set(sym, best);
+          hub.broadcast({
+            type: 'tick',
+            provider: 'yahoo',
+            symbol: sym,
+            price: best.price,
+            volume: best.volume,
+            hour: null,
+            ts: best.tsMs,
+          });
+          recordTick({ provider: 'yahoo', symbol: sym, ts: best.tsMs, price: best.price, volume: best.volume });
+        }
+      }
+    } catch {
+      /* 다음 주기 */
+    }
+  }
+
+  const pollAllTicks = async () => {
+    if (stopped || watchSymbols.length === 0) return;
+    await Promise.all(watchSymbols.map((s) => pollOne(s, { sendHistory: false })));
+  };
+
+  const restartTimer = () => {
+    clear();
+    if (watchSymbols.length === 0) return;
+    timer = setInterval(() => void pollAllTicks(), pollMs);
+  };
+
+  /**
+   * 마켓워치 Yahoo 심볼 일괄 등록(교체). 포커스 심볼은 목록에 없어도 유지 폴링.
+   * @param {readonly string[]} symbols
+   */
+  const setWatchSymbols = (symbols) => {
+    const next = [...new Set(symbols.map((s) => String(s || '').trim()).filter(Boolean))];
+    if (focusSymbol && !next.includes(focusSymbol)) {
+      next.push(focusSymbol);
+    }
+    watchSymbols = next;
+    for (const k of [...lastSent.keys()]) {
+      if (!watchSymbols.includes(k)) lastSent.delete(k);
+    }
+    restartTimer();
+    void pollAllTicks();
+  };
+
+  /**
+   * 차트 포커스(Yahoo). 히스토리 1회 + 폴링 집합에 포함.
    * @param {string} symbol
    */
   const setSymbol = async (symbol) => {
     const sym = String(symbol || '').trim();
     if (!sym) return;
-    activeSymbol = sym;
-    lastSent = null;
+
+    focusSymbol = sym;
+    if (!watchSymbols.includes(sym)) {
+      watchSymbols = [...watchSymbols, sym];
+    }
 
     hub.broadcast({ type: 'symbol', provider: 'yahoo', symbol: sym });
     hub.broadcast({ type: 'status', source: 'yahoo', state: 'connecting' });
 
     try {
-      const resolved = await resolveBestTick(sym);
-      if (stopped || activeSymbol !== sym || !resolved) return;
-      const { chart, best } = resolved;
-
-      if (chart.bars.length) {
-        hub.broadcast({ type: 'history', provider: 'yahoo', symbol: sym, bars: chart.bars });
+      await pollOne(sym, { sendHistory: true });
+      if (!stopped) {
+        hub.broadcast({ type: 'status', source: 'yahoo', state: 'connected' });
       }
-      if (best) {
-        lastSent = best;
-        hub.broadcast({
-          type: 'tick',
-          provider: 'yahoo',
-          symbol: sym,
-          price: best.price,
-          volume: best.volume,
-          hour: null,
-          ts: best.tsMs,
-        });
-        recordTick({ provider: 'yahoo', symbol: sym, ts: best.tsMs, price: best.price, volume: best.volume });
-      }
-      hub.broadcast({ type: 'status', source: 'yahoo', state: 'connected' });
     } catch (e) {
-      if (stopped || activeSymbol !== sym) return;
-      hub.broadcast({
-        type: 'status',
-        source: 'yahoo',
-        state: 'error',
-        message: String(e?.message || e),
-      });
+      if (!stopped) {
+        hub.broadcast({
+          type: 'status',
+          source: 'yahoo',
+          state: 'error',
+          message: String(e?.message || e),
+        });
+      }
     }
 
-    clear();
-    timer = setInterval(async () => {
-      const cur = activeSymbol;
-      if (stopped || !cur) return;
-      try {
-        const resolved = await resolveBestTick(cur);
-        if (stopped || activeSymbol !== cur || !resolved?.best) return;
-        const { best } = resolved;
-        if (lastSent && tickEquals(lastSent, best)) return;
-        lastSent = best;
-        hub.broadcast({
-          type: 'tick',
-          provider: 'yahoo',
-          symbol: cur,
-          price: best.price,
-          volume: best.volume,
-          hour: null,
-          ts: best.tsMs,
-        });
-        recordTick({ provider: 'yahoo', symbol: cur, ts: best.tsMs, price: best.price, volume: best.volume });
-      } catch {
-        /* 다음 주기 */
-      }
-    }, pollMs);
+    restartTimer();
   };
 
-  return { setSymbol, stop };
+  return { setSymbol, setWatchSymbols, stop };
 }

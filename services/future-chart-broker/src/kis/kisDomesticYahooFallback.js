@@ -88,6 +88,11 @@ export function startKisDomesticYahooFallback({ hub, defaultSymbol }) {
 
   setSubscription(activeSymbol, 'stock');
 
+  /** @param {readonly unknown[]} _feeds */
+  function syncWatchlistFeeds(_feeds) {
+    /* KIS 미사용 폴백: 다종목 한투 WS 없음 — 차트 포커스만 setSubscription으로 유지 */
+  }
+
   return {
     stop() {
       stopped = true;
@@ -95,5 +100,6 @@ export function startKisDomesticYahooFallback({ hub, defaultSymbol }) {
     },
     setSubscription,
     setSymbol: (s) => setSubscription(s, 'stock'),
+    syncWatchlistFeeds,
   };
 }

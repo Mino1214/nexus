@@ -7,7 +7,13 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { OrderBookPanel, type BookLevel } from './OrderBookPanel';
-import { FUTURES_WATCHLIST, type WatchInstrument } from './watchlistData';
+import {
+  DEFAULT_BROKER_SYNC_FEEDS,
+  FUTURES_WATCHLIST,
+  type BrokerSyncFeed,
+  type WatchInstrument,
+  watchInstrumentIdsForBrokerTick,
+} from './watchlistData';
 import { WatchlistPanel } from './WatchlistPanel';
 import './htsWorkspace.css';
 import './StreamingChart.css';
@@ -64,7 +70,7 @@ type SymbolPayload = {
 
 type HistoryPayload = {
   type: 'history';
-  provider?: 'yahoo';
+  provider?: 'yahoo' | 'kis';
   symbol: string;
   bars: Array<{ time: number; open: number; high: number; low: number; close: number }>;
 };
@@ -209,6 +215,10 @@ export function StreamingChart() {
   const [lastTradePx, setLastTradePx] = useState<number | null>(null);
   const [obRev, setObRev] = useState(0);
   const [tickRev, setTickRev] = useState(0);
+  /** 마켓워치 행별 브로커 틱 (거래소식 멀티 구독 → 틱 매핑) */
+  const [liveById, setLiveById] = useState<Record<string, { lastPrice: number; volume: number; changePct: number }>>(
+    {},
+  );
   const [now, setNow] = useState(() => new Date());
   /** 첫 국내주식 행 기준으로 초기 선택(시연용) */
   const [selectedWatchId, setSelectedWatchId] = useState(
@@ -409,6 +419,7 @@ export function StreamingChart() {
       ws.onopen = () => {
         retry = 0;
         setWsState('open');
+        ws?.send(JSON.stringify({ op: 'sync_watchlist', feeds: DEFAULT_BROKER_SYNC_FEEDS }));
         const cur = feedRef.current;
         ws?.send(JSON.stringify({ op: 'subscribe', provider: cur.provider, symbol: cur.symbol }));
       };
@@ -441,6 +452,26 @@ export function StreamingChart() {
           const msgSymbol = 'symbol' in msg ? String((msg as any).symbol) : '';
           const isForCurrent =
             !!msgSymbol && messageMatchesFeed(msgProvider, msgSymbol, cur.provider, cur.symbol);
+
+          if (msg.type === 'tick' && 'price' in msg && msgSymbol) {
+            const t = msg as TickPayload;
+            const p = (t.provider ?? 'kis') as BrokerSyncFeed['provider'];
+            if (p === 'kis' || p === 'kis-index' || p === 'kis-overseas' || p === 'yahoo') {
+              const ids = watchInstrumentIdsForBrokerTick(FUTURES_WATCHLIST, p, t.symbol);
+              if (ids.length > 0) {
+                setLiveById((prev) => {
+                  const next = { ...prev };
+                  for (const id of ids) {
+                    const row = FUTURES_WATCHLIST.find((w) => w.id === id);
+                    const ref = row?.lastPrice ?? t.price;
+                    const changePct = ref !== 0 && Number.isFinite(ref) ? ((t.price - ref) / ref) * 100 : 0;
+                    next[id] = { lastPrice: t.price, volume: t.volume, changePct };
+                  }
+                  return next;
+                });
+              }
+            }
+          }
 
           if (msg.type === 'history' && 'bars' in msg && isForCurrent) {
             applyHistory((msg as HistoryPayload).bars);
@@ -658,7 +689,7 @@ export function StreamingChart() {
       </div>
 
       <aside className="htsRight" aria-label="관심">
-        <WatchlistPanel selectedId={selectedWatchId} onSelect={handleWatchSelect} />
+        <WatchlistPanel selectedId={selectedWatchId} onSelect={handleWatchSelect} liveById={liveById} />
       </aside>
 
       <footer className="htsStatusBar">

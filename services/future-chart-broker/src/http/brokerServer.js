@@ -33,7 +33,7 @@ export function createBrokerServer({ port, hub, onClientMessage }) {
       JSON.stringify({
         type: 'hello',
         message:
-          '구독 변경: {"op":"subscribe","provider":"kis","symbol":"005380"} | 지수선물: {"op":"subscribe","provider":"kis-index","symbol":"101W09"} | 해외선물옵션: {"op":"subscribe","provider":"kis-overseas","symbol":"DNASAAPL"} | Yahoo: {"op":"subscribe","provider":"yahoo","symbol":"CL=F"}',
+          '마켓데이터: {"op":"sync_watchlist","feeds":[{"provider":"kis","symbol":"005380"},…]} 후 {"op":"subscribe",…} 로 차트 포커스. 지수 kis-index / 해외 kis-overseas / Yahoo provider.',
       })
     );
     ws.on('message', (buf) => {

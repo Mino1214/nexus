@@ -3,10 +3,18 @@ import './WatchlistPanel.css';
 
 export type { WatchInstrument };
 
+export type WatchLiveQuote = {
+  lastPrice: number;
+  volume: number;
+  changePct: number;
+};
+
 type Props = {
   selectedId: string;
   onSelect: (item: WatchInstrument) => void;
   items?: WatchInstrument[];
+  /** 브로커 틱으로 갱신된 행 (없으면 시드값 표시) */
+  liveById?: Record<string, WatchLiveQuote | undefined>;
 };
 
 function thumbLetters(code: string): string {
@@ -34,7 +42,7 @@ function formatChangeAbs(d: number, decimals: number): string {
   );
 }
 
-export function WatchlistPanel({ selectedId, onSelect, items = FUTURES_WATCHLIST }: Props) {
+export function WatchlistPanel({ selectedId, onSelect, items = FUTURES_WATCHLIST, liveById }: Props) {
   return (
     <div className="wlPanel" aria-label="마켓워치">
       <div className="wlHead">마켓워치</div>
@@ -61,9 +69,13 @@ export function WatchlistPanel({ selectedId, onSelect, items = FUTURES_WATCHLIST
           </thead>
           <tbody>
             {items.map((it) => {
-              const chAbs = impliedChangeAbs(it.lastPrice, it.changePct);
-              const up = it.changePct > 0;
-              const down = it.changePct < 0;
+              const live = liveById?.[it.id];
+              const lastPrice = live?.lastPrice ?? it.lastPrice;
+              const changePct = live?.changePct ?? it.changePct;
+              const volume = live?.volume ?? it.volume;
+              const chAbs = impliedChangeAbs(lastPrice, changePct);
+              const up = changePct > 0;
+              const down = changePct < 0;
               const dirCls = up ? 'wlNum--up' : down ? 'wlNum--down' : 'wlNum--flat';
               const active = selectedId === it.id;
               const hue = it.hue ?? 200;
@@ -104,17 +116,17 @@ export function WatchlistPanel({ selectedId, onSelect, items = FUTURES_WATCHLIST
                       </div>
                     </div>
                   </td>
-                  <td className={`wlTd wlTd--num wlMono ${dirCls}`}>{formatPrice(it.lastPrice, it.priceDecimals)}</td>
+                  <td className={`wlTd wlTd--num wlMono ${dirCls}`}>{formatPrice(lastPrice, it.priceDecimals)}</td>
                   <td className={`wlTd wlTd--num wlMono ${dirCls}`}>
                     {up ? '↑ ' : down ? '↓ ' : ''}
                     {formatChangeAbs(chAbs, it.priceDecimals)}
                   </td>
                   <td className={`wlTd wlTd--num wlMono ${dirCls}`}>
                     {up ? '↑ ' : down ? '↓ ' : ''}
-                    {it.changePct > 0 ? '+' : ''}
-                    {it.changePct.toFixed(2)}%
+                    {changePct > 0 ? '+' : ''}
+                    {changePct.toFixed(2)}%
                   </td>
-                  <td className="wlTd wlTd--vol wlMono">{it.volume.toLocaleString('ko-KR')}</td>
+                  <td className="wlTd wlTd--vol wlMono">{volume.toLocaleString('ko-KR')}</td>
                 </tr>
               );
             })}

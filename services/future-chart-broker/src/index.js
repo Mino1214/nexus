@@ -10,9 +10,9 @@ await initTickStore();
 const config = loadConfig();
 const hub = createStreamHub();
 
-/** @type {{ setSymbol?: (s: string) => void } | null} */
+/** @type {{ setSymbol?: (s: string) => void, syncWatchlistFeeds?: (f: unknown[]) => void } | null} */
 let upstreamRef = null;
-/** @type {{ setSymbol?: (s: string) => void, stop?: () => void } | null} */
+/** @type {{ setSymbol?: (s: string) => void, setWatchSymbols?: (s: string[]) => void, stop?: () => void } | null} */
 let yahooRef = null;
 
 const broker = createBrokerServer({
@@ -20,7 +20,27 @@ const broker = createBrokerServer({
   hub,
   onClientMessage: (data) => {
     if (!(data && typeof data === 'object' && 'op' in data)) return;
-    if (/** @type {any} */ (data).op !== 'subscribe') return;
+    const op = String(/** @type {any} */ (data).op);
+
+    if (op === 'sync_watchlist') {
+      const feeds = /** @type {any} */ (data).feeds;
+      if (!Array.isArray(feeds)) return;
+      const kisFeeds = feeds.filter(
+        (f) =>
+          f &&
+          typeof f === 'object' &&
+          ['kis', 'kis-index', 'kis-overseas'].includes(String(/** @type {any} */ (f).provider)),
+      );
+      upstreamRef?.syncWatchlistFeeds?.(kisFeeds);
+      const yahooSyms = feeds
+        .filter((f) => f && typeof f === 'object' && String(/** @type {any} */ (f).provider) === 'yahoo')
+        .map((f) => String(/** @type {any} */ (f).symbol ?? '').trim())
+        .filter(Boolean);
+      yahooRef?.setWatchSymbols?.(yahooSyms);
+      return;
+    }
+
+    if (op !== 'subscribe') return;
 
     const providerRaw = /** @type {any} */ (data).provider;
     const provider = providerRaw ? String(providerRaw) : 'kis';

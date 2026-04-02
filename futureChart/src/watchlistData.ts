@@ -1,4 +1,4 @@
-/** 좌측 마켓워치 표시용 (데모 정적 시세 — 실시간은 추후 API 연동) */
+/** 좌측 마켓워치: 기본 행은 시드값, 브로커 틱으로 `WatchlistPanel` `liveById` 갱신 */
 
 export type WatchInstrument = {
   id: string;
@@ -213,3 +213,56 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     yahooSymbol: '6J=F',
   },
 ];
+
+export type BrokerSyncFeed = {
+  provider: 'kis' | 'kis-index' | 'kis-overseas' | 'yahoo';
+  symbol: string;
+};
+
+function normKrx6(raw: string): string | null {
+  const d = raw.replace(/\D/g, '');
+  if (!d) return null;
+  if (d.length > 6) return d.slice(0, 6);
+  return d.padStart(6, '0');
+}
+
+/** 브로커 `op: sync_watchlist` 페이로드 — 한 연결로 마켓워치 전 종목 구독(멀티플렉스) */
+export function buildBrokerSyncFeeds(items: readonly WatchInstrument[] = FUTURES_WATCHLIST): BrokerSyncFeed[] {
+  const out: BrokerSyncFeed[] = [];
+  for (const it of items) {
+    const k = it.krxSubscribeCode?.trim();
+    if (k) out.push({ provider: 'kis', symbol: k });
+    const ki = it.kisIndexFuturesCode?.trim();
+    if (ki) out.push({ provider: 'kis-index', symbol: ki });
+    const ko = it.kisOverseasSeriesCode?.trim();
+    if (ko) out.push({ provider: 'kis-overseas', symbol: ko });
+    const y = it.yahooSymbol?.trim();
+    if (y) out.push({ provider: 'yahoo', symbol: y });
+  }
+  return out;
+}
+
+export const DEFAULT_BROKER_SYNC_FEEDS = buildBrokerSyncFeeds();
+
+export function watchInstrumentIdsForBrokerTick(
+  items: readonly WatchInstrument[],
+  provider: BrokerSyncFeed['provider'],
+  symbol: string,
+): string[] {
+  const sym = symbol.trim();
+  const ids: string[] = [];
+  for (const it of items) {
+    if (provider === 'kis' && it.krxSubscribeCode) {
+      const a = normKrx6(it.krxSubscribeCode);
+      const b = normKrx6(sym);
+      if (a && b && a === b) ids.push(it.id);
+    } else if (provider === 'kis-index' && it.kisIndexFuturesCode?.trim() === sym) {
+      ids.push(it.id);
+    } else if (provider === 'kis-overseas' && it.kisOverseasSeriesCode?.trim() === sym) {
+      ids.push(it.id);
+    } else if (provider === 'yahoo' && it.yahooSymbol?.trim() === sym) {
+      ids.push(it.id);
+    }
+  }
+  return ids;
+}
