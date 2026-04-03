@@ -69,10 +69,30 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 10px 12px 12px;
+  padding: 0;
 }
 
 .chart-only-main .htsWorkspace {
   flex: 1;
   min-height: 0;
+}
+
+@media (max-width: 960px) {
+  .chart-only-bar {
+    display: none;
+  }
+
+  .chart-only-shell {
+    overflow: hidden;
+    overflow-x: hidden;
+    height: 100dvh;
+    max-width: 100vw;
+  }
+
+  .chart-only-main {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
+  }
 }

@@ -97,7 +97,6 @@
   outline-offset: -2px;
   border-radius: 6px;
   background: color-mix(in oklab, var(--bg-panel) 92%, var(--accent));
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--text) 10%, transparent);
 }
 
 .wlTr--active .wlTd {
@@ -133,10 +132,6 @@
   font-size: 0.48rem;
   font-weight: 800;
   color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .wlSymText {
@@ -210,6 +205,34 @@
 
 .wlNum--flat {
   color: var(--text-dim);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlHead,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTh,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlCode,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlName,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTd--vol {
+  color: var(--hts-ink, var(--text));
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTableWrap,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTr:hover,
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTr--active {
+  background: #ffffff;
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlTr--active {
+  outline-color: var(--hts-buy, var(--accent));
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlThumb {
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: color-mix(in oklab, var(--hts-buy, var(--accent)) 20%, #ffffff) !important;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlIdx {
+  color: var(--hts-ink, var(--text));
 }
 
 @media (max-width: 1180px) {

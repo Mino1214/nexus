@@ -19,6 +19,7 @@
     "electron:win": "npm run build && electron-builder --win"
   },
   "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
     "lightweight-charts": "^5.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"

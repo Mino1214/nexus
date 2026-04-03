@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import './OrderBookPanel.css';
 
 export type BookLevel = { price: number; qty: number };
 
-const EMPTY_ROWS: (BookLevel | null)[] = [null];
+const EMPTY_ROWS: (BookLevel | null)[] = Array(10).fill(null);
 
 type Props = {
   asks: BookLevel[];
@@ -20,6 +20,8 @@ type Props = {
   isStale?: boolean;
   /** Yahoo Finance 현재가 기반 참고 호가 (실시간 아님) */
   isSynthetic?: boolean;
+  /** 표시할 최대 호가 단 수 (초과분은 잘라냄) */
+  maxDepth?: number;
   onPriceSelect?: (price: number) => void;
 };
 
@@ -41,36 +43,6 @@ function orderBidLevels(bids: BookLevel[]): (BookLevel | null)[] {
   return bids.length > 0 ? [...bids] : EMPTY_ROWS;
 }
 
-function pricesClose(a: number | null, b: number | null, epsilon = 1e-9) {
-  if (a == null || b == null) return false;
-  return Math.abs(a - b) <= epsilon;
-}
-
-function nearestAskPrice(levels: readonly BookLevel[], px: number | null): number | null {
-  if (px == null || levels.length === 0) return null;
-  const above = levels.filter((level) => level.price >= px);
-  if (above.length > 0) return Math.min(...above.map((level) => level.price));
-  let best = /** @type {number | null} */ (null);
-  for (const level of levels) {
-    if (best == null || Math.abs(level.price - px) < Math.abs(best - px)) {
-      best = level.price;
-    }
-  }
-  return best;
-}
-
-function nearestBidPrice(levels: readonly BookLevel[], px: number | null): number | null {
-  if (px == null || levels.length === 0) return null;
-  const below = levels.filter((level) => level.price <= px);
-  if (below.length > 0) return Math.max(...below.map((level) => level.price));
-  let best = /** @type {number | null} */ (null);
-  for (const level of levels) {
-    if (best == null || Math.abs(level.price - px) < Math.abs(best - px)) {
-      best = level.price;
-    }
-  }
-  return best;
-}
 
 export function OrderBookPanel({
   asks,
@@ -83,21 +55,14 @@ export function OrderBookPanel({
   priceDecimals = 2,
   isStale = false,
   isSynthetic = false,
+  maxDepth,
   onPriceSelect,
 }: Props) {
+  const slicedAsks = maxDepth != null ? asks.slice(0, maxDepth) : asks;
+  const slicedBids = maxDepth != null ? bids.slice(0, maxDepth) : bids;
+  asks = slicedAsks;
+  bids = slicedBids;
   const rootRef = useRef<HTMLDivElement>(null);
-
-  const [buyQtyStr, setBuyQtyStr] = useState('');
-  const [sellQtyStr, setSellQtyStr] = useState('');
-  const [virtualQty, setVirtualQty] = useState(0);
-  const [virtualAvgPx, setVirtualAvgPx] = useState<number | null>(null);
-
-  useEffect(() => {
-    setVirtualQty(0);
-    setVirtualAvgPx(null);
-    setBuyQtyStr('');
-    setSellQtyStr('');
-  }, [symbol]);
 
   const maxQty = useMemo(() => {
     const qs = [
@@ -107,7 +72,7 @@ export function OrderBookPanel({
     return Math.max(1, ...qs, 1);
   }, [asks, bids]);
 
-  const { midPrice, spread, bestAsk, bestBid } = useMemo(() => {
+  const { midPrice, spread } = useMemo(() => {
     const ba = asks.length ? Math.min(...asks.map((a) => a.price)) : null;
     const bb = bids.length ? Math.max(...bids.map((b) => b.price)) : null;
     let mid: number | null = null;
@@ -118,21 +83,14 @@ export function OrderBookPanel({
     } else if (ba != null) mid = ba;
     else if (bb != null) mid = bb;
     else if (lastTradePrice != null && Number.isFinite(lastTradePrice)) mid = lastTradePrice;
-    return { midPrice: mid, spread: spr, bestAsk: ba, bestBid: bb };
+    return { midPrice: mid, spread: spr };
   }, [asks, bids, lastTradePrice]);
 
   const displayPx = lastTradePrice ?? midPrice;
 
-  const execPrice = useMemo(() => {
-    if (lastTradePrice != null && Number.isFinite(lastTradePrice)) return lastTradePrice;
-    return midPrice;
-  }, [lastTradePrice, midPrice]);
-
   const askRows = useMemo(() => orderAskLevels(asks), [asks]);
   const bidRows = useMemo(() => orderBidLevels(bids), [bids]);
   const displayDepth = Math.max(asks.length, bids.length, 0);
-  const currentAskPrice = useMemo(() => nearestAskPrice(asks, displayPx), [asks, displayPx]);
-  const currentBidPrice = useMemo(() => nearestBidPrice(bids, displayPx), [bids, displayPx]);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -147,29 +105,6 @@ export function OrderBookPanel({
   }, [obRevision, tickRevision]);
 
   const hasBook = asks.length > 0 || bids.length > 0;
-
-  const virtualBuy = () => {
-    const q = Number(buyQtyStr.replace(/\D/g, ''));
-    if (!Number.isFinite(q) || q <= 0 || execPrice == null) return;
-    const next = virtualQty + q;
-    const avg =
-      virtualAvgPx == null
-        ? execPrice
-        : (virtualAvgPx * virtualQty + execPrice * q) / next;
-    setVirtualQty(next);
-    setVirtualAvgPx(avg);
-    setBuyQtyStr('');
-  };
-
-  const virtualSell = () => {
-    const q = Number(sellQtyStr.replace(/\D/g, ''));
-    if (!Number.isFinite(q) || q <= 0 || execPrice == null) return;
-    if (q > virtualQty) return;
-    const next = virtualQty - q;
-    setVirtualQty(next);
-    if (next <= 0) setVirtualAvgPx(null);
-    setSellQtyStr('');
-  };
 
   return (
     <div
@@ -188,178 +123,71 @@ export function OrderBookPanel({
         ) : null}
       </div>
 
+      {/* 컬럼 헤더 */}
       <div className="obColHead" aria-hidden>
-        <span className="obColHeadCell">매수</span>
-        <span className="obColHeadCell obColHeadCell--center">현재가</span>
-        <span className="obColHeadCell">매도</span>
+        <span className="obColHeadCell obColHeadCell--price">가격</span>
+        <span className="obColHeadCell obColHeadCell--qty">수량</span>
       </div>
 
-      <div className="obHeroPx" aria-label="현재가">
-        {displayPx != null ? formatObPrice(displayPx, priceDecimals) : '—'}
-        {spread != null && spread >= 0 ? (
-          <span className="obHeroSpread"> 스프레드 {formatObPrice(spread, priceDecimals)}</span>
-        ) : null}
-      </div>
-
+      {/* ── 매도 목록 (위 = 높은가, 아래 = 낮은가 → 현재가에 가까운 쪽이 아래) ── */}
       <ul className="obStackList obStackList--ask" aria-label={`매도 ${displayDepth || 0}단`}>
         {askRows.map((level, i) => {
           const pct = level ? Math.min(100, (100 * level.qty) / maxQty) : 0;
-          const isCurrentBand = level ? pricesClose(level.price, currentAskPrice) : false;
           return (
             <li
               key={`ask-${i}-${level?.price ?? 'e'}`}
-              className={`obStackRow obStackRow--ask${isCurrentBand ? ' obStackRow--currentAsk' : ''}${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
+              className={`obStackRow obStackRow--ask${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
               role={level && onPriceSelect ? 'button' : undefined}
               tabIndex={level && onPriceSelect ? 0 : undefined}
               onClick={level && onPriceSelect ? () => onPriceSelect(level.price) : undefined}
               onKeyDown={
                 level && onPriceSelect
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onPriceSelect(level.price);
-                      }
-                    }
+                  ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPriceSelect(level.price); } }
                   : undefined
               }
             >
-              <div className="obStackCell obStackCell--bidZone" />
-              <div className="obStackCell obStackCell--price">
-                {level ? formatObPrice(level.price, priceDecimals) : '—'}
-              </div>
-              <div className="obStackCell obStackCell--askZone">
-                {level ? (
-                  <div className="obStackBarTrack obStackBarTrack--ask">
-                    <div className="obStackBarFill obStackBarFill--ask" style={{ width: `${pct}%` }} />
-                    <span className="obStackVol">{level.qty.toLocaleString('ko-KR')}</span>
-                  </div>
-                ) : (
-                  <div className="obStackBarTrack obStackBarTrack--empty" />
-                )}
-              </div>
+              <span className="obPx obPx--ask">{level ? formatObPrice(level.price, priceDecimals) : '—'}</span>
+              <span className="obQty">{level ? level.qty.toLocaleString('ko-KR') : ''}</span>
             </li>
           );
         })}
       </ul>
 
-      <div className="obGoldDivider" aria-hidden>
-        <span className="obGoldLine" />
-        <span className="obGoldMid">
-          {midPrice != null ? (
-            <>
-              현재가격 {formatObPrice(displayPx ?? midPrice, priceDecimals)}
-              {bestAsk != null && bestBid != null ? (
-                <span className="obGoldHint">
-                  {' '}
-                  (매도1 {formatObPrice(bestAsk, priceDecimals)} / 매수1 {formatObPrice(bestBid, priceDecimals)})
-                </span>
-              ) : null}
-            </>
-          ) : (
-            '—'
-          )}
+      {/* ── 현재가 구분선 ── */}
+      <div className="obGoldDivider" aria-label="현재가">
+        <span className="obGoldMidPx">
+          {displayPx != null ? formatObPrice(displayPx, priceDecimals) : '—'}
         </span>
-        <span className="obGoldLine" />
+        {spread != null && spread >= 0 ? (
+          <span className="obGoldSpread">스프레드 {formatObPrice(spread, priceDecimals)}</span>
+        ) : null}
       </div>
 
+      {/* ── 매수 목록 (위 = 높은가 = 현재가에 가까운 쪽) ── */}
       <ul className="obStackList obStackList--bid" aria-label={`매수 ${displayDepth || 0}단`}>
         {bidRows.map((level, i) => {
           const pct = level ? Math.min(100, (100 * level.qty) / maxQty) : 0;
-          const isCurrentBand = level ? pricesClose(level.price, currentBidPrice) : false;
           return (
             <li
               key={`bid-${i}-${level?.price ?? 'e'}`}
-              className={`obStackRow obStackRow--bid${isCurrentBand ? ' obStackRow--currentBid' : ''}${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
+              className={`obStackRow obStackRow--bid${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
               role={level && onPriceSelect ? 'button' : undefined}
               tabIndex={level && onPriceSelect ? 0 : undefined}
               onClick={level && onPriceSelect ? () => onPriceSelect(level.price) : undefined}
               onKeyDown={
                 level && onPriceSelect
-                  ? (e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onPriceSelect(level.price);
-                      }
-                    }
+                  ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPriceSelect(level.price); } }
                   : undefined
               }
             >
-              <div className="obStackCell obStackCell--bidZone">
-                {level ? (
-                  <div className="obStackBarTrack obStackBarTrack--bid">
-                    <div className="obStackBarFill obStackBarFill--bid" style={{ width: `${pct}%` }} />
-                    <span className="obStackVol">{level.qty.toLocaleString('ko-KR')}</span>
-                  </div>
-                ) : (
-                  <div className="obStackBarTrack obStackBarTrack--empty" />
-                )}
-              </div>
-              <div className="obStackCell obStackCell--price">
-                {level ? formatObPrice(level.price, priceDecimals) : '—'}
-              </div>
-              <div className="obStackCell obStackCell--askZone" />
+              <span className="obPx obPx--bid">{level ? formatObPrice(level.price, priceDecimals) : '—'}</span>
+              <span className="obQty">{level ? level.qty.toLocaleString('ko-KR') : ''}</span>
             </li>
           );
         })}
       </ul>
-
-      <div className="obVirtual" aria-label="가상 매매">
-        <div className="obVirtualRow">
-          <div className="obVirtualBlock">
-            <span className="obVirtualLabel">매수</span>
-            <input
-              className="obVirtualInput"
-              type="text"
-              inputMode="numeric"
-              placeholder="수량"
-              value={buyQtyStr}
-              onChange={(e) => setBuyQtyStr(e.target.value)}
-            />
-            <button type="button" className="obVirtualBtn obVirtualBtn--buy" onClick={virtualBuy} disabled={execPrice == null}>
-              가상 매수
-            </button>
-          </div>
-          <div className="obVirtualBlock">
-            <span className="obVirtualLabel">매도</span>
-            <input
-              className="obVirtualInput"
-              type="text"
-              inputMode="numeric"
-              placeholder="수량"
-              value={sellQtyStr}
-              onChange={(e) => setSellQtyStr(e.target.value)}
-            />
-            <button
-              type="button"
-              className="obVirtualBtn obVirtualBtn--sell"
-              onClick={virtualSell}
-              disabled={execPrice == null || virtualQty <= 0}
-            >
-              가상 매도
-            </button>
-          </div>
-        </div>
-        <p className="obVirtualPos">
-          가상 보유{' '}
-          <strong>{virtualQty.toLocaleString('ko-KR')}</strong>주
-          {virtualAvgPx != null && virtualQty > 0 ? (
-            <>
-              {' '}
-              · 평단 <strong>{formatObPrice(virtualAvgPx, priceDecimals)}</strong>
-              {priceDecimals === 0 ? '원' : ''}
-            </>
-          ) : null}
-          {execPrice != null ? (
-            <span className="obVirtualExec">
-              {' '}
-              · 체결기준 {formatObPrice(execPrice, priceDecimals)}
-              {priceDecimals === 0 ? '원' : ''}
-            </span>
-          ) : null}
-        </p>
-      </div>
     </div>
   );
 }

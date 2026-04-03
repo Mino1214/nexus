@@ -304,7 +304,7 @@ export async function broadcastOverseasFuturesObSnapshot(opts) {
   if (!price || !Number.isFinite(price) || !stillOk()) return;
 
   const tick = TICK_SIZE[yahooSym] ?? (price * 0.0001); // 기본: 가격의 0.01%
-  const LEVELS = 5;
+  const LEVELS = 10;
 
   /** @type {{ price: number; qty: number }[]} */
   const asks = [];

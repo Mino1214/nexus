@@ -1,5 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowDown,
+  ArrowsClockwise,
+  ArrowUp,
+  BellSimple,
+  BookOpen,
+  ChartLine,
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Lightning,
+  ListBullets,
+  PencilSimpleLine,
+  Stack,
+  Swap,
+  User,
+  Wallet,
+  X,
+} from '@phosphor-icons/react';
+import {
   CandlestickSeries,
   ColorType,
   createChart,
@@ -25,7 +44,6 @@ import {
   type WatchInstrument,
   watchInstrumentIdsForBrokerTick,
 } from './watchlistData';
-import { WatchlistPanel } from './WatchlistPanel';
 import './htsWorkspace.css';
 import './StreamingChart.css';
 
@@ -100,7 +118,12 @@ type TapeTrade = {
   side: TapeSide;
 };
 
-type MobileTab = 'positions' | 'orders' | 'watchlist';
+type RecordTab = 'positions' | 'openOrders' | 'fills';
+type OrderKind = 'limit' | 'market';
+
+const TRADE_BUY_COLOR = '#5ce1e6';
+const TRADE_SELL_COLOR = '#ff6b78';
+const TRADE_INK_COLOR = '#111111';
 
 /** lightweight-charts 캔들 간격(분봉·시간·일·주) */
 type ChartTf = '1' | '5' | '15' | '30' | '60' | '240' | 'D' | 'W';
@@ -154,20 +177,16 @@ function markerTimeForTrade(executedAtMs: number, tf: ChartTf, provider: KisFeed
   return bucketUtcSecForTf(ms, tf) as UTCTimestamp;
 }
 
-function readHtmlTheme(): 'light' | 'dark' {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
-}
-
-function chartLayoutTheme(isDark: boolean) {
+function chartLayoutTheme() {
   return {
     background: {
       type: ColorType.Solid,
-      color: isDark ? '#0f1115' : '#ffffff',
+      color: '#ffffff',
     } as const,
-    textColor: isDark ? '#9aa3b5' : '#64748b',
+    textColor: TRADE_INK_COLOR,
     grid: {
-      vertLines: { color: isDark ? '#252830' : '#e5e7eb' },
-      horzLines: { color: isDark ? '#252830' : '#e5e7eb' },
+      vertLines: { color: 'rgba(17, 17, 17, 0.08)' },
+      horzLines: { color: 'rgba(17, 17, 17, 0.08)' },
     },
   };
 }
@@ -203,6 +222,14 @@ function statusDotClass(ws: string, kis: string | null): string {
   return '';
 }
 
+function resolveInitialFeed(item: WatchInstrument | null): { provider: KisFeedProvider; symbol: string } {
+  if (item?.kisIndexFuturesCode) return { provider: 'kis-index', symbol: item.kisIndexFuturesCode.trim() };
+  if (item?.kisOverseasSeriesCode) return { provider: 'kis-overseas', symbol: item.kisOverseasSeriesCode.trim() };
+  const krx = item?.krxSubscribeCode ? normalizeSymbol(item.krxSubscribeCode) : null;
+  if (krx) return { provider: 'kis', symbol: krx };
+  return { provider: 'kis-index', symbol: 'A01606' };
+}
+
 function formatLivePrice(n: number, decimals: number) {
   const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
   return n.toLocaleString('ko-KR', {
@@ -211,17 +238,43 @@ function formatLivePrice(n: number, decimals: number) {
   });
 }
 
-function formatTapeVolume(n: number) {
-  if (!Number.isFinite(n) || n <= 0) return '0';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString('ko-KR');
-}
-
 function formatOrderInputPrice(n: number, decimals: number) {
   const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
   return d <= 0 ? String(Math.round(n)) : n.toFixed(d).replace(/\.?0+$/, '');
 }
+
+function OrderKindToggle({ value, onChange }: { value: OrderKind; onChange: (kind: OrderKind) => void }) {
+  return (
+    <div className="htsModeToggle" role="tablist" aria-label="주문 유형">
+      {([
+        ['limit', '지정가'],
+        ['market', '시장가'],
+      ] as const).map(([kind, label]) => (
+        <button
+          key={kind}
+          type="button"
+          role="tab"
+          aria-selected={value === kind}
+          className={`htsModeToggleBtn${value === kind ? ' htsModeToggleBtn--active' : ''}`}
+          onClick={() => onChange(kind)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const PRIMARY_WATCH = FUTURES_WATCHLIST[0] ?? null;
+const DEFAULT_FEED = resolveInitialFeed(PRIMARY_WATCH);
+const LEVERAGE_OPTIONS = [5, 10, 25, 50] as const;
+// SIZING_OPTIONS replaced by free slider; kept for reference
+// const SIZING_OPTIONS = [25, 50, 75, 100] as const;
+const RECORD_TABS: { id: RecordTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'positions',  label: '현재 포지션', icon: <Stack size={13} weight="duotone" /> },
+  { id: 'openOrders', label: '미체결',      icon: <Clock size={13} weight="duotone" /> },
+  { id: 'fills',      label: '체결 기록',   icon: <CheckCircle size={13} weight="duotone" /> },
+];
 
 function inferTapeSide(
   price: number,
@@ -329,8 +382,8 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const barRef = useRef<CandlestickData<UTCTimestamp> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const feedRef = useRef<{ provider: KisFeedProvider; symbol: string }>({
-    provider: 'kis-overseas',
-    symbol: 'CNQM26',
+    provider: DEFAULT_FEED.provider,
+    symbol: DEFAULT_FEED.symbol,
   });
   const lastBookRef = useRef<Record<string, { asks: BookLevel[]; bids: BookLevel[] }>>({});
   /** 마지막 실시간 호가 수신 시각(ms) — 호가 TR은 체결보다 드물어 스냅샷만 보이는 현상 방지 */
@@ -338,9 +391,8 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const liveBookRef = useRef<{ asks: BookLevel[]; bids: BookLevel[] }>({ asks: [], bids: [] });
   const tapeRef = useRef<{ lastPrice: number | null; lastSide: TapeSide }>({ lastPrice: null, lastSide: 'buy' });
 
-  const [feedProvider, setFeedProvider] = useState<KisFeedProvider>('kis-overseas');
-  const [feedSymbol, setFeedSymbol] = useState('CNQM26');
-  const [symbolInput, setSymbolInput] = useState('CNQM26');
+  const [feedProvider, setFeedProvider] = useState<KisFeedProvider>(DEFAULT_FEED.provider);
+  const [feedSymbol, setFeedSymbol] = useState(DEFAULT_FEED.symbol);
   const [wsState, setWsState] = useState<'idle' | 'open' | 'closed' | 'error'>('idle');
   const [lastTick, setLastTick] = useState<string | null>(null);
   const [kisState, setKisState] = useState<string | null>(null);
@@ -359,13 +411,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     {},
   );
   const [now, setNow] = useState(() => new Date());
-  /** 나스닥을 기본 선택, 없으면 첫 번째 항목 */
-  const [selectedWatchId, setSelectedWatchId] = useState(
-    FUTURES_WATCHLIST.find((w) => w.kisOverseasSeriesCode)?.id ??
-    FUTURES_WATCHLIST.find((w) => w.krxSubscribeCode)?.id ??
-    FUTURES_WATCHLIST[0]?.id ?? '',
-  );
-  const [chartUiTheme, setChartUiTheme] = useState<'light' | 'dark'>(readHtmlTheme);
+  const [selectedWatchId, setSelectedWatchId] = useState(PRIMARY_WATCH?.id ?? '');
   const [timeframe, setTimeframe] = useState<ChartTf>('1');
   const tfRef = useRef<ChartTf>('1');
   tfRef.current = timeframe;
@@ -375,7 +421,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const [paperTrades, setPaperTrades] = useState<HtsPaperTradeRow[]>([]);
   const [tradeMsg, setTradeMsg] = useState<string | null>(null);
   const [tradeBusy, setTradeBusy] = useState(false);
-  const [orderKind, setOrderKind] = useState<'limit' | 'market'>('market');
+  const [orderKind, setOrderKind] = useState<OrderKind>('market');
   const [orderPriceStr, setOrderPriceStr] = useState('');
   const [orderQtyStr, setOrderQtyStr] = useState('1');
   const [chargeOpen, setChargeOpen] = useState(false);
@@ -383,9 +429,11 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const [chargeMemo, setChargeMemo] = useState('');
   const [chargeErr, setChargeErr] = useState<string | null>(null);
   const [chargeBusy, setChargeBusy] = useState(false);
-  const [mobileTab, setMobileTab] = useState<MobileTab>('positions');
+  const [recordTab, setRecordTab] = useState<RecordTab>('positions');
   const [mobileLeverage, setMobileLeverage] = useState(5);
   const [mobileSizePct, setMobileSizePct] = useState(50);
+  const [mobileTab, setMobileTab] = useState<'trade' | 'chart' | 'notice' | 'account'>('trade');
+  const [leverageModalOpen, setLeverageModalOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 960px)').matches,
   );
@@ -393,15 +441,6 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const wsUrl = getBrokerWebSocketUrl();
 
   feedRef.current = { provider: feedProvider, symbol: feedSymbol };
-
-  useEffect(() => {
-    const el = document.documentElement;
-    const sync = () => setChartUiTheme(readHtmlTheme());
-    const mo = new MutationObserver(sync);
-    mo.observe(el, { attributes: true, attributeFilter: ['data-theme'] });
-    sync();
-    return () => mo.disconnect();
-  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -432,20 +471,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     setBookAsks([]);
     setBookBids([]);
     setLastTradePx(null);
-    setBuyTape([]);
-    setSellTape([]);
-    liveBookRef.current = { asks: [], bids: [] };
-    tapeRef.current = { lastPrice: null, lastSide: 'buy' };
-  }, []);
-
-  /** 심볼 변경 시 — 호가·틱만 초기화, 차트 봉은 유지(새 history 도착 전 공백 방지) */
-  const softReset = useCallback(() => {
-    bucketRef.current = null;
-    barRef.current = null;
-    lastObReceivedAtRef.current = 0;
-    setBookAsks([]);
-    setBookBids([]);
-    setLastTradePx(null);
+    setLastTick(null);
     setObIsSynthetic(false);
     obIsSyntheticRef.current = false;
     setBuyTape([]);
@@ -486,6 +512,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     // 마지막 봉을 ref에 저장 → 같은 분에 오는 첫 틱이 새 봉 대신 이어서 업데이트됨
     bucketRef.current = out.length > 0 ? (out[out.length - 1].time as number) : null;
     barRef.current = out.length > 0 ? out[out.length - 1] : null;
+    chartRef.current?.timeScale().fitContent();
   }, []);
 
   const refreshBalance = useCallback(async () => {
@@ -538,7 +565,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         time,
         position: isBuy ? 'belowBar' : 'aboveBar',
         shape: isBuy ? 'arrowUp' : 'arrowDown',
-        color: isBuy ? '#3fb68b' : '#ef5350',
+        color: isBuy ? TRADE_BUY_COLOR : TRADE_SELL_COLOR,
         text: `${isBuy ? 'B' : 'S'}${t.qty}`,
       });
     }
@@ -550,8 +577,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     const el = wrapRef.current;
     if (!el) return;
 
-    const isDark = readHtmlTheme() === 'dark';
-    const th = chartLayoutTheme(isDark);
+    const th = chartLayoutTheme();
 
     const chart = createChart(el, {
       layout: {
@@ -565,11 +591,11 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     });
 
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: '#3fb68b',
-      downColor: '#ef5350',
+      upColor: TRADE_BUY_COLOR,
+      downColor: TRADE_SELL_COLOR,
       borderVisible: false,
-      wickUpColor: '#3fb68b',
-      wickDownColor: '#ef5350',
+      wickUpColor: TRADE_BUY_COLOR,
+      wickDownColor: TRADE_SELL_COLOR,
     });
 
     chartRef.current = chart;
@@ -599,17 +625,6 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
       barRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-    const isDark = chartUiTheme === 'dark';
-    const th = chartLayoutTheme(isDark);
-    chart.applyOptions({
-      layout: { background: th.background, textColor: th.textColor },
-      grid: th.grid,
-    });
-  }, [chartUiTheme]);
 
   useEffect(() => {
     hardReset();
@@ -826,7 +841,6 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
             if (p === 'kis' || p === 'kis-index' || p === 'kis-overseas') {
               setFeedProvider(p);
               setFeedSymbol(s);
-              if (p === 'kis') setSymbolInput(s);
             }
           }
         } catch {
@@ -854,18 +868,8 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     if (w?.readyState === 1) {
       w.send(JSON.stringify({ op: 'subscribe', provider: feedProvider, symbol: feedSymbol }));
     }
-    // 심볼 변경 시 호가·틱만 초기화, 차트 봉은 new history 도착 전까지 유지
-    softReset();
-  }, [feedProvider, feedSymbol, softReset]);
-
-  const applySymbol = () => {
-    const n = normalizeSymbol(symbolInput);
-    if (!n) return;
-    setFeedProvider('kis');
-    setFeedSymbol(n);
-    // applySymbol은 명시적 입력이므로 차트도 초기화
     hardReset();
-  };
+  }, [feedProvider, feedSymbol, hardReset]);
 
   const handleWatchSelect = useCallback((item: WatchInstrument) => {
     setSelectedWatchId(item.id);
@@ -873,7 +877,6 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     if (k) {
       const n = normalizeSymbol(k);
       if (n) {
-        setSymbolInput(k);
         setFeedProvider('kis');
         setFeedSymbol(n);
       }
@@ -914,19 +917,6 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const obLastPx = lastTradePx ?? liveRow?.lastPrice ?? null;
 
   const obPriceDecimals = selectedWatchInstrument?.priceDecimals ?? (feedProvider === 'kis' ? 0 : 5);
-  const sellTapeRows = sellTape.slice(0, TAPE_LIMIT);
-  const buyTapeRows = buyTape.slice(0, TAPE_LIMIT);
-  const watchStripItems = useMemo(
-    () =>
-      FUTURES_WATCHLIST.map((item) => {
-        const live = liveById[item.id];
-        const price = live?.lastPrice ?? item.lastPrice;
-        const changePct = live?.changePct ?? item.changePct;
-        return { item, price, changePct };
-      }),
-    [liveById],
-  );
-
   const netPaperQty = useMemo(() => {
     let n = 0;
     for (const t of paperTrades) {
@@ -940,11 +930,26 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     () => [...paperTrades].sort((a, b) => b.executed_at_ms - a.executed_at_ms).slice(0, 10),
     [paperTrades],
   );
+  const liveTapeCount = buyTape.length + sellTape.length;
 
   const positionSnapshot = useMemo(
     () => summarizePaperPosition(paperTrades, obLastPx),
     [paperTrades, obLastPx],
   );
+  const currentTfLabel = useMemo(
+    () => CHART_TF_OPTIONS.find((option) => option.id === timeframe)?.label ?? timeframe,
+    [timeframe],
+  );
+  const mobileChangePct = liveRow?.changePct ?? selectedWatchInstrument?.changePct ?? 0;
+  const priceToneClass = mobileChangePct > 0 ? 'wlNum--up' : mobileChangePct < 0 ? 'wlNum--down' : 'wlNum--flat';
+  const displaySymbolCode = selectedWatchInstrument?.code ?? obSymbol ?? '—';
+  const displaySymbolName = selectedWatchInstrument?.name ?? '선택 종목';
+  const displayPriceText = obLastPx != null ? formatLivePrice(obLastPx, obPriceDecimals) : '—';
+  const statusText = kisState ? `KIS ${kisState}` : `WS ${wsState}`;
+  const parsedOrderQty = useMemo(() => {
+    const qty = parseInt(orderQtyStr.replace(/\D/g, ''), 10);
+    return Number.isFinite(qty) && qty > 0 ? qty : 0;
+  }, [orderQtyStr]);
 
   const mobileMaxQty = useMemo(() => {
     if (!tradingApiEnabled || cashBalance == null || obLastPx == null || obLastPx <= 0) return null;
@@ -952,7 +957,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     return Number.isFinite(qty) && qty > 0 ? qty : null;
   }, [tradingApiEnabled, cashBalance, obLastPx, mobileLeverage]);
 
-  const applyMobileSizing = useCallback(
+  const applyOrderSizing = useCallback(
     (pct: number) => {
       setMobileSizePct(pct);
       if (mobileMaxQty == null) return;
@@ -961,7 +966,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     [mobileMaxQty],
   );
 
-  const applyMobileLeverage = useCallback(
+  const applyOrderLeverage = useCallback(
     (nextLeverage: number) => {
       setMobileLeverage(nextLeverage);
       if (!tradingApiEnabled || cashBalance == null || obLastPx == null || obLastPx <= 0) return;
@@ -971,6 +976,17 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     },
     [tradingApiEnabled, cashBalance, obLastPx, mobileSizePct],
   );
+
+  const cycleLeverage = useCallback(() => {
+    const currentIndex = LEVERAGE_OPTIONS.findIndex((value) => value === mobileLeverage);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % LEVERAGE_OPTIONS.length : 0;
+    applyOrderLeverage(LEVERAGE_OPTIONS[nextIndex]);
+  }, [applyOrderLeverage, mobileLeverage]);
+
+  const handleOrderKindChange = useCallback((kind: OrderKind) => {
+    setOrderKind(kind);
+    if (kind === 'market') setOrderPriceStr('');
+  }, []);
 
   const handleOrderbookPriceSelect = useCallback(
     (price: number) => {
@@ -990,6 +1006,41 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     const p = parseFloat(String(orderPriceStr).replace(/,/g, ''));
     return Number.isFinite(p) && p > 0 ? p : null;
   }, [orderKind, orderPriceStr, obLastPx]);
+  const estimatedOrderCost = useMemo(() => {
+    if (effectiveOrderPrice == null || parsedOrderQty <= 0) return 0;
+    return effectiveOrderPrice * parsedOrderQty;
+  }, [effectiveOrderPrice, parsedOrderQty]);
+
+  const fillCurrentPrice = useCallback(() => {
+    if (obLastPx == null || !Number.isFinite(obLastPx) || obLastPx <= 0) return;
+    setOrderKind('limit');
+    setOrderPriceStr(formatOrderInputPrice(obLastPx, obPriceDecimals));
+  }, [obLastPx, obPriceDecimals]);
+
+  const adjustOrderPrice = useCallback(
+    (direction: -1 | 1) => {
+      const priceStep = obPriceDecimals > 0 ? 1 / 10 ** obPriceDecimals : 1;
+      const base = effectiveOrderPrice ?? obLastPx ?? priceStep;
+      const next = Math.max(priceStep, base + priceStep * direction);
+      setOrderKind('limit');
+      setOrderPriceStr(formatOrderInputPrice(next, obPriceDecimals));
+    },
+    [effectiveOrderPrice, obLastPx, obPriceDecimals],
+  );
+
+  const adjustOrderQty = useCallback(
+    (direction: -1 | 1) => {
+      const base = parsedOrderQty > 0 ? parsedOrderQty : 1;
+      const next = Math.max(1, base + direction);
+      setOrderQtyStr(String(next));
+    },
+    [parsedOrderQty],
+  );
+
+  const fillMaxQty = useCallback(() => {
+    if (mobileMaxQty == null) return;
+    setOrderQtyStr(String(mobileMaxQty));
+  }, [mobileMaxQty]);
 
   const runPaperOrder = async (side: 'buy' | 'sell') => {
     if (!session?.accessToken || !getMarketApiBase()) {
@@ -1113,162 +1164,627 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     </div>
   ) : null;
 
+  const symbolTabs =
+    FUTURES_WATCHLIST.length > 1 ? (
+      <div className="htsSymbolTabs" role="tablist" aria-label="심볼 선택">
+        {FUTURES_WATCHLIST.map((item) => {
+          const live = liveById[item.id];
+          const price = live?.lastPrice ?? item.lastPrice;
+          const changePct = live?.changePct ?? item.changePct;
+          const toneClass = changePct > 0 ? 'wlNum--up' : changePct < 0 ? 'wlNum--down' : 'wlNum--flat';
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={selectedWatchId === item.id}
+              className={`htsSymbolTab${selectedWatchId === item.id ? ' htsSymbolTab--active' : ''}`}
+              onClick={() => handleWatchSelect(item)}
+            >
+              <span className="htsSymbolTabCode">{item.code}</span>
+              <span className={`htsSymbolTabPrice ${toneClass}`}>{formatLivePrice(price, item.priceDecimals)}</span>
+            </button>
+          );
+        })}
+      </div>
+    ) : null;
+
+  const recordContent =
+    recordTab === 'positions' ? (
+      positionSnapshot.side === 'flat' ? (
+        <div className="htsRecordEmpty">현재 보유 중인 포지션이 없습니다.</div>
+      ) : (
+        <article className={`htsRecordPosition htsRecordPosition--${positionSnapshot.side}`}>
+          <div className="htsRecordPositionHead">
+            <div>
+              <strong>{positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}</strong>
+              <p>{displaySymbolCode}</p>
+            </div>
+            <button type="button" className="htsPositionActionBtn" onClick={fillPositionQty}>
+              수량 채우기
+            </button>
+          </div>
+          <div className="htsRecordMetricGrid">
+            <div className="htsRecordMetric">
+              <span>수량</span>
+              <strong>{Math.abs(positionSnapshot.netQty).toLocaleString('ko-KR')}</strong>
+            </div>
+            <div className="htsRecordMetric">
+              <span>평단</span>
+              <strong>{positionSnapshot.avgPrice != null ? formatLivePrice(positionSnapshot.avgPrice, obPriceDecimals) : '—'}</strong>
+            </div>
+            <div className="htsRecordMetric">
+              <span>평가금액</span>
+              <strong>
+                {positionSnapshot.markValue != null ? `${Math.round(positionSnapshot.markValue).toLocaleString('ko-KR')}원` : '—'}
+              </strong>
+            </div>
+            <div className="htsRecordMetric">
+              <span>미실현손익</span>
+              <strong
+                className={
+                  positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
+                    ? 'wlNum--up'
+                    : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
+                      ? 'wlNum--down'
+                      : 'wlNum--flat'
+                }
+              >
+                {positionSnapshot.unrealized != null
+                  ? `${positionSnapshot.unrealized > 0 ? '+' : ''}${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원`
+                  : '—'}
+              </strong>
+            </div>
+          </div>
+        </article>
+      )
+    ) : recordTab === 'openOrders' ? (
+      <div className="htsRecordEmpty">현재 미체결 주문이 없습니다.</div>
+    ) : recentPaperTrades.length > 0 ? (
+      <div className="htsRecordTradeList">
+        {recentPaperTrades.map((trade) => (
+          <article key={trade.id} className="htsRecordTradeRow">
+            <div className="htsRecordTradeMain">
+              <strong className={trade.side === 'buy' ? 'wlNum--up' : 'wlNum--down'}>
+                {trade.side === 'buy' ? '매수' : '매도'}
+              </strong>
+              <span>{trade.symbol}</span>
+              <span>수량 {trade.qty.toLocaleString('ko-KR')}</span>
+            </div>
+            <div className="htsRecordTradeMeta">
+              <span>{formatLivePrice(trade.price, trade.provider === 'kis' ? 0 : 5)}</span>
+              <span>{new Date(trade.executed_at_ms).toLocaleTimeString('ko-KR', { hour12: false })}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <div className="htsRecordEmpty">아직 체결 기록이 없습니다.</div>
+    );
+
+  /* ── 레버리지 조정 모달 ─────────────────────────────── */
+  const leverageModal = leverageModalOpen ? (
+    <div
+      className="fcLevModalRoot"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fc-lev-title"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) setLeverageModalOpen(false);
+      }}
+    >
+      <div className="fcLevModal">
+        <div className="fcLevModalTop">
+          <h2 id="fc-lev-title" className="fcLevModalTitle">레버리지 조정</h2>
+          <button type="button" className="fcLevModalClose" onClick={() => setLeverageModalOpen(false)} aria-label="닫기">
+            <X size={18} weight="bold" />
+          </button>
+        </div>
+        <div className="fcLevCurrentRow">
+          <span>현재</span>
+          <strong className="fcLevCurrent">{mobileLeverage}x</strong>
+        </div>
+        <div className="fcLevSliderWrap">
+          <div className="htsLineSliderWrap">
+            <div className="htsLineSliderRail" />
+            <div
+              className="htsLineSliderFill"
+              style={{
+                '--slider-pct': `${((mobileLeverage - 1) / (LEVERAGE_OPTIONS[LEVERAGE_OPTIONS.length - 1] - 1)) * 100}%`,
+              } as React.CSSProperties}
+            />
+            <input
+              type="range"
+              className="htsLineSliderInput"
+              min={1}
+              max={LEVERAGE_OPTIONS[LEVERAGE_OPTIONS.length - 1]}
+              step={1}
+              value={mobileLeverage}
+              onChange={(e) => setMobileLeverage(Number(e.target.value))}
+            />
+          </div>
+          <div className="fcLevMarks">
+            {LEVERAGE_OPTIONS.map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={`fcLevMark${mobileLeverage === v ? ' fcLevMark--active' : ''}`}
+                onClick={() => setMobileLeverage(v)}
+              >
+                {v}x
+              </button>
+            ))}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="htsOrderBtn htsOrderBtn--buy"
+          style={{ marginTop: '0.75rem', width: '100%' }}
+          onClick={() => setLeverageModalOpen(false)}
+        >
+          확인
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (isMobileViewport) {
     return (
       <section className="htsWorkspace htsWorkspace--mobile" aria-label="모바일 HTS 작업 영역">
-        <div className="htsMobileTop">
-          <div className="htsMobileTopBar">
-            <div>
-              <p className="htsPanelTitle">심볼 선택</p>
-              <p className="htsMuted">
-                {selectedWatchInstrument?.name ?? '관심 종목'}
-                {lastTick ? ` · ${lastTick}` : ''}
-              </p>
+
+        {/* ── 상단 헤더 ───────────────────────────────── */}
+        <header className="htsMobileHeader">
+          <div className="htsMobileTickerRow">
+            <div className="htsMobileTickerMain">
+              <div className="htsMobileTickerLine">
+                <strong className="htsMobileTickerSymbol">{displaySymbolCode}</strong>
+                <strong className={`htsMobileTickerPrice ${priceToneClass}`}>{displayPriceText}</strong>
+                <span className={`htsMobileTickerChange ${priceToneClass}`}>
+                  {mobileChangePct > 0 ? '+' : ''}
+                  {mobileChangePct.toFixed(2)}%
+                </span>
+              </div>
+              <p className="htsMobileTickerName">{displaySymbolName}</p>
             </div>
-            <div className="htsMobileStatus">
-              <span className={`htsStatusDot ${dotClass}`} aria-hidden />
-              <span>{kisState ? `KIS ${kisState}` : `WS ${wsState}`}</span>
-            </div>
+            <div className="htsMobileStatusBadge" aria-hidden="true" style={{ display: 'none' }} />
           </div>
-          <div className="htsMobileWatchStrip" role="tablist" aria-label="간편 종목 선택">
-            {watchStripItems.map(({ item, price, changePct }) => {
-              const active = selectedWatchId === item.id;
-              const dirCls = changePct > 0 ? ' htsMobileWatchChip--up' : changePct < 0 ? ' htsMobileWatchChip--down' : '';
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`htsMobileWatchChip${active ? ' htsMobileWatchChip--active' : ''}${dirCls}`}
-                  onClick={() => handleWatchSelect(item)}
-                >
-                  <span className="htsMobileWatchCode">{item.code}</span>
-                  <span className="htsMobileWatchPrice">{formatLivePrice(price, item.priceDecimals)}</span>
-                  <span className="htsMobileWatchPct">
-                    {changePct > 0 ? '+' : ''}
-                    {changePct.toFixed(2)}%
+          <div className="htsMobileActionRow">
+            {/* 레버리지 버튼 → 모달 오픈 (시그니처 색 버튼) */}
+            <div style={{flex:1}} />
+            <button type="button" className="htsMobileLevBtnNew" onClick={() => setLeverageModalOpen(true)}>
+              <Lightning size={14} weight="fill" />
+              레버리지 {mobileLeverage}x
+            </button>
+          </div>
+          {symbolTabs}
+        </header>
+
+        {/* ── 주문 탭 ─────────────────────────────────── */}
+        {mobileTab === 'trade' && (
+          <div className="htsMobileTradeLayout">
+
+            {/* 상단: [오더북] [주문] 좌우 */}
+            <div className="htsMobileTopRow">
+
+              {/* 오더북 */}
+              <section className="htsMobileBookSection htsMobileBookSection--tall" aria-label="모바일 오더북">
+                <div className="htsSectionHead htsSectionHead--sm">
+                  <strong><BookOpen size={13} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.25rem'}}/>Depth</strong>
+                  <span>{Math.max(obAsks.length, obBids.length)}단</span>
+                </div>
+                <div className="htsMobileBookScroll">
+                  <OrderBookPanel
+                    asks={obAsks}
+                    bids={obBids}
+                    symbol={obSymbol}
+                    lastTradePrice={obLastPx}
+                    obRevision={obRev}
+                    tickRevision={tickRev}
+                    priceDecimals={obPriceDecimals}
+                    isStale={obIsStale}
+                    isSynthetic={obIsSynthetic}
+                    maxDepth={7}
+                    onPriceSelect={handleOrderbookPriceSelect}
+                  />
+                </div>
+              </section>
+
+              {/* 주문 패널 */}
+              <section className="htsMobileOrderSection htsMobileOrderSection--scroll" aria-label="모바일 주문 패널">
+                <div className="htsSectionHead htsSectionHead--sm">
+                  <strong><PencilSimpleLine size={13} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.25rem'}}/>주문</strong>
+                  <span className={positionSnapshot.side !== 'flat' ? (positionSnapshot.side === 'long' ? 'mobilePosBadge--long' : 'mobilePosBadge--short') : ''}>
+                    {positionSnapshot.side === 'flat' ? '없음' : positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}
                   </span>
-                </button>
-              );
-            })}
+                </div>
+
+                <div className="htsOrderPanelBody htsOrderPanelBody--compact">
+                  <div className="htsOrderFieldBlock">
+                    <span className="htsOrderFieldLabel">타입</span>
+                    <OrderKindToggle value={orderKind} onChange={handleOrderKindChange} />
+                  </div>
+
+                  <div className="htsOrderInputRow">
+                    <label className="htsOrderFieldBlock">
+                      <span className="htsOrderFieldLabel">가격</span>
+                      <div className="htsStepInput">
+                        <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderPrice(-1)}>−</button>
+                        <input
+                          placeholder={orderKind === 'market' ? '시장가' : '가격'}
+                          inputMode="decimal"
+                          disabled={orderKind === 'market'}
+                          value={orderKind === 'market' ? (obLastPx != null ? String(obLastPx) : '') : orderPriceStr}
+                          onChange={(e) => setOrderPriceStr(e.target.value)}
+                        />
+                        <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderPrice(1)}>+</button>
+                      </div>
+                    </label>
+                    <button type="button" className="htsGhostActionBtn htsGhostActionBtn--sm" onClick={fillCurrentPrice}>
+                      <ArrowsClockwise size={12} weight="bold" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>현재가
+                    </button>
+                  </div>
+
+                  <div className="htsOrderInputRow">
+                    <label className="htsOrderFieldBlock">
+                      <span className="htsOrderFieldLabel">수량</span>
+                      <div className="htsStepInput">
+                        <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderQty(-1)}>−</button>
+                        <input placeholder="수량" inputMode="numeric" value={orderQtyStr} onChange={(e) => setOrderQtyStr(e.target.value)} />
+                        <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderQty(1)}>+</button>
+                      </div>
+                    </label>
+                    <button type="button" className="htsGhostActionBtn htsGhostActionBtn--sm" onClick={fillMaxQty}>
+                      <ArrowUp size={12} weight="bold" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>최대
+                    </button>
+                  </div>
+
+                  {/* 수량 레버 */}
+                  <div className="htsSizingLever">
+                    <div className="htsSizingLeverTrack">
+                      <input
+                        type="range"
+                        className="htsSizingLeverInput"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={mobileSizePct}
+                        onChange={(e) => applyOrderSizing(Number(e.target.value))}
+                      />
+                      <div className="htsSizingLeverFill" style={{ '--lev-pct': `${mobileSizePct}%` } as React.CSSProperties} />
+                    </div>
+                    <div className="htsSizingLeverMarks">
+                      {[0, 25, 50, 75, 100].map((v) => (
+                        <button key={v} type="button" className="htsSizingLeverMark" onClick={() => applyOrderSizing(v)}>
+                          {v === 0 ? '' : `${v}%`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="htsSizingLeverInfo">
+                    <span>잔고 <b>{tradingApiEnabled ? (cashBalance != null ? `${cashBalance.toLocaleString('ko-KR')}₩` : '…') : '—'}</b></span>
+                    <span>비용 <b>{estimatedOrderCost > 0 ? `${Math.round(estimatedOrderCost).toLocaleString('ko-KR')}₩` : '0₩'}</b></span>
+                  </div>
+
+                  {/* 매수/매도 버튼 — 상하 배치 */}
+                  <div className="htsOrderActions htsOrderActions--stack">
+                    <button type="button" className="htsOrderBtn htsOrderBtn--buy" disabled={tradeBusy} onClick={() => void runPaperOrder('buy')}>
+                      <ArrowUp size={14} weight="bold" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>매수 / Long
+                    </button>
+                    <button type="button" className="htsOrderBtn htsOrderBtn--sell" disabled={tradeBusy} onClick={() => void runPaperOrder('sell')}>
+                      <ArrowDown size={14} weight="bold" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>매도 / Short
+                    </button>
+                  </div>
+                  {tradeMsg ? <p className="htsOrderTradeMsg">{tradeMsg}</p> : null}
+                </div>
+              </section>
+            </div>
+
+            {/* 하단: 포지션 영역 */}
+            <div className="htsMobilePosRow">
+              {/*<div className="htsMobilePosDividerRow">*/}
+              {/*  <span>포지션</span>*/}
+              {/*</div>*/}
+              <div className="htsRecordTabs htsRecordTabs--sm" role="tablist">
+                {RECORD_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={recordTab === tab.id}
+                    className={`htsRecordTab htsRecordTab--sm${recordTab === tab.id ? ' htsRecordTab--active' : ''}`}
+                    onClick={() => setRecordTab(tab.id)}
+                  >
+                    {tab.icon}{tab.label}
+                  </button>
+                ))}
+              </div>
+              <div className="htsMobilePosBody">{recordContent}</div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ── 차트 탭 — 항상 DOM 유지(차트 초기화 보장), 비활성 탭은 CSS로 숨김 */}
+        <div className={`htsMobileChartTab${mobileTab === 'chart' ? '' : ' htsMobileChartTab--hidden'}`} aria-hidden={mobileTab !== 'chart'}>
+          <div className="htsTfBar" role="toolbar" aria-label="봉 간격">
+            {CHART_TF_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`htsTfBtn${timeframe === option.id ? ' htsTfBtn--active' : ''}`}
+                onClick={() => setTimeframe(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="htsMobileChartWrap htsChartWrap chartWrap" ref={wrapRef} />
+          {/* 차트 탭 하단 — 주문 탭 바로가기 */}
+          <div className="htsMobileChartOrderBar">
+            <button type="button" className="htsOrderBtn htsOrderBtn--buy htsMobileChartOrderBtn" onClick={() => setMobileTab('trade')}>
+              매수
+            </button>
+            <button type="button" className="htsOrderBtn htsOrderBtn--sell htsMobileChartOrderBtn" onClick={() => setMobileTab('trade')}>
+              매도
+            </button>
           </div>
         </div>
 
-        <div className="htsMobileMain">
-          <div className="htsMobileOrderbookPane">
-            <OrderBookPanel
-              asks={obAsks}
-              bids={obBids}
-              symbol={obSymbol}
-              lastTradePrice={obLastPx}
-              obRevision={obRev}
-              tickRevision={tickRev}
-              priceDecimals={obPriceDecimals}
-              isStale={obIsStale}
-              isSynthetic={obIsSynthetic}
-              onPriceSelect={handleOrderbookPriceSelect}
-            />
+        {/* ── 공지 탭 ─────────────────────────────────── */}
+        {mobileTab === 'notice' && (
+          <div className="htsMobileNoticeTab">
+            <div className="htsSectionHead">
+              <strong>공지·상태</strong>
+              <span>{timeStr}</span>
+            </div>
+            <div className="htsInfoList">
+              <div className="htsInfoRow"><span>연결 상태</span><strong>{statusText}</strong></div>
+              <div className="htsInfoRow"><span>최근 체결</span><strong>{lastTick ?? '체결 대기'}</strong></div>
+              <div className="htsInfoRow"><span>실시간 누적</span><strong>{liveTapeCount.toLocaleString('ko-KR')}건</strong></div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 계정 탭 ─────────────────────────────────── */}
+        {mobileTab === 'account' && (
+          <div className="htsMobileAccountTab">
+            <div className="htsSectionHead">
+              <strong>계정</strong>
+              <span>{tradingApiEnabled ? '모의거래' : '로그인 필요'}</span>
+            </div>
+            <div className="htsAccountGrid">
+              <div className="htsAccountMetric"><span>잔고</span><strong>{tradingApiEnabled ? (cashBalance != null ? `${cashBalance.toLocaleString('ko-KR')}원` : '…') : '—'}</strong></div>
+              <div className="htsAccountMetric"><span>레버리지</span><strong>{mobileLeverage}x</strong></div>
+              <div className="htsAccountMetric"><span>보유</span><strong>{Math.abs(netPaperQty).toLocaleString('ko-KR')}</strong></div>
+              <div className="htsAccountMetric">
+                <span>PnL</span>
+                <strong className={positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0 ? 'wlNum--up' : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0 ? 'wlNum--down' : 'wlNum--flat'}>
+                  {positionSnapshot.unrealized != null ? `${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원` : '—'}
+                </strong>
+              </div>
+            </div>
+            {tradingApiEnabled ? (
+              <button type="button" className="htsOrderChargeOpen" onClick={() => setChargeOpen(true)}>
+                충전 신청
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {/* ── 하단 고정 내비게이션 ──────────────────────── */}
+        <nav className="htsMobileBottomNav htsMobileBottomNav--fixed" aria-label="하단 내비게이션">
+          <button
+            type="button"
+            className={`htsMobileBottomNavItem${mobileTab === 'trade' ? ' htsMobileBottomNavItem--active' : ''}`}
+            onClick={() => setMobileTab('trade')}
+          >
+            <Swap size={22} weight={mobileTab === 'trade' ? 'fill' : 'regular'} />
+            <span>주문</span>
+          </button>
+          <button
+            type="button"
+            className={`htsMobileBottomNavItem${mobileTab === 'chart' ? ' htsMobileBottomNavItem--active' : ''}`}
+            onClick={() => setMobileTab('chart')}
+          >
+            <ChartLine size={22} weight={mobileTab === 'chart' ? 'fill' : 'regular'} />
+            <span>차트</span>
+          </button>
+          <button
+            type="button"
+            className={`htsMobileBottomNavItem${mobileTab === 'notice' ? ' htsMobileBottomNavItem--active' : ''}`}
+            onClick={() => setMobileTab('notice')}
+          >
+            <BellSimple size={22} weight={mobileTab === 'notice' ? 'fill' : 'regular'} />
+            <span>공지</span>
+          </button>
+          <button
+            type="button"
+            className={`htsMobileBottomNavItem${mobileTab === 'account' ? ' htsMobileBottomNavItem--active' : ''}`}
+            onClick={() => setMobileTab('account')}
+          >
+            <User size={22} weight={mobileTab === 'account' ? 'fill' : 'regular'} />
+            <span>계정</span>
+          </button>
+        </nav>
+
+        {chargeModal}
+        {leverageModal}
+      </section>
+    );
+  }
+
+  return (
+    <section className="htsWorkspace htsWorkspace--deskLayout" aria-label="HTS 작업 영역">
+      <header className="htsDeskTopbar">
+        <div className="htsDeskTicker">
+          <strong className="htsDeskTickerSymbol">{displaySymbolCode}</strong>
+          <strong className={`htsDeskTickerPrice ${priceToneClass}`}>{displayPriceText}</strong>
+          <span className={`htsDeskTickerChange ${priceToneClass}`}>
+            {mobileChangePct > 0 ? '+' : ''}
+            {mobileChangePct.toFixed(2)}%
+          </span>
+        </div>
+        <div className="htsDeskTopbarMeta">
+          {/*<span className="htsDeskInfoChip">오더북 {Math.max(obAsks.length, obBids.length)}단</span>*/}
+          <span className="htsDeskInfoChip">{currentTfLabel}</span>
+          <button type="button" className="htsDeskInfoChip htsDeskInfoChip--action" onClick={cycleLeverage}>
+            <Lightning size={12} weight="fill" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>레버리지 {mobileLeverage}x
+          </button>
+        </div>
+      </header>
+
+      {symbolTabs}
+
+      <div className="htsDeskMain">
+        <section className="htsDeskChartPane" aria-label="차트">
+          <div className="htsSectionHead">
+            <strong><ChartLine size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>차트</strong>
+            <span>{statusText}</span>
+          </div>
+          <div className="htsTfBar" role="toolbar" aria-label="봉 간격">
+            {CHART_TF_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={`htsTfBtn${timeframe === option.id ? ' htsTfBtn--active' : ''}`}
+                onClick={() => setTimeframe(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="htsChartWrap chartWrap" ref={wrapRef} />
+        </section>
+
+        <section className="htsDeskBookPane" aria-label="오더북">
+          <OrderBookPanel
+            variant="hts"
+            asks={obAsks}
+            bids={obBids}
+            symbol={obSymbol}
+            lastTradePrice={obLastPx}
+            obRevision={obRev}
+            tickRevision={tickRev}
+            priceDecimals={obPriceDecimals}
+            isStale={obIsStale}
+            isSynthetic={obIsSynthetic}
+            maxDepth={8}
+            onPriceSelect={handleOrderbookPriceSelect}
+          />
+        </section>
+
+        <section className="htsDeskOrderPane" aria-label="주문하기">
+          <div className="htsSectionHead">
+            <strong><PencilSimpleLine size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>주문</strong>
+            <span>{displaySymbolName}</span>
           </div>
 
-          <div className="htsMobileTradePane" aria-label="모바일 주문 패널">
-            <div className="htsMobileTradeHead">
-              <span className="htsMobilePaneLabel">주문</span>
-              <strong className="htsTapeMidPrice">
-                {obLastPx != null ? formatLivePrice(obLastPx, obPriceDecimals) : '—'}
-              </strong>
+          <div className="htsOrderPanelBody">
+            {/* ─ 레버리지 레버 ─ */}
+            <div className="htsDeskLevSection">
+              <div className="htsDeskLevHead">
+                <Lightning size={13} weight="fill" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>
+                <span>레버리지</span>
+                <strong className="htsDeskLevValue">{mobileLeverage}x</strong>
+              </div>
+              <div className="htsSizingLever">
+                <div className="htsSizingLeverTrack">
+                  <input
+                    type="range"
+                    className="htsSizingLeverInput"
+                    min={1}
+                    max={LEVERAGE_OPTIONS[LEVERAGE_OPTIONS.length - 1]}
+                    step={1}
+                    value={mobileLeverage}
+                    onChange={(e) => setMobileLeverage(Number(e.target.value))}
+                  />
+                  <div className="htsSizingLeverFill" style={{ '--lev-pct': `${((mobileLeverage - 1) / (LEVERAGE_OPTIONS[LEVERAGE_OPTIONS.length - 1] - 1)) * 100}%` } as React.CSSProperties} />
+                </div>
+                <div className="htsSizingLeverMarks">
+                  {LEVERAGE_OPTIONS.map((v) => (
+                    <button key={v} type="button" className={`htsSizingLeverMark${mobileLeverage === v ? ' htsSizingLeverMark--active' : ''}`} onClick={() => setMobileLeverage(v)}>
+                      {v}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="htsOrderFieldBlock">
+              <span className="htsOrderFieldLabel">주문 타입</span>
+              <OrderKindToggle value={orderKind} onChange={handleOrderKindChange} />
             </div>
 
-            <div className="htsMobileControlGroup">
-              <span className="htsMobilePaneLabel">레버리지</span>
-              <div className="htsMobileSliderHead">
-                <strong>x{mobileLeverage}</strong>
-                <span>최대 x125</span>
+            <div className="htsOrderInputRow">
+              <label className="htsOrderFieldBlock">
+                <span className="htsOrderFieldLabel">가격</span>
+                <div className="htsStepInput">
+                  <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderPrice(-1)}>−</button>
+                  <input
+                    placeholder={orderKind === 'market' ? '시장가(현재가 사용)' : '가격'}
+                    inputMode="decimal"
+                    disabled={orderKind === 'market'}
+                    value={orderKind === 'market' ? (obLastPx != null ? String(obLastPx) : '') : orderPriceStr}
+                    onChange={(e) => setOrderPriceStr(e.target.value)}
+                  />
+                  <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderPrice(1)}>+</button>
+                </div>
+              </label>
+              <button type="button" className="htsGhostActionBtn" onClick={fillCurrentPrice}>
+                <ArrowsClockwise size={12} weight="bold" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>현재가
+              </button>
+            </div>
+
+            <div className="htsOrderInputRow">
+              <label className="htsOrderFieldBlock">
+                <span className="htsOrderFieldLabel">수량</span>
+                <div className="htsStepInput">
+                  <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderQty(-1)}>−</button>
+                  <input placeholder="수량" inputMode="numeric" value={orderQtyStr} onChange={(e) => setOrderQtyStr(e.target.value)} />
+                  <button type="button" className="htsStepInputBtn htsStepInputBtn--circle" onClick={() => adjustOrderQty(1)}>+</button>
+                </div>
+              </label>
+              <button type="button" className="htsGhostActionBtn" onClick={fillMaxQty}>
+                <ArrowUp size={12} weight="bold" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>최대
+              </button>
+            </div>
+
+            {/* 수량 레버 (웹도 동일) */}
+            <div className="htsSizingLever">
+              <div className="htsSizingLeverTrack">
+                <input
+                  type="range"
+                  className="htsSizingLeverInput"
+                  min={0} max={100} step={1}
+                  value={mobileSizePct}
+                  onChange={(e) => applyOrderSizing(Number(e.target.value))}
+                />
+                <div className="htsSizingLeverFill" style={{ '--lev-pct': `${mobileSizePct}%` } as React.CSSProperties} />
               </div>
-              <input
-                className="htsLeverageSlider"
-                type="range"
-                min="1"
-                max="125"
-                step="1"
-                value={mobileLeverage}
-                onChange={(e) => applyMobileLeverage(Number(e.target.value))}
-                aria-label="레버리지"
-              />
-              <div className="htsMobileSegmentRow">
-                {[1, 10, 25, 50, 125].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`htsMobileSegmentBtn${mobileLeverage === value ? ' htsMobileSegmentBtn--active' : ''}`}
-                    onClick={() => applyMobileLeverage(value)}
-                  >
-                    x{value}
+              <div className="htsSizingLeverMarks">
+                {[0, 25, 50, 75, 100].map((v) => (
+                  <button key={v} type="button" className="htsSizingLeverMark" onClick={() => applyOrderSizing(v)}>
+                    {v === 0 ? '' : `${v}%`}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="htsMobileControlGroup">
-              <span className="htsMobilePaneLabel">사이징</span>
-              <div className="htsMobileSegmentRow">
-                {[25, 50, 75, 100].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={`htsMobileSegmentBtn${mobileSizePct === value ? ' htsMobileSegmentBtn--active' : ''}`}
-                    onClick={() => applyMobileSizing(value)}
-                    disabled={mobileMaxQty == null}
-                  >
-                    {value}%
-                  </button>
-                ))}
-              </div>
-              <p className="htsMuted htsMobileHint">
-                {mobileMaxQty != null
-                  ? `추정 최대 수량 ${mobileMaxQty.toLocaleString('ko-KR')} · 현재 입력 ${orderQtyStr || '0'}`
-                  : '로그인/잔고가 있으면 사이징 버튼으로 수량을 바로 채울 수 있습니다.'}
-              </p>
+            <div className="htsSizingLeverInfo">
+              <span>잔고 <b>{tradingApiEnabled ? (cashBalance != null ? `${cashBalance.toLocaleString('ko-KR')}원` : '…') : '—'}</b></span>
+              <span>Max <b>{mobileMaxQty != null ? mobileMaxQty.toLocaleString('ko-KR') : '—'}</b></span>
+              <span>비용 <b>{estimatedOrderCost > 0 ? `${Math.round(estimatedOrderCost).toLocaleString('ko-KR')}원` : '0원'}</b></span>
+              <span>보유 <b>{netPaperQty.toLocaleString('ko-KR')}</b></span>
             </div>
 
-            <div className="htsMobileFormGrid">
-              <label className="htsMobileField">
-                <span>주문유형</span>
-                <select
-                  value={orderKind}
-                  onChange={(e) => setOrderKind(e.target.value === 'limit' ? 'limit' : 'market')}
-                >
-                  <option value="limit">지정가</option>
-                  <option value="market">시장가</option>
-                </select>
-              </label>
-              <label className="htsMobileField">
-                <span>가격</span>
-                <input
-                  placeholder={orderKind === 'market' ? '현재가 사용' : '가격'}
-                  inputMode="decimal"
-                  disabled={orderKind === 'market'}
-                  value={orderKind === 'market' ? (obLastPx != null ? String(obLastPx) : '') : orderPriceStr}
-                  onChange={(e) => setOrderPriceStr(e.target.value)}
-                />
-              </label>
-              <label className="htsMobileField">
-                <span>수량</span>
-                <input
-                  placeholder="수량"
-                  inputMode="numeric"
-                  value={orderQtyStr}
-                  onChange={(e) => setOrderQtyStr(e.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="htsMobileTradeButtons">
+            <div className="htsOrderActions">
               <button
                 type="button"
                 className="htsOrderBtn htsOrderBtn--buy"
                 disabled={tradeBusy}
                 onClick={() => void runPaperOrder('buy')}
               >
-                매수
+                <ArrowUp size={14} weight="bold" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>매수 / Long
               </button>
               <button
                 type="button"
@@ -1276,479 +1792,86 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
                 disabled={tradeBusy}
                 onClick={() => void runPaperOrder('sell')}
               >
-                매도
+                <ArrowDown size={14} weight="bold" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>매도 / Short
               </button>
             </div>
 
-            <p className="htsMobileBalance" aria-live="polite">
-              잔고{' '}
-              <strong>
-                {tradingApiEnabled
-                  ? cashBalance != null
-                    ? `${cashBalance.toLocaleString('ko-KR')}원`
-                    : '…'
-                  : '—'}
-              </strong>
-            </p>
             {tradeMsg ? <p className="htsOrderTradeMsg">{tradeMsg}</p> : null}
-            {tradingApiEnabled ? (
-              <button type="button" className="htsOrderChargeOpen" onClick={() => setChargeOpen(true)}>
-                거래 자금 충전 신청
-              </button>
-            ) : null}
           </div>
-        </div>
-
-        <div className="htsMobileBottom">
-          <div className="htsMobileBottomHead">
-            <p className="htsPanelTitle">
-              {mobileTab === 'positions' ? '포지션' : mobileTab === 'orders' ? '주문내역' : '관심 종목'}
-            </p>
-            <p className="htsMuted">
-              {mobileTab === 'positions'
-                ? '현재 선택한 심볼 기준 모의 포지션 요약'
-                : mobileTab === 'orders'
-                  ? '최근 체결 순서대로 확인'
-                  : '전체 관심 종목을 빠르게 훑어보기'}
-            </p>
-          </div>
-
-          <div className="htsMobileTabBody">
-            {mobileTab === 'positions' ? (
-              positionSnapshot.side === 'flat' ? (
-                <div className="htsMobileEmpty">보유 포지션이 없습니다.</div>
-              ) : (
-                <article className={`htsMobilePositionCard htsMobilePositionCard--${positionSnapshot.side}`}>
-                  <div className="htsMobilePositionHead">
-                    <strong>{positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}</strong>
-                    <button type="button" className="htsPositionActionBtn" onClick={fillPositionQty}>
-                      전량 청산 수량 채우기
-                    </button>
-                  </div>
-                  <div className="htsMobilePositionRow">
-                    <span>포지션</span>
-                    <strong>{positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}</strong>
-                  </div>
-                  <div className="htsMobilePositionRow">
-                    <span>수량</span>
-                    <strong>{Math.abs(positionSnapshot.netQty).toLocaleString('ko-KR')}</strong>
-                  </div>
-                  <div className="htsMobilePositionRow">
-                    <span>평균가</span>
-                    <strong>
-                      {positionSnapshot.avgPrice != null ? formatLivePrice(positionSnapshot.avgPrice, obPriceDecimals) : '—'}
-                    </strong>
-                  </div>
-                  <div className="htsMobilePositionRow">
-                    <span>평가금액</span>
-                    <strong>
-                      {positionSnapshot.markValue != null ? `${Math.round(positionSnapshot.markValue).toLocaleString('ko-KR')}원` : '—'}
-                    </strong>
-                  </div>
-                  <div className="htsMobilePositionRow">
-                    <span>미실현손익</span>
-                    <strong
-                      className={
-                        positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
-                          ? 'wlNum--up'
-                          : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
-                            ? 'wlNum--down'
-                            : 'wlNum--flat'
-                      }
-                    >
-                      {positionSnapshot.unrealized != null
-                        ? `${positionSnapshot.unrealized > 0 ? '+' : ''}${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원`
-                        : '—'}
-                    </strong>
-                  </div>
-                  <p className="htsMuted htsMobilePositionHint">
-                    {positionSnapshot.side === 'long'
-                      ? '롱 포지션 청산은 아래 주문 영역에서 매도 버튼을 누르면 됩니다.'
-                      : '숏 포지션 청산은 아래 주문 영역에서 매수 버튼을 누르면 됩니다.'}
-                  </p>
-                </article>
-              )
-            ) : mobileTab === 'orders' ? (
-              recentPaperTrades.length > 0 ? (
-                <div className="htsMobileOrderList">
-                  {recentPaperTrades.map((trade) => (
-                    <article key={trade.id} className="htsMobileOrderItem">
-                      <div className="htsMobileOrderTop">
-                        <strong className={trade.side === 'buy' ? 'wlNum--up' : 'wlNum--down'}>
-                          {trade.side === 'buy' ? '매수' : '매도'}
-                        </strong>
-                        <span>{new Date(trade.executed_at_ms).toLocaleTimeString('ko-KR', { hour12: false })}</span>
-                      </div>
-                      <div className="htsMobileOrderMeta">
-                        <span>{trade.symbol}</span>
-                        <span>수량 {trade.qty.toLocaleString('ko-KR')}</span>
-                        <span>{formatLivePrice(trade.price, obPriceDecimals)}</span>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="htsMobileEmpty">아직 주문 체결 내역이 없습니다.</div>
-              )
-            ) : (
-              <div className="htsMobileWatchList">
-                {watchStripItems.map(({ item, price, changePct }) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`htsMobileWatchRow${selectedWatchId === item.id ? ' htsMobileWatchRow--active' : ''}`}
-                    onClick={() => handleWatchSelect(item)}
-                  >
-                    <span className="htsMobileWatchRowSym">
-                      <strong>{item.code}</strong>
-                      <small>{item.name}</small>
-                    </span>
-                    <span className="htsMobileWatchRowPrice">{formatLivePrice(price, item.priceDecimals)}</span>
-                    <span className={changePct > 0 ? 'wlNum--up' : changePct < 0 ? 'wlNum--down' : 'wlNum--flat'}>
-                      {changePct > 0 ? '+' : ''}
-                      {changePct.toFixed(2)}%
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <nav className="htsMobileNav" aria-label="모바일 하단 네비게이션">
-            <button
-              type="button"
-              className={`htsMobileNavBtn${mobileTab === 'positions' ? ' htsMobileNavBtn--active' : ''}`}
-              onClick={() => setMobileTab('positions')}
-            >
-              포지션
-            </button>
-            <button
-              type="button"
-              className={`htsMobileNavBtn${mobileTab === 'orders' ? ' htsMobileNavBtn--active' : ''}`}
-              onClick={() => setMobileTab('orders')}
-            >
-              주문내역
-            </button>
-            <button
-              type="button"
-              className={`htsMobileNavBtn${mobileTab === 'watchlist' ? ' htsMobileNavBtn--active' : ''}`}
-              onClick={() => setMobileTab('watchlist')}
-            >
-              관심
-            </button>
-          </nav>
-        </div>
-
-        {chargeModal}
-      </section>
-    );
-  }
-
-  return (
-    <section className="htsWorkspace" aria-label="HTS 작업 영역">
-      <div className="htsLeft">
-        <div className="htsMainToolbar">
-          <label className="symLabel" htmlFor="fc-symbol">
-            종목코드
-          </label>
-          <input
-            id="fc-symbol"
-            className="symInput"
-            value={symbolInput}
-            onChange={(e) => setSymbolInput(e.target.value)}
-            placeholder="005380"
-            maxLength={12}
-            autoComplete="off"
-            onKeyDown={(e) => e.key === 'Enter' && applySymbol()}
-          />
-          <button type="button" className="symBtn" onClick={applySymbol}>
-            적용
-          </button>
-        </div>
-        <div className="htsMainMeta">
-          <span className="chartLabel">Chart (TradingView 계열 엔진)</span>
-          {selectedWatchInstrument ? (
-            <span className="htsWatchMeta" title={selectedWatchInstrument.name}>
-              관심 {selectedWatchInstrument.code}
-              {(selectedWatchInstrument as any).kisIndexFuturesCode
-                ? ' · 실시간(KIS 지수선물)'
-                : (selectedWatchInstrument as any).kisOverseasSeriesCode
-                  ? ' · 실시간(KIS 해외선물옵션)'
-                  : selectedWatchInstrument.krxSubscribeCode
-                    ? ' · 실시간(KIS)'
-                    : ''}
-            </span>
-          ) : null}
-          <span className="chartWs">
-            WS {wsState}
-            {kisState ? ` · KIS ${kisState}` : ''}
-          </span>
-        </div>
-        <div className="htsTfBar" role="toolbar" aria-label="봉 간격">
-          <span className="htsTfBarLabel">간격</span>
-          {CHART_TF_OPTIONS.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              className={`htsTfBtn${timeframe === o.id ? ' htsTfBtn--active' : ''}`}
-              onClick={() => setTimeframe(o.id)}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <div className="htsChartWrap chartWrap" ref={wrapRef} />
-        <div className="htsTabBody" role="region" aria-label="실시간 체결 스택">
-          <div className="htsTapeHead">
-            <p className="htsPanelTitle">실시간 체결</p>
-            <p className="htsMuted">호가와 직전 체결가 기준으로 매수/매도를 추정해 스택으로 표시합니다.</p>
-          </div>
-          <div className="htsTapeBoard">
-            <section className="htsTapeLane htsTapeLane--sell" aria-label="매도 체결">
-              <div className="htsTapeLaneHead">
-                <span>매도 체결</span>
-                <span>{sellTapeRows.length}</span>
-              </div>
-              <div className="htsTapeStack htsTapeStack--sell">
-                {sellTapeRows.length > 0 ? (
-                  sellTapeRows.map((trade) => (
-                    <article key={trade.id} className="htsTapeTrade htsTapeTrade--sell">
-                      <span className="htsTapeTradePrice">{formatLivePrice(trade.price, obPriceDecimals)}</span>
-                      <span className="htsTapeTradeVol">{formatTapeVolume(trade.volume)}</span>
-                    </article>
-                  ))
-                ) : (
-                  <div className="htsTapeEmpty">매도 체결 대기</div>
-                )}
-              </div>
-            </section>
-
-            <div className="htsTapeMid" aria-label="현재가">
-              <span className="htsTapeMidLabel">현재가</span>
-              <strong className="htsTapeMidPrice">
-                {obLastPx != null ? formatLivePrice(obLastPx, obPriceDecimals) : '—'}
-              </strong>
-              <span className="htsTapeMidMeta">{lastTick ?? '체결 대기'}</span>
-            </div>
-
-            <section className="htsTapeLane htsTapeLane--buy" aria-label="매수 체결">
-              <div className="htsTapeLaneHead">
-                <span>매수 체결</span>
-                <span>{buyTapeRows.length}</span>
-              </div>
-              <div className="htsTapeStack htsTapeStack--buy">
-                {buyTapeRows.length > 0 ? (
-                  buyTapeRows.map((trade) => (
-                    <article key={trade.id} className="htsTapeTrade htsTapeTrade--buy">
-                      <span className="htsTapeTradePrice">{formatLivePrice(trade.price, obPriceDecimals)}</span>
-                      <span className="htsTapeTradeVol">{formatTapeVolume(trade.volume)}</span>
-                    </article>
-                  ))
-                ) : (
-                  <div className="htsTapeEmpty">매수 체결 대기</div>
-                )}
-              </div>
-            </section>
-          </div>
-        </div>
+        </section>
       </div>
 
-      <div className="htsCenter" aria-label="호가/주문">
-        <OrderBookPanel
-          variant="hts"
-          asks={obAsks}
-          bids={obBids}
-          symbol={obSymbol}
-          lastTradePrice={obLastPx}
-          obRevision={obRev}
-          tickRevision={tickRev}
-          priceDecimals={obPriceDecimals}
-          isStale={obIsStale}
-          isSynthetic={obIsSynthetic}
-          onPriceSelect={handleOrderbookPriceSelect}
-        />
-        <div className="htsOrderWrap" aria-label="주문하기">
-          <p className="htsPanelTitle">주문하기</p>
-          <p className="htsOrderBalance" aria-live="polite">
-            거래 자금{' '}
-            <strong>
-              {tradingApiEnabled
-                ? cashBalance != null
-                  ? `${cashBalance.toLocaleString('ko-KR')}원`
-                  : '…'
-                : '—'}
-            </strong>
-            {tradingApiEnabled ? (
-              <>
-                {' '}
-                <button type="button" className="htsOrderLinkBtn" onClick={() => void refreshBalance()}>
-                  새로고침
-                </button>
-              </>
-            ) : null}
-          </p>
-          <p className="htsMuted htsOrderSym">
-            체결 심볼 <strong>{feedSymbol}</strong> ({feedProvider}) · 모의 보유 <strong>{netPaperQty}</strong>
-          </p>
-          <div className="htsOrderLeverage">
-            <div className="htsOrderLeverageHead">
-              <span>레버리지</span>
-              <strong>x{mobileLeverage}</strong>
-            </div>
-            <input
-              className="htsLeverageSlider"
-              type="range"
-              min="1"
-              max="125"
-              step="1"
-              value={mobileLeverage}
-              onChange={(e) => applyMobileLeverage(Number(e.target.value))}
-              aria-label="레버리지"
-            />
-            <div className="htsOrderLeverageMeta">
-              <span>1x</span>
-              <span>
-                최대 수량{' '}
-                <strong>{mobileMaxQty != null ? mobileMaxQty.toLocaleString('ko-KR') : '—'}</strong>
-              </span>
-              <span>125x</span>
-            </div>
-            <div className="htsOrderPresetRow">
-              {[1, 10, 25, 50, 125].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`htsOrderPresetBtn${mobileLeverage === value ? ' htsOrderPresetBtn--active' : ''}`}
-                  onClick={() => applyMobileLeverage(value)}
-                >
-                  x{value}
-                </button>
-              ))}
-            </div>
+      <div className="htsDeskLower">
+        <section className="htsRecordsSection" aria-label="포지션 및 주문내역">
+          <div className="htsSectionHead">
+            <strong><ListBullets size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>포지션 / 주문내역</strong>
+            <span>{displaySymbolCode}</span>
           </div>
-          <div className="htsOrderGrid">
-            <div className="htsOrderRow">
-              <label htmlFor="fc-order-kind">주문유형</label>
-              <select
-                id="fc-order-kind"
-                value={orderKind}
-                onChange={(e) => setOrderKind(e.target.value === 'limit' ? 'limit' : 'market')}
+          <div className="htsRecordTabs" role="tablist" aria-label="포지션 및 주문 기록">
+            {RECORD_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={recordTab === tab.id}
+                className={`htsRecordTab${recordTab === tab.id ? ' htsRecordTab--active' : ''}`}
+                onClick={() => setRecordTab(tab.id)}
               >
-                <option value="limit">지정가</option>
-                <option value="market">시장가</option>
-              </select>
-            </div>
-            <div className="htsOrderRow">
-              <label htmlFor="fc-order-price">가격</label>
-              <input
-                id="fc-order-price"
-                placeholder={orderKind === 'market' ? '시장가(현재가 사용)' : '가격'}
-                inputMode="decimal"
-                disabled={orderKind === 'market'}
-                value={orderKind === 'market' ? (obLastPx != null ? String(obLastPx) : '') : orderPriceStr}
-                onChange={(e) => setOrderPriceStr(e.target.value)}
-              />
-            </div>
-            <div className="htsOrderRow">
-              <label htmlFor="fc-order-qty">수량</label>
-              <input
-                id="fc-order-qty"
-                placeholder="수량"
-                inputMode="numeric"
-                value={orderQtyStr}
-                onChange={(e) => setOrderQtyStr(e.target.value)}
-              />
-            </div>
+                {tab.icon}{tab.label}
+              </button>
+            ))}
           </div>
-          {orderKind === 'limit' ? (
-            <p className="htsMuted htsOrderHint">오더북 가격을 클릭하면 지정가 입력란에 바로 채워집니다.</p>
-          ) : null}
-          <div className="htsOrderActions">
-            <button
-              type="button"
-              className="htsOrderBtn htsOrderBtn--buy"
-              disabled={tradeBusy}
-              onClick={() => void runPaperOrder('buy')}
-            >
-              매수
-            </button>
-            <button
-              type="button"
-              className="htsOrderBtn htsOrderBtn--sell"
-              disabled={tradeBusy}
-              onClick={() => void runPaperOrder('sell')}
-            >
-              매도
-            </button>
-          </div>
-          {positionSnapshot.side !== 'flat' ? (
-            <div className={`htsPositionCard htsPositionCard--${positionSnapshot.side}`}>
-              <div className="htsPositionCardHead">
-                <strong>{positionSnapshot.side === 'long' ? 'LONG 포지션' : 'SHORT 포지션'}</strong>
-                <button type="button" className="htsPositionActionBtn" onClick={fillPositionQty}>
-                  전량 청산 수량 채우기
-                </button>
-              </div>
-              <div className="htsPositionGrid">
-                <div className="htsPositionMetric">
-                  <span>수량</span>
-                  <strong>{Math.abs(positionSnapshot.netQty).toLocaleString('ko-KR')}</strong>
-                </div>
-                <div className="htsPositionMetric">
-                  <span>평단</span>
-                  <strong>
-                    {positionSnapshot.avgPrice != null ? formatLivePrice(positionSnapshot.avgPrice, obPriceDecimals) : '—'}
-                  </strong>
-                </div>
-                <div className="htsPositionMetric">
-                  <span>평가금액</span>
-                  <strong>
-                    {positionSnapshot.markValue != null
-                      ? `${Math.round(positionSnapshot.markValue).toLocaleString('ko-KR')}원`
-                      : '—'}
-                  </strong>
-                </div>
-                <div className="htsPositionMetric">
-                  <span>미실현손익</span>
-                  <strong
-                    className={
-                      positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
-                        ? 'wlNum--up'
-                        : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
-                          ? 'wlNum--down'
-                          : 'wlNum--flat'
-                    }
-                  >
-                    {positionSnapshot.unrealized != null
-                      ? `${positionSnapshot.unrealized > 0 ? '+' : ''}${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원`
-                      : '—'}
-                  </strong>
-                </div>
-              </div>
-              <p className="htsMuted htsPositionHint">
-                {positionSnapshot.side === 'long'
-                  ? '현재 보유는 롱입니다. 청산하려면 매도 버튼을 누르세요.'
-                  : '현재 보유는 숏입니다. 청산하려면 매수 버튼을 누르세요.'}
-              </p>
-            </div>
-          ) : null}
-          {tradeMsg ? <p className="htsOrderTradeMsg">{tradeMsg}</p> : null}
-          <p className="htsMuted" style={{ marginTop: '0.45rem' }}>
-            {tradingApiEnabled
-              ? '모의 체결: 잔고는 충전 승인으로 입금된 캐시이며, 실거래·실시간 주문 라우팅과는 별도입니다.'
-              : 'VITE_MARKET_API_BASE(또는 VITE_API_BASE)와 마켓 로그인 시 잔고·모의 체결·충전 신청이 활성화됩니다.'}
-          </p>
-          {tradingApiEnabled ? (
-            <button type="button" className="htsOrderChargeOpen" onClick={() => setChargeOpen(true)}>
-              거래 자금 충전 신청
-            </button>
-          ) : null}
-        </div>
-      </div>
+          <div className="htsRecordsBody">{recordContent}</div>
+        </section>
 
-      <aside className="htsRight" aria-label="관심">
-        <WatchlistPanel selectedId={selectedWatchId} onSelect={handleWatchSelect} liveById={liveById} />
-      </aside>
+        <aside className="htsDeskAccountPane" aria-label="계정 상태 및 잔고">
+          <div className="htsSectionHead">
+            <strong><Wallet size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>잔고 / 계정</strong>
+            <span>{statusText}</span>
+          </div>
+          <div className="htsAccountGrid">
+            <div className="htsAccountMetric">
+              <span>잔고</span>
+              <strong>{tradingApiEnabled ? (cashBalance != null ? `${cashBalance.toLocaleString('ko-KR')}원` : '…') : '—'}</strong>
+            </div>
+            <div className="htsAccountMetric">
+              <span>레버리지</span>
+              <strong>{mobileLeverage}x</strong>
+            </div>
+            <div className="htsAccountMetric">
+              <span>추정 Max</span>
+              <strong>{mobileMaxQty != null ? mobileMaxQty.toLocaleString('ko-KR') : '—'}</strong>
+            </div>
+            <div className="htsAccountMetric">
+              <span>실시간 체결</span>
+              <strong>{liveTapeCount.toLocaleString('ko-KR')}건</strong>
+            </div>
+            <div className="htsAccountMetric">
+              <span>미실현손익</span>
+              <strong
+                className={
+                  positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
+                    ? 'wlNum--up'
+                    : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
+                      ? 'wlNum--down'
+                      : 'wlNum--flat'
+                }
+              >
+                {positionSnapshot.unrealized != null ? `${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원` : '—'}
+              </strong>
+            </div>
+            <div className="htsAccountMetric">
+              <span>최근 시간</span>
+              <strong>{timeStr}</strong>
+            </div>
+          </div>
+          {tradingApiEnabled ? (
+            <button type="button" className="htsOrderChargeOpen htsOrderChargeOpen--account" onClick={() => setChargeOpen(true)}>
+              <CreditCard size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>충전 신청
+            </button>
+          ) : null}
+        </aside>
+      </div>
 
       <footer className="htsStatusBar">
         <span>

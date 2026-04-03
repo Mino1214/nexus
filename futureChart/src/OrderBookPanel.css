@@ -24,10 +24,32 @@
   flex-shrink: 0;
 }
 
+/* HTS 모드에서 HeroPx 숨김 — 중앙 divider가 현재가 역할 */
+.obPanel--hts .obHeroPx {
+  display: none;
+}
+
+/* 스크롤바 숨기기 */
+.obPanel--hts .obStackList::-webkit-scrollbar,
+.htsWorkspace--mobile .obStackList::-webkit-scrollbar {
+  display: none;
+}
+.obPanel--hts .obStackList,
+.htsWorkspace--mobile .obStackList {
+  scrollbar-width: none;
+}
+
 .obPanel--hts .obStackList {
-  flex: 0 1 auto;
-  max-height: none;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* HTS 모드에서 각 행이 남은 공간을 균등 분배 → 현재가 항상 가운데 */
+.obPanel--hts .obStackRow {
+  flex: 1;
   min-height: 0;
 }
 
@@ -97,358 +119,141 @@
   background: color-mix(in oklab, var(--bg-soft) 88%, var(--border));
 }
 
-/* [매수] [현재가] [매도] */
+/* ── 컬럼 헤더 (가격 | 수량) ── */
 .obColHead {
-  display: grid;
-  grid-template-columns: 1fr minmax(4.5rem, auto) 1fr;
-  gap: 0.25rem;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.25rem;
-  padding: 0.2rem 0;
+  padding: 0.18rem 0.5rem;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .obColHeadCell {
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--text-muted);
-  text-align: center;
 }
 
-.obColHeadCell:first-child {
-  text-align: left;
-  padding-left: 0.15rem;
-}
+.obColHeadCell--price { text-align: left; }
+.obColHeadCell--qty   { text-align: right; }
 
-.obColHeadCell:last-child {
-  text-align: right;
-  padding-right: 0.15rem;
-}
+/* 구 호환 셀 (3열 레이아웃 잔재 숨김) */
+.obColHeadCell--center { display: none; }
 
-.obColHeadCell--center {
-  color: var(--text-dim);
-}
-
-.obHeroPx {
-  text-align: center;
-  font-size: 1.05rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  padding: 0.35rem 0 0.45rem;
-  border-bottom: 1px solid var(--border-2);
-}
-
-.obHeroSpread {
-  margin-left: 0.35rem;
-  font-size: 0.58rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-/* 매도 구간 */
-.obStackList--ask {
-  list-style: none;
-  margin: 0;
-  padding: 0.2rem 0 0;
-  background: linear-gradient(180deg, color-mix(in oklab, #64aae6 12%, transparent) 0%, transparent 100%);
-  border-radius: 4px 4px 0 0;
-}
-
-/* 매수 구간 */
+/* ── 리스트 공통 ── */
+.obStackList--ask,
 .obStackList--bid {
   list-style: none;
   margin: 0;
-  padding: 0 0 0.18rem;
-  background: linear-gradient(180deg, color-mix(in oklab, #e68c96 10%, transparent) 0%, transparent 100%);
-  border-radius: 0 0 4px 4px;
+  padding: 0;
 }
 
+/* ── 행: 바이낸스 스타일 ── */
 .obStackRow {
-  display: grid;
-  grid-template-columns: 1fr minmax(4.5rem, auto) 1fr;
-  gap: 0.3rem;
+  display: flex;
   align-items: center;
-  min-height: 1.35rem;
-  padding: 0.08rem 0.15rem;
+  justify-content: space-between;
+  padding: 0 0.5rem;
   position: relative;
   overflow: hidden;
   white-space: nowrap;
+  cursor: default;
+  gap: 0.25rem;
 }
 
-.obStackRow + .obStackRow {
-  margin-top: 1px;
-}
-
-.obStackRow--interactive {
-  cursor: pointer;
-}
-
-.obStackRow--interactive:focus-visible {
-  outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent);
-  outline-offset: -1px;
-}
-
-.obStackRow--interactive:hover .obStackCell--price {
-  color: var(--accent);
-}
-
+/* 수량 비율만큼 우→좌 방향으로 채우기 (파동 효과) */
 .obStackRow::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0; bottom: 0;
+  right: 0;          /* 항상 우측 고정, 좌측 방향으로 확장 */
+  left: auto;
   width: var(--qty-pct, 0%);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.35;
-  transition: width 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: width 0.14s ease;
 }
 
+/* 매도: 우→좌, 빨간 계열 */
 .obStackRow--ask::before {
-  right: 0;
-  left: auto;
-  background: linear-gradient(270deg, color-mix(in oklab, #78b9f0 35%, transparent), transparent);
+  background: rgba(239, 83, 80, 0.12);
 }
 
+/* 매수: 우→좌, 청록 계열 */
 .obStackRow--bid::before {
-  left: 0;
-  right: auto;
-  background: linear-gradient(90deg, color-mix(in oklab, #f096a5 32%, transparent), transparent);
+  background: rgba(0, 185, 145, 0.12);
 }
 
-.obStackRow--currentAsk,
-.obStackRow--currentBid {
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border) 35%, transparent);
-}
+.obStackRow--interactive { cursor: pointer; }
+.obStackRow--interactive:hover::before { opacity: 1.6; }
 
-.obStackRow--currentAsk {
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, #78b9f0 18%, transparent));
-}
-
-.obStackRow--currentBid {
-  background: linear-gradient(90deg, color-mix(in oklab, #f096a5 18%, transparent), transparent);
-}
-
-.obStackRow--currentAsk .obStackCell--price,
-.obStackRow--currentBid .obStackCell--price {
-  color: var(--text);
-  font-weight: 800;
-}
-
-.obStackCell {
+/* 가격 텍스트 */
+.obPx {
   position: relative;
   z-index: 1;
-  min-width: 0;
-}
-
-.obStackCell--price {
-  text-align: center;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
 }
 
-.obStackRow--ask .obStackCell--price {
-  color: var(--text-dim);
-}
+.obPx--ask { color: #e05c6e; }
+.obPx--bid { color: #17a58d; }
 
-.obStackRow--bid .obStackCell--price {
-  color: var(--text-dim);
-}
+/* 빈 행 */
+.obStackRow--ask .obPx--ask:empty::before,
+.obStackRow--bid .obPx--bid:empty::before { content: '—'; opacity: 0.3; }
 
-.obStackCell--bidZone,
-.obStackCell--askZone {
-  min-height: 1.1rem;
-}
-
-.obStackBarTrack {
+/* 수량 텍스트 */
+.obQty {
   position: relative;
-  height: 1.05rem;
-  border-radius: 3px;
-  background: color-mix(in oklab, var(--text) 8%, var(--bg-soft));
-  overflow: hidden;
-}
-
-.obStackBarTrack--empty {
-  background: color-mix(in oklab, var(--border) 16%, transparent);
-  height: 1.05rem;
-  opacity: 0.28;
-}
-
-.obStackBarFill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  transition: width 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.obStackBarFill--ask {
-  right: 0;
-  border-radius: 3px 0 0 3px;
-  background: linear-gradient(270deg, color-mix(in oklab, #78b9f0 55%, transparent), color-mix(in oklab, #78b9f0 12%, transparent));
-}
-
-.obStackBarFill--bid {
-  left: 0;
-  border-radius: 0 3px 3px 0;
-  background: linear-gradient(90deg, color-mix(in oklab, #f096a5 50%, transparent), color-mix(in oklab, #f096a5 10%, transparent));
-}
-
-.obStackVol {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.62rem;
+  z-index: 1;
+  font-size: 0.66rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--text);
-  text-shadow: 0 0 1px color-mix(in oklab, var(--bg-panel) 85%, var(--text));
-  z-index: 2;
-  pointer-events: none;
+  color: var(--text-muted, rgba(17,17,17,0.52));
+  text-align: right;
 }
 
-.obStackBarTrack--ask .obStackVol {
-  right: 0.3rem;
-}
-
-.obStackBarTrack--bid .obStackVol {
-  left: 0.3rem;
-}
-
-/* 노란 구분선 */
+/* ── 현재가 구분선 (중앙 고정) ── */
 .obGoldDivider {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.28rem 0.5rem;
   flex-shrink: 0;
-  background: color-mix(in oklab, var(--bg-panel) 92%, var(--border));
+  border-top: 1px solid rgba(17,17,17,0.07);
+  border-bottom: 1px solid rgba(17,17,17,0.07);
+  background: rgba(17,17,17,0.02);
 }
 
-.obGoldLine {
-  flex: 1;
-  height: 3px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #e8c840 15%, #f5d742 50%, #e8c840 85%, transparent);
-  box-shadow: 0 0 8px rgba(245, 215, 66, 0.25);
-}
-
-.obGoldMid {
-  flex-shrink: 0;
-  font-size: 0.58rem;
-  font-weight: 800;
+.obGoldMidPx {
+  font-size: 0.85rem;
+  font-weight: 900;
   font-variant-numeric: tabular-nums;
-  color: #b45309;
-  text-align: center;
-  max-width: 11rem;
-  line-height: 1.25;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  background: color-mix(in oklab, #f5d742 14%, var(--bg-panel));
+  color: #111111;
+  letter-spacing: -0.01em;
 }
 
-[data-theme='dark'] .obGoldMid {
-  color: #c9a227;
+.obGoldSpread {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: rgba(17,17,17,0.42);
+  margin-left: auto;
 }
 
+/* 구 클래스 호환 (혹시 남은 참조용) */
+.obGoldLine { display: none; }
+.obGoldMid  { display: none; }
 .obGoldHint {
-  display: block;
+  display: none;
   font-size: 0.52rem;
   font-weight: 500;
   color: var(--text-muted);
   margin-top: 0.08rem;
-}
-
-/* 가상 매매 */
-.obVirtual {
-  margin-top: 0.5rem;
-  padding-top: 0.45rem;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.obVirtualRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
-}
-
-.obVirtualBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.obVirtualLabel {
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--text-muted);
-}
-
-.obVirtualInput {
-  width: 100%;
-  padding: 0.35rem 0.45rem;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--text);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.obVirtualBtn {
-  appearance: none;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--text);
-  background: var(--bg-toolbar);
-}
-
-.obVirtualBtn--buy {
-  background: rgba(63, 182, 139, 0.22);
-  border-color: rgba(63, 182, 139, 0.45);
-}
-
-.obVirtualBtn--buy:hover:not(:disabled) {
-  background: rgba(63, 182, 139, 0.32);
-}
-
-.obVirtualBtn--sell {
-  background: rgba(239, 83, 80, 0.2);
-  border-color: rgba(239, 83, 80, 0.45);
-}
-
-.obVirtualBtn--sell:hover:not(:disabled) {
-  background: rgba(239, 83, 80, 0.3);
-}
-
-.obVirtualBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.obVirtualPos {
-  margin: 0.4rem 0 0;
-  font-size: 0.65rem;
-  color: var(--text-dim);
-  line-height: 1.4;
-}
-
-.obVirtualPos strong {
-  color: var(--text);
-}
-
-.obVirtualExec {
-  color: var(--text-muted);
 }
 
 /* 틱 */
@@ -460,19 +265,196 @@
   transition-duration: 0.07s;
 }
 
-.obPanel--live .obStackBarFill--ask,
-.obPanel--live .obStackBarFill--bid {
-  animation: obBarShimmer 1.15s linear infinite;
+.htsWorkspace:not(.htsWorkspace--mobile) .obPanel--hts {
+  background: #ffffff;
+  border-left-color: rgba(17, 17, 17, 0.12);
 }
 
-@keyframes obBarShimmer {
-  0% {
-    filter: brightness(1);
-  }
-  50% {
-    filter: brightness(1.1);
-  }
-  100% {
-    filter: brightness(1);
-  }
+.htsWorkspace:not(.htsWorkspace--mobile) .obHead,
+.htsWorkspace:not(.htsWorkspace--mobile) .obTitle,
+.htsWorkspace:not(.htsWorkspace--mobile) .obSym,
+.htsWorkspace:not(.htsWorkspace--mobile) .obStaleTag,
+.htsWorkspace:not(.htsWorkspace--mobile) .obDepthTag,
+.htsWorkspace:not(.htsWorkspace--mobile) .obColHeadCell,
+.htsWorkspace:not(.htsWorkspace--mobile) .obHeroPx,
+.htsWorkspace:not(.htsWorkspace--mobile) .obHeroSpread,
+.htsWorkspace:not(.htsWorkspace--mobile) .obGoldMid,
+.htsWorkspace:not(.htsWorkspace--mobile) .obGoldHint,
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackCell--price,
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackVol {
+  color: var(--hts-ink, var(--text));
 }
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obSyntheticTag,
+.htsWorkspace:not(.htsWorkspace--mobile) .obDepthTag {
+  border-color: rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obColHead {
+  border-bottom-color: rgba(17, 17, 17, 0.12);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obHeroPx {
+  border-bottom-color: rgba(17, 17, 17, 0.08);
+}
+
+/* 데스크탑 HTS: 흰색 배경 기반, 파동 fill만 사용 */
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackList--ask,
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackList--bid {
+  background: #ffffff;
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackRow--ask::before {
+  background: rgba(239, 83, 80, 0.11);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obStackRow--bid::before {
+  background: rgba(0, 185, 145, 0.11);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .obGoldDivider {
+  background: #ffffff;
+}
+
+.htsWorkspace--mobile .obPanel {
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* 모바일: 스크롤 없이 flex 채우기 → 현재가 항상 가운데 */
+.htsWorkspace--mobile .obStackList {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.htsWorkspace--mobile .obStackRow {
+  flex: 1;
+  min-height: 0;
+}
+
+.htsWorkspace--mobile .obHead {
+  display: none;
+}
+
+.htsWorkspace--mobile .obColHead,
+.htsWorkspace--mobile .obHeroPx,
+.htsWorkspace--mobile .obGoldDivider {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.htsWorkspace--mobile .obColHead {
+  grid-template-columns: minmax(0, 1fr) minmax(4.2rem, auto) minmax(0, 1fr);
+  margin-bottom: 0.18rem;
+  padding-top: 0;
+  border-bottom-color: rgba(17, 17, 17, 0.08);
+}
+
+.htsWorkspace--mobile .obColHeadCell {
+  color: rgba(17, 17, 17, 0.56);
+}
+
+.htsWorkspace--mobile .obHeroPx {
+  padding: 0.24rem 0 0.38rem;
+  border-bottom-color: rgba(17, 17, 17, 0.08);
+  color: #111111;
+}
+
+.htsWorkspace--mobile .obHeroSpread,
+.htsWorkspace--mobile .obGoldHint {
+  color: rgba(17, 17, 17, 0.5);
+}
+
+.htsWorkspace--mobile .obStackList--ask,
+.htsWorkspace--mobile .obStackList--bid {
+  background: transparent;
+}
+
+.htsWorkspace--mobile .obStackRow {
+  gap: 0.22rem;
+  padding: 0.04rem 0;
+}
+
+/* 모바일: 흰색 기반, 우→좌 파동 fill */
+.htsWorkspace--mobile .obStackRow {
+  padding: 0 0.4rem;
+  background: #ffffff;
+}
+
+.htsWorkspace--mobile .obStackRow::before {
+  display: block;
+  right: 0;
+  left: auto;
+}
+
+.htsWorkspace--mobile .obStackRow--ask::before {
+  background: rgba(224, 52, 74, 0.11);
+}
+
+.htsWorkspace--mobile .obStackRow--bid::before {
+  background: rgba(0, 185, 145, 0.12);
+}
+
+.htsWorkspace--mobile .obPx {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.htsWorkspace--mobile .obPx--ask { color: #e0334a; }
+.htsWorkspace--mobile .obPx--bid { color: #009e75; }
+
+.htsWorkspace--mobile .obQty {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(17, 17, 17, 0.55);
+}
+
+.htsWorkspace--mobile .obGoldDivider {
+  background: rgba(255,255,255,0.6);
+  border-top-color: rgba(17,17,17,0.10);
+  border-bottom-color: rgba(17,17,17,0.10);
+}
+
+.htsWorkspace--mobile .obGoldMidPx {
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.htsWorkspace--deskLayout .obPanel--hts {
+  height: 100%;
+  border: none;
+  padding: 0;
+  background: #ffffff;
+}
+
+.htsWorkspace--deskLayout .obHead {
+  padding: 0.85rem 0.95rem 0.45rem;
+  margin-bottom: 0;
+}
+
+.htsWorkspace--deskLayout .obColHead,
+.htsWorkspace--deskLayout .obGoldDivider,
+.htsWorkspace--deskLayout .obStackList--ask,
+.htsWorkspace--deskLayout .obStackList--bid {
+  margin-left: 0.95rem;
+  margin-right: 0.95rem;
+}
+
+/* 다크 모드 대응 */
+[data-theme='dark'] .obPx--ask { color: #ff6b78; }
+[data-theme='dark'] .obPx--bid { color: #4de8c8; }
+[data-theme='dark'] .obStackRow--ask::before { right: 0; left: auto; background: rgba(255, 107, 120, 0.15); }
+[data-theme='dark'] .obStackRow--bid::before { right: 0; left: auto; background: rgba(77, 232, 200, 0.13); }
+[data-theme='dark'] .obGoldDivider { background: rgba(17,17,17,0.06); border-color: rgba(255,255,255,0.10); }
+[data-theme='dark'] .obGoldMidPx  { color: #f5f5f5; }
+[data-theme='dark'] .obQty        { color: rgba(255,255,255,0.45); }

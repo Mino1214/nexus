@@ -16,6 +16,50 @@
   background: var(--bg-panel-2);
 }
 
+.htsWorkspace:not(.htsWorkspace--mobile) {
+  --hts-buy: #5ce1e6;
+  --hts-sell: #ff6b78;
+  --hts-ink: #111111;
+  --bg-app: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-panel-2: #ffffff;
+  --bg-toolbar: #ffffff;
+  --bg-soft: #ffffff;
+  --bg-soft-2: #ffffff;
+  --text: var(--hts-ink);
+  --text-dim: var(--hts-ink);
+  --text-muted: var(--hts-ink);
+  --border: rgba(17, 17, 17, 0.14);
+  --border-2: rgba(17, 17, 17, 0.08);
+  --accent: var(--hts-buy);
+  border-color: rgba(17, 17, 17, 0.14);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(17, 17, 17, 0.05);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlNum--up {
+  color: var(--hts-buy);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlNum--down {
+  color: var(--hts-sell);
+}
+
+.htsWorkspace:not(.htsWorkspace--mobile) .wlNum--flat {
+  color: var(--hts-ink);
+}
+
+.htsWorkspace--single {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
+  grid-template-areas:
+    'left center'
+    'status status';
+}
+
+.htsWorkspace--single .htsCenter {
+  border-right: none;
+}
+
 .htsLeft {
   grid-area: left;
   display: flex;
@@ -54,22 +98,33 @@
   background: var(--bg-toolbar);
 }
 
-.htsMainToolbar .symLabel {
-  font-size: 0.68rem;
-  color: var(--text-muted);
+.htsSymbolChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.2rem 0.1rem;
+}
+
+.htsSymbolChipLabel {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 
-.htsMainToolbar .symInput {
-  width: 5.5rem;
-  padding: 0.28rem 0.4rem;
-  font-size: 0.78rem;
+.htsSymbolChipCode {
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
-.htsMainToolbar .symBtn {
-  padding: 0.28rem 0.55rem;
+.htsSymbolChipName {
+  min-width: 0;
   font-size: 0.72rem;
+  color: var(--text-muted);
 }
 
 .htsMainMeta {
@@ -150,15 +205,15 @@
 }
 
 .htsTabBody {
-  height: 12rem;
-  min-height: 12rem;
+  height: 13.5rem;
+  min-height: 13.5rem;
   border-top: 1px solid var(--border);
   background: var(--bg-soft-2);
-  padding: 0.45rem 0.55rem 0.5rem;
+  padding: 0.7rem;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.7rem;
 }
 
 .htsPanelTitle {
@@ -171,6 +226,171 @@
   color: var(--text-muted);
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+.htsDeskBottomHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htsDeskBottomHead .htsPanelTitle,
+.htsDeskBottomHead .htsMuted {
+  margin: 0;
+}
+
+.htsDeskBottomMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.htsDeskBottomMeta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.95rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+  color: var(--hts-ink, var(--text));
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.htsDeskBottomGrid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 0.75rem;
+}
+
+.htsDeskCard {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 0.75rem;
+}
+
+.htsDeskCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.htsDeskCardTitle,
+.htsDeskCardSub {
+  margin: 0;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsDeskCardTitle {
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.htsDeskCardSub {
+  margin-top: 0.16rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.htsDeskCardActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.htsSidePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.2rem;
+  min-height: 2rem;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  color: var(--hts-ink, var(--text));
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.htsSidePill--long,
+.htsSidePill--buy {
+  background: color-mix(in oklab, var(--hts-buy, var(--accent)) 26%, #ffffff);
+  border-color: color-mix(in oklab, var(--hts-buy, var(--accent)) 60%, transparent);
+}
+
+.htsSidePill--short,
+.htsSidePill--sell {
+  background: color-mix(in oklab, var(--hts-sell, #ff6b78) 24%, #ffffff);
+  border-color: color-mix(in oklab, var(--hts-sell, #ff6b78) 60%, transparent);
+}
+
+.htsDeskEmpty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px dashed rgba(17, 17, 17, 0.16);
+  color: var(--hts-ink, var(--text));
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.htsDeskOrderList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  overflow: auto;
+}
+
+.htsDeskOrderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.78rem;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: #ffffff;
+}
+
+.htsDeskOrderMain {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.72rem;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsDeskOrderMain strong {
+  font-size: 0.76rem;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsDeskOrderMain span:last-child,
+.htsDeskOrderTime {
+  font-variant-numeric: tabular-nums;
+}
+
+.htsDeskOrderTime {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--hts-ink, var(--text));
 }
 
 .htsTapeHead {
@@ -264,8 +484,7 @@
   border-radius: 6px;
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border) 45%, transparent);
-  animation: htsTapeFlash 0.9s ease-out;
+  border: 1px solid color-mix(in oklab, var(--border) 45%, transparent);
 }
 
 .htsTapeTrade--sell {
@@ -339,30 +558,39 @@
   text-overflow: ellipsis;
 }
 
-@keyframes htsTapeFlash {
-  0% {
-    transform: translateY(4px) scale(0.985);
-    opacity: 0.05;
-    filter: saturate(1.5);
-  }
-  35% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-    filter: saturate(1);
-  }
-}
-
 .htsOrderWrap {
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  padding: 0.55rem 0.6rem;
+  gap: 0.55rem;
+  padding: 0.75rem;
   border-top: 1px solid var(--border);
   background: var(--bg-soft);
+}
+
+.htsOrderHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.htsOrderHead .htsPanelTitle {
+  margin: 0;
+}
+
+.htsDeskSymbolBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.72rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--hts-buy, var(--accent)) 50%, rgba(17, 17, 17, 0.12));
+  background: color-mix(in oklab, var(--hts-buy, var(--accent)) 16%, #ffffff);
+  color: var(--hts-ink, var(--text));
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 .htsOrderGrid {
@@ -371,99 +599,229 @@
   gap: 0.45rem;
 }
 
-.htsOrderLeverage {
+.htsLineControl {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.5rem 0.55rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: color-mix(in oklab, var(--bg-panel) 86%, var(--bg-soft));
+  gap: 0.45rem;
+  padding: 0.65rem 0.7rem;
+  margin-bottom: 0;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
 }
 
-.htsOrderLeverageHead,
-.htsMobileSliderHead {
+.htsLineControlHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-  font-size: 0.72rem;
 }
 
-.htsOrderLeverageHead span,
-.htsMobileSliderHead span {
-  color: var(--text-muted);
-}
-
-.htsOrderLeverageHead strong,
-.htsMobileSliderHead strong {
-  color: var(--text);
-  font-size: 0.88rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.htsLeverageSlider {
-  width: 100%;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-
-.htsOrderLeverageMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.64rem;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.htsOrderLeverageMeta strong {
-  color: var(--text);
-}
-
-.htsOrderPresetRow {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.35rem;
-}
-
-.htsOrderPresetBtn {
-  min-height: 1.95rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-toolbar);
-  color: var(--text-dim);
-  font-size: 0.7rem;
+.htsLineControlLabel {
+  font-size: 0.62rem;
   font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsLineControlHead strong {
+  color: var(--hts-ink, var(--text));
+  font-size: 0.96rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsLineSliderWrap {
+  position: relative;
+  height: 1.5rem;
+}
+
+.htsLineSliderRail,
+.htsLineSliderFill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  border-radius: 999px;
+}
+
+.htsLineSliderRail {
+  right: 0;
+  background: rgba(17, 17, 17, 0.12);
+}
+
+.htsLineSliderFill {
+  width: var(--slider-pct, 0%);
+  background: linear-gradient(90deg, var(--hts-buy, var(--accent)), color-mix(in oklab, var(--hts-buy, var(--accent)) 70%, #ffffff));
+}
+
+.htsLineSliderInput {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 1.5rem;
+  margin: 0;
+  appearance: none;
+  background: transparent;
   cursor: pointer;
 }
 
-.htsOrderPresetBtn--active {
-  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
-  background: color-mix(in oklab, var(--accent) 15%, var(--bg-toolbar));
-  color: var(--accent);
+.htsLineSliderInput::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+
+.htsLineSliderInput::-webkit-slider-thumb {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: -0.32rem;
+  border: 2px solid var(--hts-ink, var(--text));
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--hts-buy, var(--accent)) 26%, transparent);
+}
+
+.htsLineSliderInput::-moz-range-track {
+  height: 4px;
+  background: transparent;
+  border: none;
+}
+
+.htsLineSliderInput::-moz-range-thumb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--hts-ink, var(--text));
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--hts-buy, var(--accent)) 26%, transparent);
+}
+
+.htsLineSliderMarks {
+  position: relative;
+  height: 2rem;
+}
+
+.htsLineSliderMark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.32rem;
+  width: 3.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--hts-ink, var(--text));
+  cursor: pointer;
+}
+
+.htsLineSliderMark:first-child {
+  transform: translateX(0);
+  align-items: flex-start;
+}
+
+.htsLineSliderMark:last-child {
+  transform: translateX(-100%);
+  align-items: flex-end;
+}
+
+.htsLineSliderDiamond {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid rgba(17, 17, 17, 0.2);
+  background: #ffffff;
+  border-radius: 999px;
+}
+
+.htsLineSliderMarkLabel {
+  font-size: 0.58rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.htsLineSliderMark--active {
+  color: var(--hts-ink, var(--text));
+}
+
+.htsLineSliderMark--active .htsLineSliderDiamond {
+  border-color: var(--hts-buy, var(--accent));
+  background: var(--hts-buy, var(--accent));
+}
+
+.htsLineControlHint {
+  margin: 0;
+  font-size: 0.66rem;
+  color: var(--hts-ink, var(--text));
 }
 
 .htsOrderRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.6rem;
 }
 
-.htsOrderRow label {
+.htsOrderRow label,
+.htsOrderRowLabel {
   font-size: 0.72rem;
-  color: var(--text-dim);
+  color: var(--hts-ink, var(--text));
+  padding-top: 0.3rem;
+  font-weight: 800;
 }
 
 .htsOrderRow input,
-.htsOrderRow select {
+.htsOrderRow .htsModeToggle {
   flex: 1;
   min-width: 0;
-  padding: 0.32rem 0.45rem;
-  font-size: 0.8rem;
+  padding: 0.52rem 0.65rem;
+  font-size: 0.82rem;
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--hts-ink, var(--text));
+}
+
+.htsModeToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.htsModeToggleBtn {
+  min-height: 2.2rem;
+  border: none;
+  border-radius: 14px;
+  background: rgba(17,17,17,0.06);
+  color: var(--hts-ink, var(--text));
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.htsModeToggleBtn:hover {
+  background: rgba(17,17,17,0.11);
+}
+
+.htsModeToggleBtn--active {
+  border: none;
+  color: var(--hts-ink, var(--text));
+  background: rgba(17,17,17,0.14);
+}
+
+[data-theme='dark'] .htsModeToggleBtn {
+  background: rgba(255,255,255,0.08);
+}
+[data-theme='dark'] .htsModeToggleBtn:hover {
+  background: rgba(255,255,255,0.13);
+}
+[data-theme='dark'] .htsModeToggleBtn--active {
+  background: rgba(255,255,255,0.18);
 }
 
 .htsOrderActions {
@@ -474,31 +832,24 @@
 }
 
 .htsOrderBtn {
-  padding: 0.48rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  font-weight: 700;
+  min-height: 3rem;
+  padding: 0.48rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  color: var(--hts-ink, var(--text));
+  font-size: 0.88rem;
+  font-weight: 900;
   cursor: pointer;
 }
 
 .htsOrderBtn--buy {
-  background: rgba(63, 182, 139, 0.18);
-  border-color: rgba(63, 182, 139, 0.45);
-  color: #15803d;
-}
-
-[data-theme='dark'] .htsOrderBtn--buy {
-  color: #bff7df;
+  background: color-mix(in oklab, var(--hts-buy, var(--accent)) 82%, #ffffff);
+  border-color: color-mix(in oklab, var(--hts-buy, var(--accent)) 92%, rgba(17, 17, 17, 0.14));
 }
 
 .htsOrderBtn--sell {
-  background: rgba(239, 83, 80, 0.18);
-  border-color: rgba(239, 83, 80, 0.45);
-  color: #b91c1c;
-}
-
-[data-theme='dark'] .htsOrderBtn--sell {
-  color: #ffd0cf;
+  background: color-mix(in oklab, var(--hts-sell, #ff6b78) 76%, #ffffff);
+  border-color: color-mix(in oklab, var(--hts-sell, #ff6b78) 88%, rgba(17, 17, 17, 0.14));
 }
 
 .htsOrderBtn:disabled {
@@ -508,12 +859,12 @@
 
 .htsOrderBalance {
   font-size: 0.78rem;
-  color: var(--text-muted);
-  margin: 0 0 0.35rem;
+  color: var(--hts-ink, var(--text));
+  margin: 0;
 }
 
 .htsOrderBalance strong {
-  color: var(--text);
+  color: var(--hts-ink, var(--text));
   font-variant-numeric: tabular-nums;
 }
 
@@ -523,7 +874,7 @@
   font-size: 0.68rem;
   border: none;
   background: transparent;
-  color: var(--accent);
+  color: var(--hts-ink, var(--text));
   cursor: pointer;
   text-decoration: underline;
 }
@@ -536,42 +887,29 @@
 .htsOrderTradeMsg {
   margin: 0.5rem 0 0;
   font-size: 0.75rem;
-  color: var(--text);
+  color: var(--hts-ink, var(--text));
   line-height: 1.35;
 }
 
 .htsOrderHint {
-  margin: 0.45rem 0 0;
+  margin: 0;
   font-size: 0.68rem;
 }
 
 .htsPositionCard {
-  margin-top: 0.55rem;
+  margin-top: 0;
   padding: 0.65rem 0.7rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--bg-panel) 88%, var(--bg-soft));
+  border-radius: 14px;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
 }
 
 .htsPositionCard--long {
-  box-shadow: inset 0 0 0 1px rgba(63, 182, 139, 0.14);
+  border-color: color-mix(in oklab, var(--hts-buy, var(--accent)) 65%, rgba(17, 17, 17, 0.12));
 }
 
 .htsPositionCard--short {
-  box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.14);
-}
-
-.htsPositionCardHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.htsPositionCardHead strong {
-  color: var(--text);
-  font-size: 0.78rem;
+  border-color: color-mix(in oklab, var(--hts-sell, #ff6b78) 65%, rgba(17, 17, 17, 0.12));
 }
 
 .htsPositionGrid {
@@ -584,54 +922,101 @@
   display: flex;
   flex-direction: column;
   gap: 0.16rem;
-  padding: 0.42rem 0.48rem;
-  border-radius: 8px;
-  background: color-mix(in oklab, var(--bg-toolbar) 88%, transparent);
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: #ffffff;
 }
 
 .htsPositionMetric span {
   font-size: 0.62rem;
-  color: var(--text-muted);
+  color: var(--hts-ink, var(--text));
+  font-weight: 800;
 }
 
 .htsPositionMetric strong {
-  color: var(--text);
-  font-size: 0.78rem;
+  color: var(--hts-ink, var(--text));
+  font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
 
 .htsPositionHint {
-  margin: 0.5rem 0 0;
+  margin: 0.65rem 0 0;
   font-size: 0.68rem;
+  color: var(--hts-ink, var(--text));
 }
 
 .htsPositionActionBtn {
-  padding: 0.24rem 0.48rem;
+  min-height: 2rem;
+  padding: 0 0.75rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--accent) 50%, var(--border));
-  background: color-mix(in oklab, var(--accent) 10%, var(--bg-toolbar));
-  color: var(--text);
+  border: 1px solid color-mix(in oklab, var(--hts-buy, var(--accent)) 55%, rgba(17, 17, 17, 0.12));
+  background: color-mix(in oklab, var(--hts-buy, var(--accent)) 16%, #ffffff);
+  color: var(--hts-ink, var(--text));
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
 }
 
 .htsOrderChargeOpen {
   margin-top: 0.55rem;
   width: 100%;
-  padding: 0.4rem 0.5rem;
+  padding: 0.72rem 0.5rem;
   font-size: 0.75rem;
-  border-radius: 6px;
-  border: 1px dashed color-mix(in oklab, var(--border) 80%, var(--accent));
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: 14px;
+  border: 1px dashed color-mix(in oklab, var(--hts-buy, var(--accent)) 48%, rgba(17, 17, 17, 0.14));
+  background: #ffffff;
+  color: var(--hts-ink, var(--text));
   cursor: pointer;
 }
 
 .htsOrderChargeOpen:hover {
-  border-color: var(--accent);
-  color: var(--text);
+  border-color: var(--hts-buy, var(--accent));
+  color: var(--hts-ink, var(--text));
 }
+
+/* 계정 패널 내 충전 버튼 */
+.htsOrderChargeOpen--account {
+  margin: 0.65rem 0.95rem 0.65rem;
+  width: calc(100% - 1.9rem);
+}
+
+/* ─ 웹 레버리지 섹션 ────────────────────── */
+.htsDeskLevSection {
+  padding: 0.6rem 0.95rem 0.5rem;
+  border-bottom: 1px solid rgba(17,17,17,0.07);
+}
+
+.htsDeskLevHead {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.72rem;
+  color: rgba(17,17,17,0.56);
+  font-weight: 700;
+}
+
+.htsDeskLevValue {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: #111111;
+}
+
+[data-theme='dark'] .htsDeskLevValue { color: #ffffff; }
+[data-theme='dark'] .htsDeskLevHead  { color: rgba(255,255,255,0.45); }
+
+.htsDeskLevSection .htsSizingLever {
+  padding: 0.15rem 0;
+}
+
+.htsSizingLeverMark--active {
+  color: #111111;
+  font-weight: 900;
+}
+
+[data-theme='dark'] .htsSizingLeverMark--active { color: #ffffff; }
 
 .fcChargeModalRoot {
   position: fixed;
@@ -651,7 +1036,6 @@
   border-radius: 10px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
 .fcChargeModalTitle {
@@ -715,15 +1099,15 @@
 }
 
 .htsStatusDot--ok {
-  background: #3fb68b;
+  background: var(--hts-buy, #3fb68b);
 }
 
 .htsStatusDot--warn {
-  background: #eab308;
+  background: var(--hts-ink, var(--text));
 }
 
 .htsStatusDot--err {
-  background: #ef5350;
+  background: var(--hts-sell, #ef5350);
 }
 
 .htsStatusSep {
@@ -739,44 +1123,105 @@
 .htsWorkspace--mobile {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
   min-height: 100%;
-  padding: 0.7rem;
+  padding: 0;
   border: none;
   border-radius: 0;
-  overflow: auto;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 32%),
-    linear-gradient(180deg, color-mix(in oklab, var(--bg-soft) 88%, var(--bg-app)), var(--bg-app));
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
 }
 
 .htsMobileTop,
 .htsMobileMain,
 .htsMobileBottom {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: color-mix(in oklab, var(--bg-panel) 92%, var(--bg-soft));
-  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .htsMobileTop {
-  padding: 0.8rem 0.8rem 0.75rem;
+  padding: 0.2rem 0 0.75rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
 }
 
-.htsMobileTopBar {
+.htsMobileHero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.htsMobileTopBar .htsPanelTitle {
-  margin-bottom: 0.18rem;
+.htsMobileHeroMain {
+  min-width: 0;
 }
 
-.htsMobileTopBar .htsMuted {
-  margin: 0;
+.htsMobileHeroTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.htsMobileHeroSymbol {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #111111;
+  letter-spacing: -0.02em;
+}
+
+.htsMobileHeroBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.7rem;
+  padding: 0 0.55rem;
+  border-radius: 10px;
+  background: rgba(17, 17, 17, 0.05);
+  color: #111111;
   font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.htsMobileHeroChange {
+  margin: 0.18rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.htsMobileMetaRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.htsMobileMetaBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+}
+
+.htsMobileMetaBlock strong {
+  color: #111111;
+  font-size: 0.88rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.htsMobileMetaBlock--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.htsMobileMetaLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: rgba(17, 17, 17, 0.56);
 }
 
 .htsMobileStatus {
@@ -784,95 +1229,44 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.32rem 0.55rem;
+  padding: 0.38rem 0.62rem;
   border-radius: 999px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  font-size: 0.66rem;
-  font-weight: 700;
-  color: var(--text-dim);
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #111111;
   white-space: nowrap;
 }
 
-.htsMobileWatchStrip {
-  display: flex;
-  gap: 0.55rem;
-  margin-top: 0.75rem;
-  padding-bottom: 0.2rem;
-  overflow-x: auto;
-  scrollbar-width: none;
+.htsMobileControlRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.8rem;
 }
 
-.htsMobileWatchStrip::-webkit-scrollbar {
-  display: none;
-}
-
-.htsMobileWatchChip {
-  flex: 0 0 auto;
-  min-width: 6.6rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.18rem;
-  padding: 0.65rem 0.72rem;
-  border-radius: 14px;
-  border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
-  background: linear-gradient(180deg, color-mix(in oklab, var(--bg-toolbar) 92%, transparent), var(--bg-panel));
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.htsMobileWatchChip--active {
-  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
-  background: linear-gradient(
-    180deg,
-    color-mix(in oklab, var(--accent) 13%, var(--bg-toolbar)),
-    color-mix(in oklab, var(--accent) 7%, var(--bg-panel))
-  );
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 28%, transparent);
-}
-
-.htsMobileWatchChip--up {
-  color: #15803d;
-}
-
-.htsMobileWatchChip--down {
-  color: #b91c1c;
-}
-
-[data-theme='dark'] .htsMobileWatchChip--up {
-  color: #bff7df;
-}
-
-[data-theme='dark'] .htsMobileWatchChip--down {
-  color: #ffd0cf;
-}
-
-.htsMobileWatchCode {
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-}
-
-.htsMobileWatchPrice {
-  font-size: 0.84rem;
+.htsMobileControlChip {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: rgba(17, 17, 17, 0.03);
+  color: #111111;
+  font-size: 0.72rem;
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.htsMobileWatchPct {
-  font-size: 0.66rem;
-  font-weight: 700;
-  opacity: 0.82;
 }
 
 .htsMobileMain {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(10.75rem, 0.92fr);
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.34fr);
   gap: 0.75rem;
-  min-height: 27rem;
-  padding: 0.75rem;
+  min-height: 0;
+  padding: 0.75rem 0;
+  align-items: start;
 }
 
 .htsMobileOrderbookPane,
@@ -883,6 +1277,8 @@
 
 .htsMobileOrderbookPane {
   display: flex;
+  padding-right: 0.6rem;
+  border-right: 1px solid rgba(17, 17, 17, 0.08);
 }
 
 .htsMobileOrderbookPane .obPanel {
@@ -894,8 +1290,8 @@
 .htsMobileTradePane {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
-  padding: 0.15rem 0.1rem 0.05rem 0;
+  gap: 0.45rem;
+  padding: 0.05rem 0 0.05rem 0.1rem;
 }
 
 .htsMobileTradeHead {
@@ -903,56 +1299,28 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-bottom: 0.1rem;
-  border-bottom: 1px solid var(--border-2);
+  min-height: 2.1rem;
 }
 
 .htsMobilePaneLabel {
-  font-size: 0.63rem;
+  font-size: 0.58rem;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: rgba(17, 17, 17, 0.56);
 }
 
-.htsMobileControlGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+.htsMobileAvailValue {
+  color: #111111;
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
-.htsMobileSegmentRow {
+.htsMobileInputRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.35rem;
-}
-
-.htsMobileSegmentBtn {
-  min-height: 2rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-toolbar);
-  color: var(--text-dim);
-  font-size: 0.72rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.htsMobileSegmentBtn--active {
-  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
-  background: color-mix(in oklab, var(--accent) 15%, var(--bg-toolbar));
-  color: var(--accent);
-}
-
-.htsMobileSegmentBtn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.htsMobileHint {
-  margin: 0;
-  font-size: 0.66rem;
-  line-height: 1.45;
 }
 
 .htsMobileFormGrid {
@@ -966,43 +1334,123 @@
   gap: 0.22rem;
 }
 
+.htsMobileField--flat .htsModeToggle {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.htsMobileField--step {
+  min-width: 0;
+}
+
 .htsMobileField span {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: rgba(17, 17, 17, 0.56);
 }
 
 .htsMobileField input,
-.htsMobileField select {
+.htsMobileField .htsModeToggle {
   width: 100%;
   box-sizing: border-box;
-  min-height: 2.15rem;
+  min-height: 2.3rem;
   padding: 0.45rem 0.55rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--bg-toolbar);
-  color: var(--text);
+  border-radius: 14px;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: #ffffff;
+  color: #111111;
   font-size: 0.84rem;
+}
+
+.htsMobileStepper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 2.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 17, 17, 0.06);
+  background: rgba(17, 17, 17, 0.04);
+  overflow: hidden;
+}
+
+.htsMobileStepper input {
+  min-width: 0;
+  min-height: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #111111;
+}
+
+.htsMobileStepperBtn {
+  width: 2.2rem;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.64);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.htsMobileSideBtn {
+  min-width: 3.85rem;
+  min-height: 3rem;
+  padding: 0 0.65rem;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 17, 17, 0.06);
+  background: rgba(17, 17, 17, 0.04);
+  color: #111111;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.htsMobileCalcBoard {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.htsMobileCalcRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: rgba(17, 17, 17, 0.68);
+}
+
+.htsMobileCalcRow strong {
+  color: #111111;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .htsMobileTradeButtons {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
 }
 
 .htsMobileTradeButtons .htsOrderBtn {
-  min-height: 2.6rem;
+  min-height: 2.8rem;
+  font-size: 0.88rem;
 }
 
 .htsMobileBalance {
   margin: 0;
   font-size: 0.76rem;
-  color: var(--text-muted);
+  color: rgba(17, 17, 17, 0.62);
 }
 
 .htsMobileBalance strong {
-  color: var(--text);
+  color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1010,35 +1458,27 @@
   display: flex;
   flex-direction: column;
   min-height: 13.5rem;
-  padding: 0.8rem 0.8rem 0;
+  padding: 0.7rem 0 0;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
 }
 
 .htsMobileBottomHead {
-  padding-bottom: 0.55rem;
-}
-
-.htsMobileBottomHead .htsPanelTitle {
-  margin-bottom: 0.18rem;
-}
-
-.htsMobileBottomHead .htsMuted {
-  margin: 0;
-  font-size: 0.7rem;
+  display: none;
 }
 
 .htsMobileTabBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-bottom: 0.8rem;
+  padding-top: 0.2rem;
 }
 
 .htsMobilePositionCard,
 .htsMobileOrderItem,
 .htsMobileWatchRow {
   border-radius: 14px;
-  border: 1px solid var(--border);
-  background: color-mix(in oklab, var(--bg-soft) 82%, var(--bg-panel));
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: rgba(17, 17, 17, 0.02);
 }
 
 .htsMobilePositionCard {
@@ -1061,11 +1501,11 @@
 }
 
 .htsMobilePositionCard--long {
-  box-shadow: inset 0 0 0 1px rgba(63, 182, 139, 0.16);
+  border-color: rgba(63, 182, 139, 0.36);
 }
 
 .htsMobilePositionCard--short {
-  box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.16);
+  border-color: rgba(239, 83, 80, 0.36);
 }
 
 .htsMobilePositionRow {
@@ -1170,38 +1610,66 @@
   display: grid;
   place-items: center;
   min-height: 7rem;
-  border: 1px dashed var(--border);
+  border: 1px dashed rgba(17, 17, 17, 0.12);
   border-radius: 14px;
-  color: var(--text-muted);
+  color: rgba(17, 17, 17, 0.56);
   font-size: 0.78rem;
-  background: color-mix(in oklab, var(--bg-soft) 82%, transparent);
+  background: #ffffff;
 }
 
 .htsMobileNav {
-  position: sticky;
-  bottom: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.45rem;
-  padding: 0.7rem 0 0.75rem;
-  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--bg-panel) 92%, var(--bg-soft)) 32%);
+  gap: 0;
+  order: -1;
+  margin-bottom: 0.6rem;
+  padding: 0;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+  background: transparent;
 }
 
 .htsMobileNavBtn {
-  min-height: 2.45rem;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-toolbar);
-  color: var(--text-muted);
-  font-size: 0.76rem;
+  min-width: 0;
+  min-height: 2.65rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 0.74rem;
   font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .htsMobileNavBtn--active {
-  border-color: color-mix(in oklab, var(--accent) 58%, var(--border));
-  background: color-mix(in oklab, var(--accent) 14%, var(--bg-toolbar));
-  color: var(--text);
+  border-bottom-color: #f7b500;
+  color: #111111;
+}
+
+@media (max-width: 1280px) {
+  .htsDeskBottomHead,
+  .htsDeskCardHead {
+    flex-direction: column;
+  }
+
+  .htsDeskBottomMeta {
+    justify-content: flex-start;
+  }
+
+  .htsDeskCardActions,
+  .htsDeskOrderRow,
+  .htsDeskOrderMain {
+    flex-wrap: wrap;
+  }
+
+  .htsDeskBottomGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .htsDeskOrderTime {
+    width: 100%;
+    text-align: right;
+  }
 }
 
 @media (max-width: 960px) {
@@ -1240,37 +1708,22 @@
 }
 
 @media (max-width: 720px) {
-  .htsWorkspace--mobile {
-    padding: 0.55rem;
-    gap: 0.6rem;
-  }
-
   .htsMobileMain {
-    grid-template-columns: minmax(0, 1fr) minmax(9.6rem, 0.9fr);
-    min-height: 24rem;
-    padding: 0.65rem;
-  }
-
-  .htsMobileTop,
-  .htsMobileBottom {
-    padding-left: 0.7rem;
-    padding-right: 0.7rem;
-  }
-
-  .htsMobileWatchChip {
-    min-width: 6rem;
-    padding: 0.58rem 0.64rem;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.32fr);
+    min-height: 0;
+    padding: 0.65rem 0;
   }
 
   .htsMobileTradePane {
-    gap: 0.6rem;
+    gap: 0.4rem;
   }
 }
 
 @media (max-width: 520px) {
-  .htsMobileTopBar {
+  .htsMobileHero,
+  .htsMobileMetaRow {
+    grid-template-columns: 1fr;
     flex-direction: column;
-    align-items: stretch;
   }
 
   .htsMobileStatus {
@@ -1278,22 +1731,1481 @@
   }
 
   .htsMobileMain {
-    grid-template-columns: minmax(0, 1fr) minmax(8.9rem, 0.88fr);
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
     gap: 0.55rem;
-    padding: 0.55rem;
+    padding: 0.55rem 0;
   }
 
-  .htsMobileTradeButtons {
-    grid-template-columns: 1fr;
+  .htsMobileControlRow {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 
-  .htsPositionGrid,
-  .htsOrderPresetRow {
+  .htsMobileHeroSymbol {
+    font-size: 1rem;
+  }
+
+  .htsMobileMetaBlock strong {
+    font-size: 0.76rem;
+  }
+
+  .htsMobileControlChip {
+    font-size: 0.66rem;
+  }
+
+  .htsMobileStepperBtn {
+    width: 1.9rem;
+  }
+
+  .htsMobileSideBtn {
+    min-width: 3.4rem;
+    font-size: 0.7rem;
+  }
+
+  .htsPositionGrid {
     grid-template-columns: 1fr;
   }
 
   .htsMobileOrderTop,
   .htsMobileOrderMeta {
     flex-wrap: wrap;
+  }
+}
+
+/* 2026 Trading Layout Refresh */
+
+.htsWorkspace--deskLayout,
+.htsWorkspace--mobile {
+  --hts-buy: #5ce1e6;
+  --hts-sell: #ff6b78;
+  --hts-ink: #111111;
+  scroll-behavior: smooth;
+}
+
+.htsWorkspace--deskLayout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 0;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+.htsWorkspace--mobile {
+  gap: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: #ffffff;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.htsSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsSectionHead strong {
+  color: #111111;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.htsSectionHead span {
+  color: rgba(17, 17, 17, 0.56);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.htsSymbolTabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.6rem 0.95rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+  background: #ffffff;
+}
+
+.htsSymbolTabs::-webkit-scrollbar,
+.htsRecordTabs::-webkit-scrollbar,
+.htsWorkspace--mobile .htsTfBar::-webkit-scrollbar {
+  display: none;
+}
+
+.htsSymbolTab {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.2rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  cursor: pointer;
+}
+
+.htsSymbolTab--active {
+  border-color: rgba(17, 17, 17, 0.22);
+}
+
+.htsSymbolTabCode,
+.htsSymbolTabPrice {
+  font-size: 0.72rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsDeskTopbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.9rem 0.95rem 0.75rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsDeskTicker {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.htsDeskTickerSymbol {
+  color: #111111;
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.htsDeskTickerPrice {
+  font-size: 1.08rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsDeskTickerChange {
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.htsDeskTopbarMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.htsDeskInfoChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.2rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.htsDeskInfoChip--action {
+  cursor: pointer;
+}
+
+/* 데스크탑 공통 컬럼 정의 — Main/Lower 동일 사용 */
+:root {
+  --hts-col-chart: minmax(0, 1fr);
+  --hts-col-book:  minmax(16rem, 18rem);
+  --hts-col-order: minmax(19rem, 22rem);
+}
+
+.htsDeskMain {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--hts-col-chart) var(--hts-col-book) var(--hts-col-order);
+  background: #ffffff;
+}
+
+.htsDeskChartPane,
+.htsDeskBookPane,
+.htsDeskOrderPane,
+.htsDeskAccountPane,
+.htsRecordsSection,
+.htsMobileAuxSection {
+  min-width: 0;
+  min-height: 0;
+  background: #ffffff;
+}
+
+.htsDeskChartPane {
+  display: flex;
+  flex-direction: column;
+}
+
+.htsDeskChartPane .htsChartWrap {
+  flex: 1;
+  min-height: 360px;
+}
+
+.htsDeskBookPane {
+  overflow: hidden;
+  border-left: 1px solid rgba(17, 17, 17, 0.08);
+  border-right: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsDeskOrderPane {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.htsDeskLower {
+  display: grid;
+  /* Main 과 동일한 3컬럼 → 포지션=차트+오더북 너비, 잔고=주문패널 너비 */
+  grid-template-columns: var(--hts-col-chart) var(--hts-col-book) var(--hts-col-order);
+  flex: 0 0 16rem;
+  min-height: 0;
+  border-top: 2px solid rgba(17, 17, 17, 0.09);
+  overflow: hidden;
+}
+
+/* 포지션 섹션: 차트(1) + 오더북(2) 열 차지 */
+.htsDeskLower .htsRecordsSection {
+  grid-column: 1 / 3;
+  border-right: 2px solid rgba(17, 17, 17, 0.09);
+}
+
+/* 잔고 패널: 주문패널(3) 열 차지 */
+.htsDeskAccountPane {
+  grid-column: 3;
+  border-left: none;
+  overflow-y: auto;
+}
+
+.htsRecordsSection {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.htsRecordsBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.htsWorkspace--deskLayout .htsStatusBar {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsWorkspace--deskLayout .htsTfBar,
+.htsWorkspace--mobile .htsTfBar {
+  gap: 0.35rem;
+  padding: 0.6rem 0.95rem;
+  border-bottom-color: rgba(17, 17, 17, 0.08);
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.htsWorkspace--deskLayout .htsTfBarLabel {
+  display: none;
+}
+
+.htsWorkspace--deskLayout .htsTfBtn,
+.htsWorkspace--mobile .htsTfBtn {
+  border-color: rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111111;
+  font-weight: 800;
+}
+
+.htsWorkspace--deskLayout .htsTfBtn--active,
+.htsWorkspace--mobile .htsTfBtn--active {
+  border-color: rgba(17, 17, 17, 0.22);
+  background: color-mix(in oklab, var(--hts-buy) 18%, #ffffff);
+}
+
+.htsOrderPanelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.95rem;
+}
+
+.htsOrderFieldBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.32rem;
+}
+
+.htsOrderFieldLabel {
+  color: rgba(17, 17, 17, 0.54);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.htsOrderInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.htsStepInput {
+  display: grid;
+  grid-template-columns: 2.2rem minmax(0, 1fr) 2.2rem;
+  align-items: center;
+  min-height: 2.6rem;
+  border: none;
+  border-radius: 14px;
+  background: rgba(17,17,17,0.06);
+}
+
+[data-theme='dark'] .htsStepInput {
+  background: rgba(255,255,255,0.07);
+}
+
+.htsStepInput input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0.35rem;
+  border: none;
+  background: transparent;
+  color: #111111;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsStepInput input:disabled {
+  color: rgba(17, 17, 17, 0.5);
+}
+
+.htsStepInputBtn {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: rgba(17,17,17,0.45);
+  font-size: 1.05rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.htsStepInputBtn:hover,
+.htsStepInputBtn:active,
+.htsStepInputBtn:focus {
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+.htsGhostActionBtn {
+  min-width: 4.8rem;
+  min-height: 2.6rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: 14px;
+  background: rgba(17,17,17,0.06);
+  color: #111111;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.htsGhostActionBtn:hover {
+  background: rgba(17,17,17,0.11);
+}
+
+[data-theme='dark'] .htsGhostActionBtn {
+  background: rgba(255,255,255,0.08);
+  color: #ffffff;
+}
+[data-theme='dark'] .htsGhostActionBtn:hover {
+  background: rgba(255,255,255,0.13);
+}
+
+.htsQuickPctGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.htsQuickPctBtn {
+  min-height: 2.5rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.htsQuickPctBtn--active {
+  border-color: rgba(17, 17, 17, 0.22);
+  background: color-mix(in oklab, var(--hts-buy) 18%, #ffffff);
+}
+
+.htsOrderSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.htsOrderSummaryItem,
+.htsRecordMetric,
+.htsAccountMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid rgba(17, 17, 17, 0.1);
+  background: #ffffff;
+}
+
+.htsOrderSummaryItem span,
+.htsRecordMetric span,
+.htsAccountMetric span {
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.htsOrderSummaryItem strong,
+.htsRecordMetric strong,
+.htsAccountMetric strong {
+  color: #111111;
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsOrderActions--stack {
+  grid-template-columns: 1fr;
+}
+
+.htsRecordsSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.htsRecordTabs {
+  display: flex;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding: 0 0.95rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsRecordTab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.8rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.htsRecordTab--active {
+  border-bottom-color: #111111;
+  color: #111111;
+}
+
+.htsRecordsBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.95rem;
+}
+
+.htsRecordEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 10rem;
+  border: 1px dashed rgba(17, 17, 17, 0.14);
+  color: rgba(17, 17, 17, 0.56);
+  font-size: 0.8rem;
+  background: #ffffff;
+}
+
+.htsRecordPosition {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+}
+
+.htsRecordPosition--long {
+  border-color: color-mix(in oklab, var(--hts-buy) 56%, rgba(17, 17, 17, 0.12));
+}
+
+.htsRecordPosition--short {
+  border-color: color-mix(in oklab, var(--hts-sell) 56%, rgba(17, 17, 17, 0.12));
+}
+
+.htsRecordPositionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htsRecordPositionHead strong {
+  color: #111111;
+  font-size: 0.88rem;
+}
+
+.htsRecordPositionHead p {
+  margin: 0.18rem 0 0;
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.htsRecordMetricGrid,
+.htsAccountGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.htsRecordTradeList,
+.htsInfoList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.htsRecordTradeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsRecordTradeRow:last-child {
+  border-bottom: none;
+}
+
+.htsRecordTradeMain,
+.htsRecordTradeMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  color: #111111;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsRecordTradeMeta {
+  justify-content: flex-end;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.htsInfoList,
+.htsAccountGrid {
+  padding: 0.95rem;
+}
+
+.htsInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: rgba(17, 17, 17, 0.64);
+  font-size: 0.8rem;
+}
+
+.htsInfoRow strong {
+  color: #111111;
+  font-size: 0.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.htsMobileHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.75rem 0.85rem 0.85rem;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.08);
+  overflow-x: hidden;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.htsMobileTickerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htsMobileTickerMain {
+  min-width: 0;
+}
+
+.htsMobileTickerLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.htsMobileTickerSymbol {
+  color: #111111;
+  font-size: 1.28rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.htsMobileTickerPrice {
+  font-size: 1.12rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileTickerChange {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.htsMobileTickerName {
+  margin: 0.18rem 0 0;
+  color: rgba(17, 17, 17, 0.54);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.htsMobileStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-height: 2.1rem;
+  padding: 0 0.72rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  color: #111111;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.htsMobileActionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.htsInlineActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.65rem;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+  color: #111111;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.htsWorkspace--mobile .htsSymbolTabs {
+  padding: 0;
+  border-bottom: none;
+}
+
+.htsMobileTradeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.htsMobileBookSection {
+  min-width: 0;
+  min-height: 0;
+  padding-right: 0.65rem;
+  border-right: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsMobileOrderSection {
+  min-width: 0;
+  min-height: 0;
+}
+
+.htsRecordsSection--mobile,
+.htsMobileAuxSection {
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsMobileChartWrap {
+  height: 260px;
+}
+
+.htsMobileBottomNav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: auto;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+  background: #ffffff;
+}
+
+.htsMobileBottomNavItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  color: rgba(17, 17, 17, 0.52);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.htsMobileBottomNavItem--active {
+  color: #111111;
+}
+
+/* ── 2026 모바일 개선 ──────────────────────────── */
+
+/* 하단 nav 고정 */
+.htsMobileBottomNav--fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  height: calc(3.4rem + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  border-top: 1px solid rgba(17,17,17,0.10);
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme='dark'] .htsMobileBottomNav--fixed {
+  background: rgba(14,18,22,0.96);
+  border-color: rgba(255,255,255,0.08);
+}
+
+.htsMobileBottomNav--fixed .htsMobileBottomNavItem {
+  flex-direction: column;
+  gap: 0.18rem;
+  min-height: 3.4rem;
+  padding: 0.4rem 0 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(17,17,17,0.42);
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.htsMobileBottomNav--fixed .htsMobileBottomNavItem span {
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.htsMobileBottomNav--fixed .htsMobileBottomNavItem--active {
+  color: #111111;
+}
+
+[data-theme='dark'] .htsMobileBottomNav--fixed .htsMobileBottomNavItem {
+  color: rgba(255,255,255,0.38);
+}
+
+[data-theme='dark'] .htsMobileBottomNav--fixed .htsMobileBottomNavItem--active {
+  color: #ffffff;
+}
+
+/* mobile workspace → 하단 nav 높이만큼 하단 공간 확보 */
+.htsMobilePosRow,
+.htsMobileChartTab,
+.htsMobileNoticeTab,
+.htsMobileAccountTab {
+  padding-bottom: calc(3.4rem + env(safe-area-inset-bottom) + 0.5rem);
+}
+
+/* 헤더 섹션 small variant */
+.htsSectionHead--sm {
+  padding: 0.5rem 0.75rem;
+}
+
+.htsSectionHead--sm strong {
+  font-size: 0.78rem;
+}
+
+.htsSectionHead--sm span {
+  font-size: 0.64rem;
+}
+
+/* ── 신규 3-row 모바일 레이아웃 ──────────────────── */
+/*
+  [오더북][주문]   ← htsMobileTopRow  (60% 화면)
+  [포지션]         ← htsMobilePosRow  (나머지)
+*/
+
+.htsMobileTradeLayout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 상단: 오더북 + 주문 */
+.htsMobileTopRow {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 0;
+  width: 100%;
+  height: 58vh;
+  min-height: 340px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(17,17,17,0.07);
+  box-sizing: border-box;
+}
+
+/* 하단: 포지션 */
+.htsMobilePosRow {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0.85rem 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.htsMobilePosDividerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0 0.3rem;
+}
+
+.htsMobilePosDividerRow::before,
+.htsMobilePosDividerRow::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(17,17,17,0.09);
+}
+
+.htsMobilePosDividerRow span {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17,17,17,0.4);
+}
+
+/* 오더북 — 전체 높이 채우기, 내부 스크롤 */
+.htsMobileBookSection--tall {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid rgba(17,17,17,0.07);
+}
+
+.htsMobileBookScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.htsMobileBookScroll .obPanel {
+  max-width: none;
+  height: 100%;
+}
+
+/* 주문 패널 — 스크롤 가능 */
+.htsMobileOrderSection--scroll {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.htsOrderPanelBody--compact {
+  gap: 0.42rem;
+  padding: 0.5rem 0.65rem 0.5rem 0.65rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* ── stepper 버튼 원형 variant ─────────────────────── */
+.htsStepInputBtn--circle {
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  margin: auto 0.15rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(17,17,17,0.40);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-theme='dark'] .htsStepInputBtn--circle {
+  background: transparent;
+  color: rgba(255,255,255,0.40);
+}
+
+.htsStepInputBtn--circle:hover,
+.htsStepInputBtn--circle:active,
+.htsStepInputBtn--circle:focus {
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+}
+
+/* 작은 입력들 */
+.htsGhostActionBtn--sm {
+  min-width: 3.4rem;
+  min-height: 2.65rem;
+  font-size: 0.7rem;
+}
+
+/* ── 수량 레버 슬라이더 ───────────────────────────── */
+.htsSizingLever {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.3rem 0;
+}
+
+.htsSizingLeverTrack {
+  position: relative;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+/* 슬라이더 레일(선) */
+.htsSizingLeverTrack::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%; transform: translateY(-50%);
+  height: 2px;
+  background: rgba(17,17,17,0.12);
+  border-radius: 1px;
+  z-index: 0;
+}
+
+[data-theme='dark'] .htsSizingLeverTrack::before {
+  background: rgba(255,255,255,0.12);
+}
+
+/* 채워지는 부분 */
+.htsSizingLeverFill {
+  position: absolute;
+  left: 0;
+  top: 50%; transform: translateY(-50%);
+  width: var(--lev-pct, 0%);
+  height: 2px;
+  background: #111111;
+  border-radius: 1px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+[data-theme='dark'] .htsSizingLeverFill {
+  background: #ffffff;
+}
+
+/* range input 위에 겹치기 */
+.htsSizingLeverInput {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 1.5rem;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.htsSizingLeverInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #111111;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(17,17,17,0.2);
+}
+
+[data-theme='dark'] .htsSizingLeverInput::-webkit-slider-thumb {
+  background: #ffffff;
+  border-color: #0e1216;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.2);
+}
+
+.htsSizingLeverInput::-webkit-slider-runnable-track { background: transparent; }
+.htsSizingLeverInput::-moz-range-track { background: transparent; }
+.htsSizingLeverInput::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #111111;
+  border: 2px solid #ffffff;
+}
+
+/* 눈금 레이블 */
+.htsSizingLeverMarks {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1px;
+}
+
+.htsSizingLeverMark {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.6rem;
+  color: rgba(17,17,17,0.38);
+  cursor: pointer;
+  min-width: 1.6rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.htsSizingLeverMark:first-child { text-align: left; min-width: 0.5rem; }
+.htsSizingLeverMark:last-child  { text-align: right; }
+
+[data-theme='dark'] .htsSizingLeverMark {
+  color: rgba(255,255,255,0.32);
+}
+
+/* 잔고/비용 인라인 텍스트 */
+.htsSizingLeverInfo {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.1rem 0;
+}
+
+.htsSizingLeverInfo span {
+  font-size: 0.62rem;
+  color: rgba(17,17,17,0.42);
+}
+
+.htsSizingLeverInfo b {
+  font-weight: 700;
+  color: rgba(17,17,17,0.72);
+}
+
+[data-theme='dark'] .htsSizingLeverInfo span { color: rgba(255,255,255,0.35); }
+[data-theme='dark'] .htsSizingLeverInfo b    { color: rgba(255,255,255,0.7);  }
+
+.htsQuickPctBtn--sm {
+  min-height: 2.1rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.htsQuickPctGrid--sm {
+  gap: 0.3rem;
+}
+
+.htsOrderSummaryGrid--2col {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* 포지션 구분 */
+.htsMobilePosSection {
+  margin-top: 0.55rem;
+}
+
+.htsMobilePosDivider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.4rem 0;
+}
+
+.htsMobilePosDivider::before,
+.htsMobilePosDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(17,17,17,0.1);
+}
+
+.htsMobilePosDivider span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17,17,17,0.42);
+}
+
+.htsRecordTabs--sm {
+  padding: 0;
+  gap: 0.15rem;
+  border-bottom: 1px solid rgba(17,17,17,0.06);
+}
+
+.htsRecordTab--sm {
+  min-height: 2.2rem;
+  padding: 0 0.55rem;
+  font-size: 0.68rem;
+}
+
+.htsMobilePosBody {
+  padding: 0.5rem 0;
+}
+
+.htsMobilePosBody .htsRecordEmpty {
+  min-height: 5rem;
+  font-size: 0.72rem;
+}
+
+.mobilePosBadge--long {
+  color: #0f8a55;
+  font-weight: 800;
+  font-size: 0.66rem;
+}
+
+[data-theme='dark'] .mobilePosBadge--long { color: #3fb68b; }
+
+.mobilePosBadge--short {
+  color: #b91c1c;
+  font-weight: 800;
+  font-size: 0.66rem;
+}
+
+[data-theme='dark'] .mobilePosBadge--short { color: #ef5350; }
+
+/* 레버리지 버튼 */
+.htsMobileLevBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* 새 레버리지 버튼 — 시그니처 색, 테두리 없음 */
+.htsMobileLevBtnNew {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.2rem;
+  padding: 0 0.85rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--hts-buy, #5ce1e6);
+  color: #111111;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.htsMobileLevBtnNew:active {
+  filter: brightness(0.9);
+}
+
+[data-theme='dark'] .htsMobileLevBtnNew {
+  color: #111111;
+}
+
+/* 차트/공지/계정 탭 */
+.htsMobileChartTab {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--mob-header-h, 7.5rem) - 3.4rem - env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+.htsMobileChartTab .htsMobileChartWrap {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+/* 차트 div는 항상 DOM에 유지, 비활성 탭에선 숨김 */
+.htsMobileChartTab--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+
+/* 모바일 차트탭 하단 매수/매도 바 */
+.htsMobileChartOrderBar {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid rgba(17,17,17,0.08);
+  background: #ffffff;
+}
+
+[data-theme='dark'] .htsMobileChartOrderBar {
+  background: #0e1216;
+  border-color: rgba(255,255,255,0.07);
+}
+
+.htsMobileChartOrderBtn {
+  min-height: 2.8rem;
+  font-size: 0.92rem;
+}
+
+.htsMobileNoticeTab,
+.htsMobileAccountTab {
+  flex: 1;
+  min-height: 0;
+  padding: 0 0.85rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.htsMobileChartTab {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* 레버리지 모달 */
+.fcLevModalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0,0,0,0.38);
+}
+
+.fcLevModal {
+  width: 100%;
+  max-width: 480px;
+  padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.14);
+}
+
+[data-theme='dark'] .fcLevModal {
+  background: #141820;
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+}
+
+.fcLevModalTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.fcLevModalTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  color: #111111;
+}
+
+[data-theme='dark'] .fcLevModalTitle { color: #ffffff; }
+
+.fcLevModalClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 999px;
+  background: rgba(17,17,17,0.08);
+  color: #111111;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .fcLevModalClose {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+}
+
+.fcLevCurrentRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+  color: rgba(17,17,17,0.56);
+}
+
+[data-theme='dark'] .fcLevCurrentRow { color: rgba(255,255,255,0.5); }
+
+.fcLevCurrent {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #111111;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-theme='dark'] .fcLevCurrent { color: #ffffff; }
+
+.fcLevSliderWrap {
+  padding: 0.5rem 0 0;
+}
+
+.fcLevMarks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.65rem;
+}
+
+.fcLevMark {
+  min-width: 3rem;
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid rgba(17,17,17,0.12);
+  border-radius: 999px;
+  background: #ffffff;
+  color: rgba(17,17,17,0.6);
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+[data-theme='dark'] .fcLevMark {
+  background: #1e2430;
+  border-color: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.55);
+}
+
+.fcLevMark--active {
+  border-color: var(--hts-buy, #5ce1e6);
+  background: color-mix(in oklab, var(--hts-buy, #5ce1e6) 18%, #ffffff);
+  color: #111111;
+}
+
+[data-theme='dark'] .fcLevMark--active {
+  color: #ffffff;
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --hts-col-chart: minmax(0, 1fr);
+    --hts-col-book:  minmax(14rem, 16rem);
+    --hts-col-order: minmax(17rem, 19rem);
+  }
+}
+
+@media (max-width: 720px) {
+  .htsMobileTradeGrid {
+    gap: 0.6rem;
+  }
+
+  .htsMobileStatusBadge {
+    min-height: 1.9rem;
+    padding: 0 0.58rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .htsMobileTickerRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .htsMobileActionRow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .htsMobileTradeGrid {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    gap: 0.55rem;
+  }
+
+  .htsMobileBookSection {
+    padding-right: 0.45rem;
+  }
+
+  .htsOrderInputRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .htsGhostActionBtn {
+    min-width: 0;
+  }
+
+  .htsQuickPctGrid,
+  .htsOrderSummaryGrid,
+  .htsRecordMetricGrid,
+  .htsAccountGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .htsRecordTradeRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .htsRecordTradeMeta {
+    justify-content: flex-start;
   }
 }

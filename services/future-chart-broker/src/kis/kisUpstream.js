@@ -68,6 +68,9 @@ function modeForObTr(trId) {
  * @param {{ config: { restBase: string, appKey: string, secretKey: string, wsBase: string, symbol: string }, hub: { broadcast: (p: unknown) => void } }} opts
  */
 export function startKisUpstream({ config, hub }) {
+  const FOCUS_BOOT_TIMEOUT_MS = 12000;
+  const FOCUS_STALL_TIMEOUT_MS = 20000;
+  const WATCHDOG_INTERVAL_MS = 5000;
   let stopped = false;
   let socket = /** @type {WebSocket | null} */ (null);
   let reconnectTimer = /** @type {ReturnType<typeof setTimeout> | null} */ (null);
@@ -94,6 +97,10 @@ export function startKisUpstream({ config, hub }) {
   /** 차트 포커스 — watch와 합쳐 유효 구독 계산 */
   /** @type {{ mode: keyof typeof MODES, sym: string }} */
   let focus = { mode: 'stock', sym: defaultSym };
+  let focusRequestedAt = Date.now();
+  let lastFocusedRealtimeAt = 0;
+  let focusWatchdogAttempts = 0;
+  let lastWatchdogReconnectAt = 0;
 
   /** Yahoo Finance 해외선물 시세 폴 (startOverseasQuotePoll 반환 핸들) */
   let quotePoll = /** @type {{ stop: () => void; refresh: (c: readonly string[]) => void } | null} */ (null);
@@ -122,6 +129,43 @@ export function startKisUpstream({ config, hub }) {
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
       reconnectTimer = null;
+    }
+  };
+
+  const markFocusRequested = () => {
+    focusRequestedAt = Date.now();
+    lastFocusedRealtimeAt = 0;
+    focusWatchdogAttempts = 0;
+  };
+
+  /**
+   * @param {keyof typeof MODES} mode
+   * @param {string} sym
+   */
+  const noteFocusedRealtime = (mode, sym) => {
+    if (focus.mode !== mode || focus.sym !== sym) return;
+    lastFocusedRealtimeAt = Date.now();
+    focusWatchdogAttempts = 0;
+  };
+
+  /**
+   * @param {string} reason
+   */
+  const triggerWatchdogReconnect = (reason) => {
+    if (!socket || socket.readyState !== 1) return;
+    const now = Date.now();
+    if (now - lastWatchdogReconnectAt < 4000) return;
+    lastWatchdogReconnectAt = now;
+    console.warn('[kis] watchdog reconnect:', reason);
+    hub.broadcast({ type: 'status', source: 'kis', state: 'reconnecting', message: reason });
+    try {
+      socket.terminate?.();
+    } catch {
+      try {
+        socket.close();
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -291,6 +335,7 @@ export function startKisUpstream({ config, hub }) {
     focus = { mode: m, sym };
     config.symbol = sym;
     bumpDesired();
+    markFocusRequested();
 
     hub.broadcast({ type: 'symbol', provider: providerForMode(m), symbol: sym });
 
@@ -385,6 +430,7 @@ export function startKisUpstream({ config, hub }) {
 
     const prov = providerForMode(mode);
     const tickSym = mode === 'stock' ? norm : sym;
+    noteFocusedRealtime(mode, tickSym);
     hub.broadcast({
       type: 'tick',
       provider: prov,
@@ -467,6 +513,7 @@ export function startKisUpstream({ config, hub }) {
     }
 
     const prov = providerForMode(mode);
+    noteFocusedRealtime(mode, mode === 'stock' ? norm : sym);
     hub.broadcast({
       type: 'orderbook',
       provider: prov,
@@ -507,6 +554,7 @@ export function startKisUpstream({ config, hub }) {
     socket = new WebSocket(url);
 
     socket.on('open', () => {
+      markFocusRequested();
       hub.broadcast({ type: 'status', source: 'kis', state: 'connected' });
       hub.broadcast({ type: 'symbol', provider: providerForMode(focus.mode), symbol: focus.sym });
       reconcile(approvalKey);
@@ -521,6 +569,24 @@ export function startKisUpstream({ config, hub }) {
         msgCount = 0; obCount = 0; tickCount = 0;
       }
     }, 5000);
+    const watchdogTimer = setInterval(() => {
+      if (!socket || socket.readyState !== 1) return;
+      if (focus.mode === 'overseas_future') return;
+      const now = Date.now();
+      if (lastFocusedRealtimeAt <= 0) {
+        if (now - focusRequestedAt > FOCUS_BOOT_TIMEOUT_MS && focusWatchdogAttempts < 1) {
+          focusWatchdogAttempts += 1;
+          triggerWatchdogReconnect(`no initial realtime for ${focus.mode}:${focus.sym}`);
+        }
+        return;
+      }
+      if (now - lastFocusedRealtimeAt > FOCUS_STALL_TIMEOUT_MS && focusWatchdogAttempts < 1) {
+        focusWatchdogAttempts += 1;
+        focusRequestedAt = now;
+        lastFocusedRealtimeAt = 0;
+        triggerWatchdogReconnect(`realtime stalled for ${focus.mode}:${focus.sym}`);
+      }
+    }, WATCHDOG_INTERVAL_MS);
 
     socket.on('message', (data, isBinary) => {
       if (isBinary) return;
@@ -566,6 +632,7 @@ export function startKisUpstream({ config, hub }) {
 
     socket.on('close', (code, reason) => {
       clearInterval(statsTimer);
+      clearInterval(watchdogTimer);
       const why = reason && Buffer.isBuffer(reason) ? reason.toString('utf8') : String(reason ?? '');
       console.warn('[kis] ws closed', code, why || '(no reason)');
       socket = null;
