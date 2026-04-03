@@ -30,7 +30,7 @@ export function ChartOnlyShell({ session, theme, onToggleTheme, onLogout }: Prop
         </div>
       </header>
       <main className="chart-only-main">
-        <StreamingChart />
+        <StreamingChart session={session} />
       </main>
     </div>
   );

@@ -51,6 +51,37 @@
   color: var(--text-dim);
 }
 
+.obStaleTag {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--text-muted, #888);
+  opacity: 0.7;
+  animation: obStalePulse 1.8s ease-in-out infinite;
+}
+
+.obSyntheticTag {
+  margin-left: auto;
+  font-size: 0.63rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 165, 0, 0.12);
+  color: #c8890a;
+  border: 1px solid rgba(200, 137, 10, 0.35);
+  cursor: help;
+  white-space: nowrap;
+}
+
+@keyframes obStalePulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
+}
+
+.obPanel--stale .obStackBarFill,
+.obPanel--stale .obHeroPx,
+.obPanel--stale .obGoldMid {
+  opacity: 0.55;
+}
+
 .obSym.muted {
   color: var(--text-muted);
 }
@@ -121,7 +152,7 @@
 .obStackList--ask {
   list-style: none;
   margin: 0;
-  padding: 0.25rem 0 0;
+  padding: 0.2rem 0 0;
   background: linear-gradient(180deg, color-mix(in oklab, #64aae6 12%, transparent) 0%, transparent 100%);
   border-radius: 4px 4px 0 0;
 }
@@ -130,7 +161,7 @@
 .obStackList--bid {
   list-style: none;
   margin: 0;
-  padding: 0 0 0.25rem;
+  padding: 0 0 0.18rem;
   background: linear-gradient(180deg, color-mix(in oklab, #e68c96 10%, transparent) 0%, transparent 100%);
   border-radius: 0 0 4px 4px;
 }
@@ -145,6 +176,10 @@
   position: relative;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.obStackRow + .obStackRow {
+  margin-top: 1px;
 }
 
 .obStackRow::before {
@@ -168,6 +203,26 @@
   left: 0;
   right: auto;
   background: linear-gradient(90deg, color-mix(in oklab, #f096a5 32%, transparent), transparent);
+}
+
+.obStackRow--currentAsk,
+.obStackRow--currentBid {
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border) 35%, transparent);
+}
+
+.obStackRow--currentAsk {
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, #78b9f0 18%, transparent));
+}
+
+.obStackRow--currentBid {
+  background: linear-gradient(90deg, color-mix(in oklab, #f096a5 18%, transparent), transparent);
+}
+
+.obStackRow--currentAsk .obStackCell--price,
+.obStackRow--currentBid .obStackCell--price {
+  color: var(--text);
+  font-weight: 800;
 }
 
 .obStackCell {
@@ -206,8 +261,9 @@
 }
 
 .obStackBarTrack--empty {
-  background: transparent;
+  background: color-mix(in oklab, var(--border) 16%, transparent);
   height: 1.05rem;
+  opacity: 0.28;
 }
 
 .obStackBarFill {
@@ -255,7 +311,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.28rem 0;
+  padding: 0.2rem 0;
   flex-shrink: 0;
   background: color-mix(in oklab, var(--bg-panel) 92%, var(--border));
 }
@@ -271,12 +327,15 @@
 .obGoldMid {
   flex-shrink: 0;
   font-size: 0.58rem;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: #b45309;
   text-align: center;
   max-width: 11rem;
   line-height: 1.25;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, #f5d742 14%, var(--bg-panel));
 }
 
 [data-theme='dark'] .obGoldMid {

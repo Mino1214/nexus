@@ -1,4 +1,14 @@
+process.on('uncaughtException', (err) => {
+  console.error('[broker] uncaughtException:', err.message, err.stack?.split('\n')[1] ?? '');
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[broker] unhandledRejection:', reason instanceof Error ? reason.message : String(reason));
+  process.exit(1);
+});
+
 import { loadConfig } from './config.js';
+import { initBarStore } from './db/barStore.js';
 import { initTickStore } from './db/tickStore.js';
 import { createStreamHub } from './hub/streamHub.js';
 import { createBrokerServer } from './http/brokerServer.js';
@@ -6,6 +16,7 @@ import { startKisDomesticYahooFallback } from './kis/kisDomesticYahooFallback.js
 import { startKisUpstream } from './kis/kisUpstream.js';
 
 await initTickStore();
+initBarStore(process.env.SQLITE_PATH);
 const config = loadConfig();
 const hub = createStreamHub();
 

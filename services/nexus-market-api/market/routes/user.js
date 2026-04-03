@@ -47,6 +47,18 @@ function userId(req) {
   return req.marketAuth.sub;
 }
 
+function htsModuleFromReq(req) {
+  return String(req.headers['x-hts-module'] || process.env.HTS_MODULE_SLUG || 'hts_future_trade').trim();
+}
+
+function paperNotional(price, qty) {
+  const p = Number(price);
+  const q = parseInt(qty, 10);
+  if (!Number.isFinite(p) || p <= 0) return null;
+  if (!Number.isFinite(q) || q <= 0) return null;
+  return Math.max(1, Math.round(p * q));
+}
+
 /** GET /me */
 router.get('/me', async (req, res) => {
   try {
@@ -526,6 +538,146 @@ router.get('/orders', async (req, res) => {
     res.json({ orders: rows });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * HTS 차트용 모의 체결 — market_cash_balance 차감/가산, 체결 내역은 hts_paper_trades.
+ * 충전 승인으로 쌓인 캐시 잔고를 사용합니다.
+ */
+router.get('/hts-paper-trades', async (req, res) => {
+  try {
+    const uid = userId(req);
+    const mod = htsModuleFromReq(req);
+    const prov = String(req.query.provider || '').trim().slice(0, 32);
+    const sym = String(req.query.symbol || '').trim().slice(0, 64);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 120));
+    let sql = `SELECT id, user_id, module_code, provider, symbol, side, price, qty, notional, executed_at_ms, created_at
+       FROM hts_paper_trades WHERE user_id = ? AND (module_code <=> ? OR module_code IS NULL)`;
+    const params = [uid, mod];
+    if (prov) {
+      sql += ' AND provider = ?';
+      params.push(prov);
+    }
+    if (sym) {
+      sql += ' AND symbol = ?';
+      params.push(sym);
+    }
+    sql += ' ORDER BY id DESC LIMIT ?';
+    params.push(limit);
+    const [rows] = await db.pool.query(sql, params);
+    res.json({ trades: rows });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/hts-paper-order', async (req, res) => {
+  const uid = userId(req);
+  const mod = htsModuleFromReq(req);
+  const { side, provider, symbol, price, qty } = req.body || {};
+  const sideNorm = String(side || '').toLowerCase();
+  if (sideNorm !== 'buy' && sideNorm !== 'sell') {
+    return res.status(400).json({ error: 'side는 buy 또는 sell 이어야 합니다.' });
+  }
+  const prov = String(provider || '').trim().slice(0, 32);
+  const sym = String(symbol || '').trim().slice(0, 64);
+  if (!prov || !sym) return res.status(400).json({ error: 'provider와 symbol이 필요합니다.' });
+  const n = paperNotional(price, qty);
+  if (n == null) return res.status(400).json({ error: '가격·수량이 올바르지 않습니다.' });
+  const qn = parseInt(qty, 10);
+  const px = Number(price);
+  const executedAtMs = Date.now();
+
+  const conn = await db.pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[u]] = await conn.query(`SELECT market_status FROM users WHERE id = ? FOR UPDATE`, [uid]);
+    if (!u) {
+      await conn.rollback();
+      return res.status(404).json({ error: '유저 없음' });
+    }
+    if (u.market_status === 'suspended') {
+      await conn.rollback();
+      return res.status(403).json({ error: '정지된 계정입니다.' });
+    }
+
+    if (sideNorm === 'buy') {
+      await conn.query(
+        `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0) ON DUPLICATE KEY UPDATE user_id = user_id`,
+        [uid],
+      );
+      const [[cb]] = await conn.query(`SELECT balance FROM market_cash_balance WHERE user_id = ? FOR UPDATE`, [uid]);
+      const bal = Number(cb?.balance ?? 0);
+      if (bal < n) {
+        await conn.rollback();
+        return res.status(400).json({
+          error: '거래 자금이 부족합니다. 충전 신청 후 운영자 승인을 받아 주세요.',
+          code: 'insufficient_cash',
+          notional: n,
+          balance: bal,
+        });
+      }
+      await conn.query(`UPDATE market_cash_balance SET balance = balance - ? WHERE user_id = ?`, [n, uid]);
+      await conn.query(
+        `INSERT INTO market_cash_transactions (user_id, amount, type, description, module_code)
+         VALUES (?, ?, 'hts_paper_buy', ?, ?)`,
+        [uid, -n, `HTS 모의매수 ${prov} ${sym} x${qn}@${px}`, mod],
+      );
+      await conn.query(
+        `INSERT INTO hts_paper_trades (user_id, module_code, provider, symbol, side, price, qty, notional, executed_at_ms)
+         VALUES (?, ?, ?, ?, 'buy', ?, ?, ?, ?)`,
+        [uid, mod, prov, sym, px, qn, n, executedAtMs],
+      );
+      await conn.commit();
+      return res.json({ ok: true, balance: bal - n, notional: n, executedAtMs, side: 'buy' });
+    }
+
+    const [[netRow]] = await conn.query(
+      `SELECT COALESCE(SUM(CASE WHEN side = 'buy' THEN qty WHEN side = 'sell' THEN -qty ELSE 0 END), 0) AS net
+       FROM hts_paper_trades
+       WHERE user_id = ? AND provider = ? AND symbol = ? AND (module_code <=> ? OR module_code IS NULL)`,
+      [uid, prov, sym, mod],
+    );
+    const net = Number(netRow?.net ?? 0);
+    if (qn > net) {
+      await conn.rollback();
+      return res.status(400).json({
+        error: '매도 수량이 보유 수량을 초과합니다.',
+        code: 'insufficient_position',
+        netQty: net,
+      });
+    }
+
+    await conn.query(
+      `INSERT INTO market_cash_balance (user_id, balance) VALUES (?, 0) ON DUPLICATE KEY UPDATE user_id = user_id`,
+      [uid],
+    );
+    const [[cb2]] = await conn.query(`SELECT balance FROM market_cash_balance WHERE user_id = ? FOR UPDATE`, [uid]);
+    const balBefore = Number(cb2?.balance ?? 0);
+    await conn.query(`UPDATE market_cash_balance SET balance = balance + ? WHERE user_id = ?`, [n, uid]);
+    await conn.query(
+      `INSERT INTO market_cash_transactions (user_id, amount, type, description, module_code)
+       VALUES (?, ?, 'hts_paper_sell', ?, ?)`,
+      [uid, n, `HTS 모의매도 ${prov} ${sym} x${qn}@${px}`, mod],
+    );
+    await conn.query(
+      `INSERT INTO hts_paper_trades (user_id, module_code, provider, symbol, side, price, qty, notional, executed_at_ms)
+       VALUES (?, ?, ?, ?, 'sell', ?, ?, ?, ?)`,
+      [uid, mod, prov, sym, px, qn, n, executedAtMs],
+    );
+    await conn.commit();
+    res.json({ ok: true, balance: balBefore + n, notional: n, executedAtMs, side: 'sell' });
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch (_r) {
+      /* */
+    }
+    console.error('[user/hts-paper-order]', e);
+    res.status(500).json({ error: e.message });
+  } finally {
+    conn.release();
   }
 });
 

@@ -2,7 +2,7 @@
 
 .htsWorkspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem) minmax(17rem, 20rem);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem) minmax(18.5rem, 22rem);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     'left center right'
@@ -150,12 +150,15 @@
 }
 
 .htsTabBody {
-  height: 9rem;
-  min-height: 9rem;
+  height: 12rem;
+  min-height: 12rem;
   border-top: 1px solid var(--border);
   background: var(--bg-soft-2);
-  padding: 0.55rem 0.6rem;
+  padding: 0.45rem 0.55rem 0.5rem;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .htsPanelTitle {
@@ -168,6 +171,188 @@
   color: var(--text-muted);
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+.htsTapeHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.htsTapeHead .htsPanelTitle {
+  margin-bottom: 0;
+}
+
+.htsTapeHead .htsMuted {
+  margin: 0;
+  max-width: 24rem;
+  text-align: right;
+  font-size: 0.64rem;
+}
+
+.htsTapeBoard {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.25rem;
+}
+
+.htsTapeLane {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--bg-panel) 90%, var(--bg-soft));
+}
+
+.htsTapeLane--sell {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, rgba(239, 83, 80, 0.16) 70%, transparent), transparent 55%),
+    color-mix(in oklab, var(--bg-panel) 90%, var(--bg-soft));
+}
+
+.htsTapeLane--buy {
+  background:
+    linear-gradient(0deg, color-mix(in oklab, rgba(63, 182, 139, 0.16) 70%, transparent), transparent 55%),
+    color-mix(in oklab, var(--bg-panel) 90%, var(--bg-soft));
+}
+
+.htsTapeLaneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.24rem 0.42rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 82%, transparent);
+}
+
+.htsTapeStack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 0.16rem;
+  padding: 0.2rem 0.24rem;
+  overflow: hidden;
+}
+
+.htsTapeStack--sell {
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+}
+
+.htsTapeStack--buy {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.htsTapeTrade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 1.15rem;
+  padding: 0.18rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--border) 45%, transparent);
+  animation: htsTapeFlash 0.9s ease-out;
+}
+
+.htsTapeTrade--sell {
+  background: linear-gradient(90deg, rgba(239, 83, 80, 0.22), rgba(239, 83, 80, 0.05));
+  color: #b42318;
+}
+
+[data-theme='dark'] .htsTapeTrade--sell {
+  color: #ffd0cf;
+}
+
+.htsTapeTrade--buy {
+  background: linear-gradient(90deg, rgba(63, 182, 139, 0.08), rgba(63, 182, 139, 0.24));
+  color: #0f8a55;
+}
+
+[data-theme='dark'] .htsTapeTrade--buy {
+  color: #bff7df;
+}
+
+.htsTapeTradePrice {
+  font-weight: 800;
+}
+
+.htsTapeTradeVol {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.htsTapeEmpty {
+  margin: auto 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.htsTapeMid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid color-mix(in oklab, #f5d742 28%, var(--border));
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, #f5d742 12%, var(--bg-panel)), transparent);
+}
+
+.htsTapeMidLabel {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b45309;
+}
+
+.htsTapeMidPrice {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsTapeMidMeta {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes htsTapeFlash {
+  0% {
+    transform: translateY(4px) scale(0.985);
+    opacity: 0.05;
+    filter: saturate(1.5);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: saturate(1);
+  }
 }
 
 .htsOrderWrap {
@@ -241,6 +426,119 @@
   color: #ffd0cf;
 }
 
+.htsOrderBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.htsOrderBalance {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 0.35rem;
+}
+
+.htsOrderBalance strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsOrderLinkBtn {
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.68rem;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.htsOrderSym {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+}
+
+.htsOrderTradeMsg {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.htsOrderChargeOpen {
+  margin-top: 0.55rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  border: 1px dashed color-mix(in oklab, var(--border) 80%, var(--accent));
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.htsOrderChargeOpen:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.fcChargeModalRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.fcChargeModal {
+  width: 100%;
+  max-width: 380px;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.fcChargeModalTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.fcChargeLabel {
+  display: block;
+  margin: 0.55rem 0 0.2rem;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.fcChargeInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.fcChargeErr {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  color: #ef5350;
+}
+
+.fcChargeActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 .htsStatusBar {
   grid-area: status;
   display: flex;
@@ -287,6 +585,456 @@
   font-weight: 600;
 }
 
+.htsWorkspace--mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 0;
+  overflow: auto;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 12%, transparent), transparent 32%),
+    linear-gradient(180deg, color-mix(in oklab, var(--bg-soft) 88%, var(--bg-app)), var(--bg-app));
+}
+
+.htsMobileTop,
+.htsMobileMain,
+.htsMobileBottom {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--bg-panel) 92%, var(--bg-soft));
+  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+}
+
+.htsMobileTop {
+  padding: 0.8rem 0.8rem 0.75rem;
+}
+
+.htsMobileTopBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htsMobileTopBar .htsPanelTitle {
+  margin-bottom: 0.18rem;
+}
+
+.htsMobileTopBar .htsMuted {
+  margin: 0;
+  font-size: 0.72rem;
+}
+
+.htsMobileStatus {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.htsMobileWatchStrip {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding-bottom: 0.2rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.htsMobileWatchStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.htsMobileWatchChip {
+  flex: 0 0 auto;
+  min-width: 6.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.18rem;
+  padding: 0.65rem 0.72rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--border) 90%, transparent);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg-toolbar) 92%, transparent), var(--bg-panel));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.htsMobileWatchChip--active {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 13%, var(--bg-toolbar)),
+    color-mix(in oklab, var(--accent) 7%, var(--bg-panel))
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.htsMobileWatchChip--up {
+  color: #15803d;
+}
+
+.htsMobileWatchChip--down {
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .htsMobileWatchChip--up {
+  color: #bff7df;
+}
+
+[data-theme='dark'] .htsMobileWatchChip--down {
+  color: #ffd0cf;
+}
+
+.htsMobileWatchCode {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.htsMobileWatchPrice {
+  font-size: 0.84rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileWatchPct {
+  font-size: 0.66rem;
+  font-weight: 700;
+  opacity: 0.82;
+}
+
+.htsMobileMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10.75rem, 0.92fr);
+  gap: 0.75rem;
+  min-height: 27rem;
+  padding: 0.75rem;
+}
+
+.htsMobileOrderbookPane,
+.htsMobileTradePane {
+  min-width: 0;
+  min-height: 0;
+}
+
+.htsMobileOrderbookPane {
+  display: flex;
+}
+
+.htsMobileOrderbookPane .obPanel {
+  max-width: none;
+  height: 100%;
+  min-height: 0;
+}
+
+.htsMobileTradePane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.15rem 0.1rem 0.05rem 0;
+}
+
+.htsMobileTradeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.1rem;
+  border-bottom: 1px solid var(--border-2);
+}
+
+.htsMobilePaneLabel {
+  font-size: 0.63rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.htsMobileControlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.htsMobileSegmentRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.htsMobileSegmentBtn {
+  min-height: 2rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.htsMobileSegmentBtn--active {
+  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
+  background: color-mix(in oklab, var(--accent) 15%, var(--bg-toolbar));
+  color: var(--accent);
+}
+
+.htsMobileSegmentBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.htsMobileHint {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.htsMobileFormGrid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.htsMobileField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.htsMobileField span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.htsMobileField input,
+.htsMobileField select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.htsMobileTradeButtons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.htsMobileTradeButtons .htsOrderBtn {
+  min-height: 2.6rem;
+}
+
+.htsMobileBalance {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.htsMobileBalance strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileBottom {
+  display: flex;
+  flex-direction: column;
+  min-height: 13.5rem;
+  padding: 0.8rem 0.8rem 0;
+}
+
+.htsMobileBottomHead {
+  padding-bottom: 0.55rem;
+}
+
+.htsMobileBottomHead .htsPanelTitle {
+  margin-bottom: 0.18rem;
+}
+
+.htsMobileBottomHead .htsMuted {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.htsMobileTabBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 0.8rem;
+}
+
+.htsMobilePositionCard,
+.htsMobileOrderItem,
+.htsMobileWatchRow {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg-soft) 82%, var(--bg-panel));
+}
+
+.htsMobilePositionCard {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.75rem 0.8rem;
+}
+
+.htsMobilePositionCard--long {
+  box-shadow: inset 0 0 0 1px rgba(63, 182, 139, 0.16);
+}
+
+.htsMobilePositionCard--short {
+  box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.16);
+}
+
+.htsMobilePositionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.htsMobilePositionRow strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileOrderList,
+.htsMobileWatchList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.htsMobileOrderItem {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.7rem 0.78rem;
+}
+
+.htsMobileOrderTop,
+.htsMobileOrderMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.htsMobileOrderTop {
+  font-size: 0.78rem;
+}
+
+.htsMobileOrderMeta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileWatchRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.htsMobileWatchRow--active {
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-panel));
+}
+
+.htsMobileWatchRowSym {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.htsMobileWatchRowSym strong {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.htsMobileWatchRowSym small {
+  display: block;
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.htsMobileWatchRowPrice {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsMobileWatchRow > :last-child {
+  justify-self: end;
+}
+
+.htsMobileEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 7rem;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  background: color-mix(in oklab, var(--bg-soft) 82%, transparent);
+}
+
+.htsMobileNav {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.7rem 0 0.75rem;
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--bg-panel) 92%, var(--bg-soft)) 32%);
+}
+
+.htsMobileNavBtn {
+  min-height: 2.45rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.htsMobileNavBtn--active {
+  border-color: color-mix(in oklab, var(--accent) 58%, var(--border));
+  background: color-mix(in oklab, var(--accent) 14%, var(--bg-toolbar));
+  color: var(--text);
+}
+
 @media (max-width: 960px) {
   .htsWorkspace {
     grid-template-columns: 1fr;
@@ -301,5 +1049,77 @@
   .htsCenter {
     border-left: none;
     border-right: none;
+  }
+
+  .htsTapeHead {
+    flex-direction: column;
+  }
+
+  .htsTapeHead .htsMuted {
+    max-width: none;
+    text-align: left;
+  }
+
+  .htsTapeMid {
+    flex-wrap: wrap;
+  }
+
+  .htsTapeMidMeta {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+@media (max-width: 720px) {
+  .htsWorkspace--mobile {
+    padding: 0.55rem;
+    gap: 0.6rem;
+  }
+
+  .htsMobileMain {
+    grid-template-columns: minmax(0, 1fr) minmax(9.6rem, 0.9fr);
+    min-height: 24rem;
+    padding: 0.65rem;
+  }
+
+  .htsMobileTop,
+  .htsMobileBottom {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+
+  .htsMobileWatchChip {
+    min-width: 6rem;
+    padding: 0.58rem 0.64rem;
+  }
+
+  .htsMobileTradePane {
+    gap: 0.6rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .htsMobileTopBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .htsMobileStatus {
+    align-self: flex-start;
+  }
+
+  .htsMobileMain {
+    grid-template-columns: minmax(0, 1fr) minmax(8.9rem, 0.88fr);
+    gap: 0.55rem;
+    padding: 0.55rem;
+  }
+
+  .htsMobileTradeButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .htsMobileOrderTop,
+  .htsMobileOrderMeta {
+    flex-wrap: wrap;
   }
 }

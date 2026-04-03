@@ -4,7 +4,7 @@ import './OrderBookPanel.css';
 
 export type BookLevel = { price: number; qty: number };
 
-const DEPTH = 10;
+const EMPTY_ROWS: (BookLevel | null)[] = [null];
 
 type Props = {
   asks: BookLevel[];
@@ -16,6 +16,10 @@ type Props = {
   tickRevision?: number;
   /** 호가·현재가 소수 자릿수 (선물/FX는 2~5 권장, 국내 주식 0) */
   priceDecimals?: number;
+  /** 마지막 호가 수신 후 일정 시간 초과 시 true → 시각적으로 stale 표시 */
+  isStale?: boolean;
+  /** Yahoo Finance 현재가 기반 참고 호가 (실시간 아님) */
+  isSynthetic?: boolean;
 };
 
 function formatObPrice(n: number, decimals: number) {
@@ -27,18 +31,44 @@ function formatObPrice(n: number, decimals: number) {
 }
 
 /** 매도: 위에서 아래로 고가→저가 (호가1이 시세에 가깝게 아래쪽) */
-function padAskLevels(asks: BookLevel[]): (BookLevel | null)[] {
-  const rev = [...asks].reverse();
-  const out: (BookLevel | null)[] = [];
-  for (let i = 0; i < DEPTH; i++) out.push(rev[i] ?? null);
-  return out;
+function orderAskLevels(asks: BookLevel[]): (BookLevel | null)[] {
+  return asks.length > 0 ? [...asks].reverse() : EMPTY_ROWS;
 }
 
 /** 매수: 위에서 아래로 우선호가→낮은가 */
-function padBidLevels(bids: BookLevel[]): (BookLevel | null)[] {
-  const out: (BookLevel | null)[] = [];
-  for (let i = 0; i < DEPTH; i++) out.push(bids[i] ?? null);
-  return out;
+function orderBidLevels(bids: BookLevel[]): (BookLevel | null)[] {
+  return bids.length > 0 ? [...bids] : EMPTY_ROWS;
+}
+
+function pricesClose(a: number | null, b: number | null, epsilon = 1e-9) {
+  if (a == null || b == null) return false;
+  return Math.abs(a - b) <= epsilon;
+}
+
+function nearestAskPrice(levels: readonly BookLevel[], px: number | null): number | null {
+  if (px == null || levels.length === 0) return null;
+  const above = levels.filter((level) => level.price >= px);
+  if (above.length > 0) return Math.min(...above.map((level) => level.price));
+  let best = /** @type {number | null} */ (null);
+  for (const level of levels) {
+    if (best == null || Math.abs(level.price - px) < Math.abs(best - px)) {
+      best = level.price;
+    }
+  }
+  return best;
+}
+
+function nearestBidPrice(levels: readonly BookLevel[], px: number | null): number | null {
+  if (px == null || levels.length === 0) return null;
+  const below = levels.filter((level) => level.price <= px);
+  if (below.length > 0) return Math.max(...below.map((level) => level.price));
+  let best = /** @type {number | null} */ (null);
+  for (const level of levels) {
+    if (best == null || Math.abs(level.price - px) < Math.abs(best - px)) {
+      best = level.price;
+    }
+  }
+  return best;
 }
 
 export function OrderBookPanel({
@@ -50,6 +80,8 @@ export function OrderBookPanel({
   obRevision = 0,
   tickRevision = 0,
   priceDecimals = 2,
+  isStale = false,
+  isSynthetic = false,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -94,8 +126,11 @@ export function OrderBookPanel({
     return midPrice;
   }, [lastTradePrice, midPrice]);
 
-  const askRows = useMemo(() => padAskLevels(asks), [asks]);
-  const bidRows = useMemo(() => padBidLevels(bids), [bids]);
+  const askRows = useMemo(() => orderAskLevels(asks), [asks]);
+  const bidRows = useMemo(() => orderBidLevels(bids), [bids]);
+  const displayDepth = Math.max(asks.length, bids.length, 0);
+  const currentAskPrice = useMemo(() => nearestAskPrice(asks, displayPx), [asks, displayPx]);
+  const currentBidPrice = useMemo(() => nearestBidPrice(bids, displayPx), [bids, displayPx]);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -137,13 +172,18 @@ export function OrderBookPanel({
   return (
     <div
       ref={rootRef}
-      className={`obPanel${variant === 'hts' ? ' obPanel--hts' : ''}${hasBook ? ' obPanel--live' : ''}`}
+      className={`obPanel${variant === 'hts' ? ' obPanel--hts' : ''}${hasBook ? ' obPanel--live' : ''}${isStale ? ' obPanel--stale' : ''}`}
       aria-label="실시간 호가"
     >
       <div className="obHead">
         <span className="obTitle">호가</span>
         {symbol ? <span className="obSym">{symbol}</span> : <span className="obSym muted">대기</span>}
-        <span className="obDepthTag">{DEPTH}단</span>
+        <span className="obDepthTag">{displayDepth > 0 ? `${displayDepth}단` : '대기'}</span>
+        {isSynthetic ? (
+          <span className="obSyntheticTag" title="Yahoo Finance 현재가 기준 참고 호가 (실시간 아님)">참고 호가</span>
+        ) : isStale ? (
+          <span className="obStaleTag">업데이트 대기</span>
+        ) : null}
       </div>
 
       <div className="obColHead" aria-hidden>
@@ -159,13 +199,14 @@ export function OrderBookPanel({
         ) : null}
       </div>
 
-      <ul className="obStackList obStackList--ask" aria-label={`매도 ${DEPTH}단`}>
+      <ul className="obStackList obStackList--ask" aria-label={`매도 ${displayDepth || 0}단`}>
         {askRows.map((level, i) => {
           const pct = level ? Math.min(100, (100 * level.qty) / maxQty) : 0;
+          const isCurrentBand = level ? pricesClose(level.price, currentAskPrice) : false;
           return (
             <li
               key={`ask-${i}-${level?.price ?? 'e'}`}
-              className="obStackRow obStackRow--ask"
+              className={`obStackRow obStackRow--ask${isCurrentBand ? ' obStackRow--currentAsk' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
             >
               <div className="obStackCell obStackCell--bidZone" />
@@ -192,7 +233,7 @@ export function OrderBookPanel({
         <span className="obGoldMid">
           {midPrice != null ? (
             <>
-              평균 {formatObPrice(midPrice, priceDecimals)}
+              현재가격 {formatObPrice(displayPx ?? midPrice, priceDecimals)}
               {bestAsk != null && bestBid != null ? (
                 <span className="obGoldHint">
                   {' '}
@@ -207,13 +248,14 @@ export function OrderBookPanel({
         <span className="obGoldLine" />
       </div>
 
-      <ul className="obStackList obStackList--bid" aria-label={`매수 ${DEPTH}단`}>
+      <ul className="obStackList obStackList--bid" aria-label={`매수 ${displayDepth || 0}단`}>
         {bidRows.map((level, i) => {
           const pct = level ? Math.min(100, (100 * level.qty) / maxQty) : 0;
+          const isCurrentBand = level ? pricesClose(level.price, currentBidPrice) : false;
           return (
             <li
               key={`bid-${i}-${level?.price ?? 'e'}`}
-              className="obStackRow obStackRow--bid"
+              className={`obStackRow obStackRow--bid${isCurrentBand ? ' obStackRow--currentBid' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
             >
               <div className="obStackCell obStackCell--bidZone">

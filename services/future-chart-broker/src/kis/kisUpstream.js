@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import { recordTick } from '../db/tickStore.js';
+import { saveBars } from '../db/barStore.js';
 import { fetchApprovalKey } from './approval.js';
 import { buildSubscribeMessage } from './subscribeMessage.js';
 import {
@@ -8,7 +9,15 @@ import {
   parseRealtimeFrame,
 } from './parseKisRealtime.js';
 import { normalizeKrxSymbol } from './symbolNormalize.js';
-import { seedKrxStockChartFromKisRest } from './krxKisChartSeed.js';
+import { seedKrxStockChartFromKisRest, preSeedWatchlistBg } from './krxKisChartSeed.js';
+import { seedOverseasFuturesChart, broadcastOverseasFuturesObSnapshot, startOverseasQuotePoll } from './kisYahooOverseasSeed.js';
+import { fetchDomesticOrderbookSnapshot } from './kisOrderbookSnapshot.js';
+
+// 틱(true UTC ms)에서 분봉 버킷(fake-UTC epoch sec) 계산
+// 프론트엔드 StreamingChart.tsx 와 동일한 KST_OFFSET_MS 적용
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+/** @param {number} tsMs  true UTC ms */
+const toMinBucketSec = (tsMs) => Math.floor((tsMs + KST_OFFSET_MS) / 60000) * 60;
 
 const MODES = /** @type {const} */ ({
   stock: { cnt: 'H0STCNT0', ob: 'H0STASP0', normalize: (s) => normalizeKrxSymbol(s) },
@@ -75,9 +84,22 @@ export function startKisUpstream({ config, hub }) {
     overseas_future: new Set(),
   };
 
+  /**
+   * Yahoo Finance 시세 폴 전용 해외선물 집합.
+   * sync_watchlist의 kis-overseas 항목을 여기 모아서 KIS WS 구독 없이 Yahoo만 폴링.
+   * (KIS WS 해외선물 구독은 포커스 1개만 허용 — ALREADY IN SUBSCRIBE 이슈 방지)
+   */
+  const overseasQuoteWatch = /** @type {Set<string>} */ (new Set());
+
   /** 차트 포커스 — watch와 합쳐 유효 구독 계산 */
   /** @type {{ mode: keyof typeof MODES, sym: string }} */
   let focus = { mode: 'stock', sym: defaultSym };
+
+  /** Yahoo Finance 해외선물 시세 폴 (startOverseasQuotePoll 반환 핸들) */
+  let quotePoll = /** @type {{ stop: () => void; refresh: (c: readonly string[]) => void } | null} */ (null);
+
+  /** 현재 폴 중인 overseas_future 코드 목록 (변경 감지용) */
+  let quotePollCodes = /** @type {string[]} */ ([]);
 
   /** 현재 KIS 소켓에 tr_type=1로 올려둔 키 */
   const registered = /** @type {Set<string>} */ (new Set());
@@ -184,18 +206,16 @@ export function startKisUpstream({ config, hub }) {
     const stagger = 120;
 
     for (const k of toDrop) {
-      setTimeout(() => {
-        applyPairForKey(approvalKey, k, '2');
-        registered.delete(k);
-      }, delay);
+      registered.delete(k); // 즉시 제거해서 중복 unsubscribe 방지
+      const _k = k, _delay = delay;
+      setTimeout(() => applyPairForKey(approvalKey, _k, '2'), _delay);
       delay += stagger;
     }
 
     for (const k of toAdd) {
-      setTimeout(() => {
-        applyPairForKey(approvalKey, k, '1');
-        registered.add(k);
-      }, delay);
+      registered.add(k); // 즉시 추가해서 중복 subscribe 방지
+      const _k = k, _delay = delay;
+      setTimeout(() => applyPairForKey(approvalKey, _k, '1'), _delay);
       delay += stagger;
     }
 
@@ -205,14 +225,37 @@ export function startKisUpstream({ config, hub }) {
   };
 
   /**
+   * 해외선물 종목 집합이 바뀌면 quote poll을 시작하거나 갱신
+   * 처음 호출 시 startOverseasQuotePoll, 이후 변경 시 refresh
+   */
+  function refreshQuotePoll() {
+    const focused = focus.mode === 'overseas_future' ? String(focus.sym ?? '').trim() : '';
+    const codes = focused ? [focused, ...overseasQuoteWatch] : [...overseasQuoteWatch];
+    const unique = [...new Set(codes.filter(Boolean))];
+    quotePollCodes = unique;
+    if (quotePoll) {
+      quotePoll.refresh(unique);
+    } else if (unique.length > 0) {
+      quotePoll = startOverseasQuotePoll({ hub, seriesCodes: unique });
+    }
+  }
+
+  /**
    * @param {readonly { provider: string; symbol: string }[]} feeds
    */
   function syncWatchlistFeeds(feeds) {
     watchSubs.stock.clear();
     watchSubs.index_futures.clear();
     watchSubs.overseas_future.clear();
+    overseasQuoteWatch.clear();
 
     for (const f of feeds) {
+      if (f.provider === 'kis-overseas') {
+        // 해외선물은 KIS WS 구독 없이 Yahoo 폴 전용
+        const sym = String(f.symbol ?? '').trim();
+        if (sym) overseasQuoteWatch.add(sym);
+        continue;
+      }
       const mode = providerToMode(f.provider);
       if (!mode) continue;
       const sym = MODES[mode].normalize(f.symbol);
@@ -223,6 +266,14 @@ export function startKisUpstream({ config, hub }) {
     if (approvalKeyCached && socket?.readyState === 1) {
       reconcile(approvalKeyCached);
     }
+
+    // DB에 없는 워치리스트 국내주식 심볼 백그라운드 프리시드
+    if (watchSubs.stock.size > 0) {
+      preSeedWatchlistBg(config, hub, Array.from(watchSubs.stock));
+    }
+
+    // 해외선물 시세 폴 갱신
+    refreshQuotePoll();
   }
 
   /**
@@ -253,6 +304,44 @@ export function startKisUpstream({ config, hub }) {
         krxSymbol6: sym,
         stillSubscribed: (s) => focus.mode === 'stock' && focus.sym === s,
       });
+      // 호가 REST 스냅샷 — 장 마감 후에도 마지막 호가 표시
+      void (async () => {
+        try {
+          const snap = await fetchDomesticOrderbookSnapshot({
+            restBase: config.restBase,
+            appKey: config.appKey,
+            secretKey: config.secretKey,
+            symbol6: sym,
+          });
+          if (!snap) return;
+          if (focus.mode !== 'stock' || focus.sym !== sym) return;
+          console.log(`[kis] 호가 스냅샷 ${sym} asks=${snap.asks.length} bids=${snap.bids.length}`);
+          hub.broadcast({
+            type: 'orderbook',
+            provider: 'kis',
+            symbol: sym,
+            asks: snap.asks,
+            bids: snap.bids,
+            ts: Date.now(),
+          });
+        } catch (e) {
+          console.warn('[kis] ob snap error', e?.message || e);
+        }
+      })();
+    }
+
+    if (m === 'overseas_future') {
+      void seedOverseasFuturesChart({
+        hub,
+        seriesCd: sym,
+        stillSubscribed: (cd) => focus.mode === 'overseas_future' && focus.sym === cd,
+      });
+      // KIS 실시간 호가(HDFFF010)가 데이터를 안보낼 때를 위한 Yahoo 합성 호가 스냅샷
+      void broadcastOverseasFuturesObSnapshot({
+        hub,
+        seriesCd: sym,
+        stillOk: () => focus.mode === 'overseas_future' && focus.sym === sym,
+      });
     }
 
     if (approvalKeyCached && socket?.readyState === 1) {
@@ -261,8 +350,17 @@ export function startKisUpstream({ config, hub }) {
       hub.broadcast({ type: 'status', source: 'kis', state: 'reconnecting' });
     }
 
+    // 해외선물로 포커스 변경 시 폴 갱신
+    refreshQuotePoll();
+
     console.log('[kis] focus ->', m, sym);
   }
+
+  /**
+   * 심볼별 현재 분봉 누적 상태 (버킷 완료 감지용)
+   * @type {Map<string, { bucket: number, open: number, high: number, low: number, close: number, volume: number }>}
+   */
+  const liveBar = new Map();
 
   /**
    * @param {string} trId
@@ -286,10 +384,11 @@ export function startKisUpstream({ config, hub }) {
     if (!eff.has(subKey(mode, mode === 'stock' ? norm : sym))) return;
 
     const prov = providerForMode(mode);
+    const tickSym = mode === 'stock' ? norm : sym;
     hub.broadcast({
       type: 'tick',
       provider: prov,
-      symbol: mode === 'stock' ? norm : sym,
+      symbol: tickSym,
       price: tick.price,
       volume: tick.volume,
       hour: tick.hour,
@@ -297,17 +396,52 @@ export function startKisUpstream({ config, hub }) {
     });
     recordTick({
       provider: 'kis',
-      symbol: mode === 'stock' ? norm : sym,
+      symbol: tickSym,
       ts: tick.ts,
       price: tick.price,
       volume: tick.volume,
     });
+
+    // ── 분봉 버킷 완료 감지 → SQLite 저장 (국내주식만)
+    if (mode === 'stock') {
+      const bucket = toMinBucketSec(tick.ts);
+      const prev = liveBar.get(tickSym);
+      if (prev && prev.bucket !== bucket) {
+        // 이전 버킷 완료 → DB 저장
+        saveBars(tickSym, '1m', [{
+          time:   prev.bucket,
+          open:   prev.open,
+          high:   prev.high,
+          low:    prev.low,
+          close:  prev.close,
+          volume: prev.volume,
+        }]);
+      }
+      if (!prev || prev.bucket !== bucket) {
+        // 새 버킷 시작
+        liveBar.set(tickSym, {
+          bucket,
+          open:   tick.price,
+          high:   tick.price,
+          low:    tick.price,
+          close:  tick.price,
+          volume: tick.volume ?? 0,
+        });
+      } else {
+        // 같은 버킷 업데이트
+        prev.high   = Math.max(prev.high, tick.price);
+        prev.low    = Math.min(prev.low,  tick.price);
+        prev.close  = tick.price;
+        prev.volume += tick.volume ?? 0;
+      }
+    }
   };
 
   /**
    * @param {string} trId
    * @param {Record<string, string>} row
    */
+  let obFirstLog = false;
   const dispatchOrderbook = (trId, row) => {
     const mode = modeForObTr(trId);
     if (!mode) return;
@@ -323,7 +457,14 @@ export function startKisUpstream({ config, hub }) {
     }
 
     const eff = getDesired();
-    if (!eff.has(subKey(mode, mode === 'stock' ? norm : sym))) return;
+    const key = subKey(mode, mode === 'stock' ? norm : sym);
+    if (!eff.has(key)) return;
+
+    // 첫 호가 수신 시 로그
+    if (!obFirstLog) {
+      obFirstLog = true;
+      console.log(`[kis] 첫 호가 수신 trId=${trId} sym=${norm} asks=${ob.asks.length} bids=${ob.bids.length}`);
+    }
 
     const prov = providerForMode(mode);
     hub.broadcast({
@@ -371,9 +512,20 @@ export function startKisUpstream({ config, hub }) {
       reconcile(approvalKey);
     });
 
+    let msgCount = 0;
+    let obCount = 0;
+    let tickCount = 0;
+    const statsTimer = setInterval(() => {
+      if (msgCount > 0) {
+        console.log(`[kis] 수신 stats: total=${msgCount} tick=${tickCount} ob=${obCount}`);
+        msgCount = 0; obCount = 0; tickCount = 0;
+      }
+    }, 5000);
+
     socket.on('message', (data, isBinary) => {
       if (isBinary) return;
       const raw = data.toString();
+      msgCount++;
 
       if (raw.startsWith('{')) {
         try {
@@ -382,6 +534,11 @@ export function startKisUpstream({ config, hub }) {
           if (trId === 'PINGPONG') {
             socket?.send(raw);
             return;
+          }
+          // 구독 응답 로그 (tr_id가 있는 경우)
+          if (trId && trId !== 'PINGPONG') {
+            const rc = j?.body?.rt_cd ?? j?.body?.msg_cd ?? '';
+            console.log(`[kis] WS응답 tr_id=${trId} rc=${rc} msg=${j?.body?.msg1 ?? ''}`);
           }
         } catch {
           /* ignore */
@@ -393,10 +550,12 @@ export function startKisUpstream({ config, hub }) {
       if (!parsed) return;
 
       if (modeForCntTr(parsed.trId)) {
+        tickCount++;
         dispatchTick(parsed.trId, parsed.row);
         return;
       }
       if (modeForObTr(parsed.trId)) {
+        obCount++;
         dispatchOrderbook(parsed.trId, parsed.row);
       }
     });
@@ -405,13 +564,16 @@ export function startKisUpstream({ config, hub }) {
       console.error('[kis] socket error', err.message || err);
     });
 
-    socket.on('close', () => {
+    socket.on('close', (code, reason) => {
+      clearInterval(statsTimer);
+      const why = reason && Buffer.isBuffer(reason) ? reason.toString('utf8') : String(reason ?? '');
+      console.warn('[kis] ws closed', code, why || '(no reason)');
       socket = null;
       approvalKeyCached = null;
       registered.clear();
       if (stopped) return;
       hub.broadcast({ type: 'status', source: 'kis', state: 'disconnected' });
-      scheduleReconnect(3000);
+      scheduleReconnect(5000);
     });
   };
 

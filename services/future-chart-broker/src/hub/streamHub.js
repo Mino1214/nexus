@@ -25,7 +25,7 @@ export function createStreamHub() {
       const s = JSON.stringify(payload);
       for (const c of clients) {
         if (c.readyState === 1) {
-          c.send(s);
+          try { c.send(s); } catch { /* 소켓 race condition 무시 */ }
         }
       }
     },

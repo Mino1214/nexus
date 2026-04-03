@@ -48,6 +48,13 @@ export function WatchlistPanel({ selectedId, onSelect, items = FUTURES_WATCHLIST
       <div className="wlHead">마켓워치</div>
       <div className="wlTableWrap">
         <table className="wlTable">
+          <colgroup>
+            <col className="wlCol wlCol--sym" />
+            <col className="wlCol wlCol--last" />
+            <col className="wlCol wlCol--diff" />
+            <col className="wlCol wlCol--pct" />
+            <col className="wlCol wlCol--vol" />
+          </colgroup>
           <thead>
             <tr>
               <th className="wlTh wlTh--sym" scope="col">

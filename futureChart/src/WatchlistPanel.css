@@ -23,14 +23,33 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  overflow-x: hidden;
   background: var(--bg-soft);
 }
 
 .wlTable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.62rem;
   color: var(--text);
+}
+
+.wlCol--sym {
+  width: 40%;
+}
+
+.wlCol--last,
+.wlCol--diff {
+  width: 16%;
+}
+
+.wlCol--pct {
+  width: 12%;
+}
+
+.wlCol--vol {
+  width: 16%;
 }
 
 .wlTh {
@@ -93,7 +112,7 @@
 
 .wlTd--sym {
   padding-left: 0.35rem;
-  max-width: 6.2rem;
+  min-width: 0;
 }
 
 .wlSymInner {
@@ -134,7 +153,7 @@
 
 .wlCode {
   font-weight: 800;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   white-space: nowrap;
@@ -155,13 +174,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 0.06rem;
-  max-width: 5.5rem;
+  max-width: none;
 }
 
 .wlTd--num {
   text-align: right;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wlTd--vol {
@@ -170,6 +191,9 @@
   font-weight: 600;
   padding-right: 0.35rem;
   font-size: 0.58rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wlMono {
@@ -186,4 +210,29 @@
 
 .wlNum--flat {
   color: var(--text-dim);
+}
+
+@media (max-width: 1180px) {
+  .wlCol--sym {
+    width: 42%;
+  }
+
+  .wlCol--last,
+  .wlCol--diff {
+    width: 15%;
+  }
+
+  .wlCol--pct {
+    width: 12%;
+  }
+
+  .wlCol--vol {
+    width: 16%;
+  }
+
+  .wlTh,
+  .wlTd {
+    padding-left: 0.22rem;
+    padding-right: 0.22rem;
+  }
 }

@@ -600,6 +600,25 @@ async function runMarketMigrations(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_paper_trades (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      module_code VARCHAR(64) DEFAULT NULL,
+      provider VARCHAR(32) NOT NULL,
+      symbol VARCHAR(64) NOT NULL,
+      side VARCHAR(8) NOT NULL,
+      price DOUBLE NOT NULL,
+      qty INT NOT NULL,
+      notional INT NOT NULL,
+      executed_at_ms BIGINT NOT NULL,
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_hts_pt_user (user_id),
+      INDEX idx_hts_pt_sym (user_id, provider, symbol),
+      INDEX idx_hts_pt_module (module_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   /** 레거시 hts_charge_requests (초기 스키마만 있는 경우) 컬럼 보강 — 없으면 GET /hts/charge-requests 가 500 */
   try {
     if (!(await columnExists(pool, 'hts_charge_requests', 'module_code'))) {
@@ -667,6 +686,7 @@ async function runMarketMigrations(pool) {
       ['market_refresh_tokens', 'users_id'],
       /** LEFT JOIN users u ON u.id = cr.user_id — collation 불일치 시 Illegal mix of collations → 500 */
       ['hts_charge_requests', 'user_id'],
+      ['hts_paper_trades', 'user_id'],
     ];
     for (const [table, col] of syncPairs) {
       const [[t]] = await pool.query(

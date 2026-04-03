@@ -27,7 +27,147 @@ export function impliedChangeAbs(price: number, changePct: number): number {
 }
 
 export const FUTURES_WATCHLIST: WatchInstrument[] = [
-  /** 데모용 국내주식(KIS) — 삼성·네이버·카카오 등 대형 IT/반도체 대표명은 제외 */
+  // ── 지수선물
+  {
+    id: 'kospi200-a01606',
+    code: 'KOSPI',
+    name: '코스피200 선물',
+    lastPrice: 799.15,
+    priceDecimals: 2,
+    changePct: 0,
+    volume: 0,
+    indexTag: true,
+    hue: 205,
+    // KIS 지수선물 단축코드 (현재 근월물, 만기 때 교체 필요)
+    kisIndexFuturesCode: 'A01606',
+  },
+  {
+    id: 'nq-cnqm26',
+    code: 'NQ',
+    name: '나스닥 E-mini',
+    lastPrice: 23854,
+    priceDecimals: 2,
+    changePct: 0,
+    volume: 0,
+    indexTag: true,
+    hue: 265,
+    kisOverseasSeriesCode: 'CNQM26',
+  },
+  {
+    id: 'es-cesm26',
+    code: 'ES',
+    name: 'S&P 500 E-mini',
+    lastPrice: 6508,
+    priceDecimals: 2,
+    changePct: 0,
+    volume: 0,
+    indexTag: true,
+    hue: 220,
+    kisOverseasSeriesCode: 'CESM26',
+  },
+  {
+    id: 'hsi-chsij26',
+    code: 'HSI',
+    name: '항셍 지수',
+    lastPrice: 25116,
+    priceDecimals: 0,
+    changePct: 0,
+    volume: 0,
+    indexTag: true,
+    hue: 10,
+    kisOverseasSeriesCode: 'CHSIJ26',
+  },
+  // ── 원자재
+  {
+    id: 'cl-cclk26',
+    code: 'CL',
+    name: 'WTI 원유',
+    lastPrice: 70.0,
+    priceDecimals: 2,
+    changePct: 0,
+    volume: 0,
+    hue: 30,
+    kisOverseasSeriesCode: 'CCLK26',
+  },
+  {
+    id: 'gc-cgcm26',
+    code: 'GC',
+    name: '금',
+    lastPrice: 3020,
+    priceDecimals: 1,
+    changePct: 0,
+    volume: 0,
+    hue: 50,
+    kisOverseasSeriesCode: 'CGCM26',
+  },
+  {
+    id: 'si-csik26',
+    code: 'SI',
+    name: '은',
+    lastPrice: 34.5,
+    priceDecimals: 3,
+    changePct: 0,
+    volume: 0,
+    hue: 200,
+    kisOverseasSeriesCode: 'CSIK26',
+  },
+  // ── 통화선물
+  {
+    id: '6e-c6em26',
+    code: '6E',
+    name: '유로 EUR/USD',
+    lastPrice: 1.1556,
+    priceDecimals: 4,
+    changePct: 0,
+    volume: 0,
+    hue: 150,
+    kisOverseasSeriesCode: 'C6EM26',
+  },
+  {
+    id: '6b-c6bm26',
+    code: '6B',
+    name: '파운드 GBP/USD',
+    lastPrice: 1.3200,
+    priceDecimals: 4,
+    changePct: 0,
+    volume: 0,
+    hue: 300,
+    kisOverseasSeriesCode: 'C6BM26',
+  },
+  {
+    id: '6j-c6jm26',
+    code: '6J',
+    name: '엔화 JPY/USD',
+    lastPrice: 0.006300,
+    priceDecimals: 6,
+    changePct: 0,
+    volume: 0,
+    hue: 0,
+    kisOverseasSeriesCode: 'C6JM26',
+  },
+  {
+    id: '6a-c6am26',
+    code: '6A',
+    name: '호주달러 AUD/USD',
+    lastPrice: 0.6859,
+    priceDecimals: 4,
+    changePct: 0,
+    volume: 0,
+    hue: 170,
+    kisOverseasSeriesCode: 'C6AM26',
+  },
+  {
+    id: '6c-c6cm26',
+    code: '6C',
+    name: '캐나다달러 CAD/USD',
+    lastPrice: 0.7208,
+    priceDecimals: 4,
+    changePct: 0,
+    volume: 0,
+    hue: 190,
+    kisOverseasSeriesCode: 'C6CM26',
+  },
+  // ── 국내주식
   {
     id: 'kr-005380',
     code: '005380',
@@ -72,144 +212,6 @@ export const FUTURES_WATCHLIST: WatchInstrument[] = [
     hue: 30,
     krxSubscribeCode: '161390',
   },
-  {
-    id: 'f-202606',
-    code: 'F 202606',
-    name: '국내선물-202606',
-    lastPrice: 816.35,
-    priceDecimals: 5,
-    changePct: 3.13,
-    volume: 216114,
-    indexTag: true,
-    hue: 210,
-    // 지수선물 실시간(실전) 예시 코드. 실제 매핑은 종목 마스터 기준으로 교체하세요.
-    kisIndexFuturesCode: '101W09',
-  },
-  {
-    id: 'hsij26',
-    code: 'HSIJ26',
-    name: '홍콩 항셍지수-202604',
-    lastPrice: 25390,
-    priceDecimals: 5,
-    changePct: 2.55,
-    volume: 91242,
-    indexTag: true,
-    hue: 200,
-    kisOverseasSeriesCode: 'DHSIJ26',
-  },
-  {
-    id: 'nqm26',
-    code: 'NQM26',
-    name: '나스닥 지수-202606',
-    lastPrice: 24106,
-    priceDecimals: 5,
-    changePct: 0.91,
-    volume: 57840,
-    indexTag: true,
-    hue: 265,
-    kisOverseasSeriesCode: 'CNQM26',
-  },
-  {
-    id: 'esm26',
-    code: 'ESM26',
-    name: 'S&P500지수-202606',
-    lastPrice: 6607.25,
-    priceDecimals: 5,
-    changePct: 0.69,
-    volume: 97882,
-    indexTag: true,
-    hue: 250,
-    kisOverseasSeriesCode: 'CESM26',
-  },
-  {
-    id: 'clk26',
-    code: 'CLK26',
-    name: '크루드 오일-202605',
-    lastPrice: 99.76,
-    priceDecimals: 5,
-    changePct: -1.93,
-    volume: 41492,
-    hue: 30,
-    kisOverseasSeriesCode: 'CCLM26',
-  },
-  {
-    id: 'gcm26',
-    code: 'GCM26',
-    name: '골드-202606',
-    lastPrice: 4734.5,
-    priceDecimals: 5,
-    changePct: 0.77,
-    volume: 47182,
-    hue: 45,
-    kisOverseasSeriesCode: 'CGCM26',
-  },
-  {
-    id: 'sik26',
-    code: 'SIK26',
-    name: '실버-202605',
-    lastPrice: 75.155,
-    priceDecimals: 5,
-    changePct: -0.43,
-    volume: 8620,
-    hue: 195,
-    kisOverseasSeriesCode: 'CSIM26',
-  },
-  {
-    id: '6am26',
-    code: '6AM26',
-    name: '호주 달러-202606',
-    lastPrice: 0.6917,
-    priceDecimals: 5,
-    changePct: 0.32,
-    volume: 36624,
-    hue: 160,
-    kisOverseasSeriesCode: 'C6AM26',
-  },
-  {
-    id: '6bm26',
-    code: '6BM26',
-    name: '영국 파운드-202606',
-    lastPrice: 1.3284,
-    priceDecimals: 5,
-    changePct: 0.45,
-    volume: 14660,
-    hue: 340,
-    kisOverseasSeriesCode: 'C6BM26',
-  },
-  {
-    id: '6cm26',
-    code: '6CM26',
-    name: '캐나다 달러-202606',
-    lastPrice: 0.72185,
-    priceDecimals: 5,
-    changePct: 0.06,
-    volume: 8851,
-    hue: 175,
-    kisOverseasSeriesCode: 'C6CM26',
-  },
-  {
-    id: '6em26',
-    code: '6EM26',
-    name: '유로 F/X-202606',
-    lastPrice: 1.16235,
-    priceDecimals: 5,
-    changePct: 0.28,
-    volume: 29081,
-    hue: 220,
-    kisOverseasSeriesCode: 'C6EM26',
-  },
-  {
-    id: '6jm26',
-    code: '6JM26',
-    name: '일본 엔-202606',
-    /** 원문에 시세 미기재 — 실제 값으로 교체 가능 */
-    lastPrice: 149.085,
-    priceDecimals: 5,
-    changePct: 0.18,
-    volume: 12450,
-    hue: 130,
-    kisOverseasSeriesCode: 'C6JM26',
-  },
 ];
 
 export type BrokerSyncFeed = {
@@ -224,14 +226,21 @@ function normKrx6(raw: string): string | null {
   return d.padStart(6, '0');
 }
 
-/** 브로커 `op: sync_watchlist` 페이로드 — 한 연결로 마켓워치 전 종목 구독(멀티플렉스) */
+/**
+ * 브로커 `op: sync_watchlist` — 국내주식·지수선물만 일괄 구독.
+ * 해외선물(kis-overseas)은 한투 WS가 동시 다건 구독에 민감해 연결이 끊기는 경우가 많아,
+ * 차트에서 해당 종목을 선택할 때만 `subscribe`(포커스)로 구독합니다.
+ */
 export function buildBrokerSyncFeeds(items: readonly WatchInstrument[] = FUTURES_WATCHLIST): BrokerSyncFeed[] {
   const out: BrokerSyncFeed[] = [];
   for (const it of items) {
+    // 국내주식 실시간 구독
     const k = it.krxSubscribeCode?.trim();
     if (k) out.push({ provider: 'kis', symbol: k });
+    // 국내지수선물 실시간 구독
     const ki = it.kisIndexFuturesCode?.trim();
     if (ki) out.push({ provider: 'kis-index', symbol: ki });
+    // 해외선물 — KIS WS 구독 아님, Yahoo Finance 시세 폴 전용
     const ko = it.kisOverseasSeriesCode?.trim();
     if (ko) out.push({ provider: 'kis-overseas', symbol: ko });
   }

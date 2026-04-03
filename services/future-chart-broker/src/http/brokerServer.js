@@ -55,9 +55,16 @@ export function createBrokerServer({ port, hub, onClientMessage }) {
     },
     close() {
       return new Promise((resolve) => {
+        // 모든 클라이언트 WS 즉시 강제 종료 (graceful shutdown 블로킹 방지)
+        for (const ws of wss.clients) {
+          try { ws.terminate(); } catch { /* ignore */ }
+        }
         wss.close(() => {
+          server.closeAllConnections?.(); // Node 18.2+
           server.close(() => resolve(undefined));
         });
+        // 최대 2초 후 강제 종료
+        setTimeout(resolve, 2000);
       });
     },
   };
