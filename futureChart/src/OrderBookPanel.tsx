@@ -20,6 +20,7 @@ type Props = {
   isStale?: boolean;
   /** Yahoo Finance 현재가 기반 참고 호가 (실시간 아님) */
   isSynthetic?: boolean;
+  onPriceSelect?: (price: number) => void;
 };
 
 function formatObPrice(n: number, decimals: number) {
@@ -82,6 +83,7 @@ export function OrderBookPanel({
   priceDecimals = 2,
   isStale = false,
   isSynthetic = false,
+  onPriceSelect,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -206,8 +208,21 @@ export function OrderBookPanel({
           return (
             <li
               key={`ask-${i}-${level?.price ?? 'e'}`}
-              className={`obStackRow obStackRow--ask${isCurrentBand ? ' obStackRow--currentAsk' : ''}`}
+              className={`obStackRow obStackRow--ask${isCurrentBand ? ' obStackRow--currentAsk' : ''}${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
+              role={level && onPriceSelect ? 'button' : undefined}
+              tabIndex={level && onPriceSelect ? 0 : undefined}
+              onClick={level && onPriceSelect ? () => onPriceSelect(level.price) : undefined}
+              onKeyDown={
+                level && onPriceSelect
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onPriceSelect(level.price);
+                      }
+                    }
+                  : undefined
+              }
             >
               <div className="obStackCell obStackCell--bidZone" />
               <div className="obStackCell obStackCell--price">
@@ -255,8 +270,21 @@ export function OrderBookPanel({
           return (
             <li
               key={`bid-${i}-${level?.price ?? 'e'}`}
-              className={`obStackRow obStackRow--bid${isCurrentBand ? ' obStackRow--currentBid' : ''}`}
+              className={`obStackRow obStackRow--bid${isCurrentBand ? ' obStackRow--currentBid' : ''}${level && onPriceSelect ? ' obStackRow--interactive' : ''}`}
               style={{ '--qty-pct': `${pct}%` } as CSSProperties}
+              role={level && onPriceSelect ? 'button' : undefined}
+              tabIndex={level && onPriceSelect ? 0 : undefined}
+              onClick={level && onPriceSelect ? () => onPriceSelect(level.price) : undefined}
+              onKeyDown={
+                level && onPriceSelect
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onPriceSelect(level.price);
+                      }
+                    }
+                  : undefined
+              }
             >
               <div className="obStackCell obStackCell--bidZone">
                 {level ? (

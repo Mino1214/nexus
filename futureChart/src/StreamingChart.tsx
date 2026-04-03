@@ -218,6 +218,11 @@ function formatTapeVolume(n: number) {
   return n.toLocaleString('ko-KR');
 }
 
+function formatOrderInputPrice(n: number, decimals: number) {
+  const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
+  return d <= 0 ? String(Math.round(n)) : n.toFixed(d).replace(/\.?0+$/, '');
+}
+
 function inferTapeSide(
   price: number,
   lastPrice: number | null,
@@ -967,6 +972,19 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     [tradingApiEnabled, cashBalance, obLastPx, mobileSizePct],
   );
 
+  const handleOrderbookPriceSelect = useCallback(
+    (price: number) => {
+      setOrderKind('limit');
+      setOrderPriceStr(formatOrderInputPrice(price, obPriceDecimals));
+    },
+    [obPriceDecimals],
+  );
+
+  const fillPositionQty = useCallback(() => {
+    if (positionSnapshot.side === 'flat') return;
+    setOrderQtyStr(String(Math.abs(positionSnapshot.netQty)));
+  }, [positionSnapshot]);
+
   const effectiveOrderPrice = useMemo(() => {
     if (orderKind === 'market') return obLastPx;
     const p = parseFloat(String(orderPriceStr).replace(/,/g, ''));
@@ -1147,6 +1165,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
               priceDecimals={obPriceDecimals}
               isStale={obIsStale}
               isSynthetic={obIsSynthetic}
+              onPriceSelect={handleOrderbookPriceSelect}
             />
           </div>
 
@@ -1160,8 +1179,22 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
 
             <div className="htsMobileControlGroup">
               <span className="htsMobilePaneLabel">레버리지</span>
+              <div className="htsMobileSliderHead">
+                <strong>x{mobileLeverage}</strong>
+                <span>최대 x125</span>
+              </div>
+              <input
+                className="htsLeverageSlider"
+                type="range"
+                min="1"
+                max="125"
+                step="1"
+                value={mobileLeverage}
+                onChange={(e) => applyMobileLeverage(Number(e.target.value))}
+                aria-label="레버리지"
+              />
               <div className="htsMobileSegmentRow">
-                {[1, 3, 5, 10].map((value) => (
+                {[1, 10, 25, 50, 125].map((value) => (
                   <button
                     key={value}
                     type="button"
@@ -1286,6 +1319,12 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
                 <div className="htsMobileEmpty">보유 포지션이 없습니다.</div>
               ) : (
                 <article className={`htsMobilePositionCard htsMobilePositionCard--${positionSnapshot.side}`}>
+                  <div className="htsMobilePositionHead">
+                    <strong>{positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}</strong>
+                    <button type="button" className="htsPositionActionBtn" onClick={fillPositionQty}>
+                      전량 청산 수량 채우기
+                    </button>
+                  </div>
                   <div className="htsMobilePositionRow">
                     <span>포지션</span>
                     <strong>{positionSnapshot.side === 'long' ? 'LONG' : 'SHORT'}</strong>
@@ -1322,6 +1361,11 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
                         : '—'}
                     </strong>
                   </div>
+                  <p className="htsMuted htsMobilePositionHint">
+                    {positionSnapshot.side === 'long'
+                      ? '롱 포지션 청산은 아래 주문 영역에서 매도 버튼을 누르면 됩니다.'
+                      : '숏 포지션 청산은 아래 주문 영역에서 매수 버튼을 누르면 됩니다.'}
+                  </p>
                 </article>
               )
             ) : mobileTab === 'orders' ? (
@@ -1521,6 +1565,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           priceDecimals={obPriceDecimals}
           isStale={obIsStale}
           isSynthetic={obIsSynthetic}
+          onPriceSelect={handleOrderbookPriceSelect}
         />
         <div className="htsOrderWrap" aria-label="주문하기">
           <p className="htsPanelTitle">주문하기</p>
@@ -1545,6 +1590,42 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           <p className="htsMuted htsOrderSym">
             체결 심볼 <strong>{feedSymbol}</strong> ({feedProvider}) · 모의 보유 <strong>{netPaperQty}</strong>
           </p>
+          <div className="htsOrderLeverage">
+            <div className="htsOrderLeverageHead">
+              <span>레버리지</span>
+              <strong>x{mobileLeverage}</strong>
+            </div>
+            <input
+              className="htsLeverageSlider"
+              type="range"
+              min="1"
+              max="125"
+              step="1"
+              value={mobileLeverage}
+              onChange={(e) => applyMobileLeverage(Number(e.target.value))}
+              aria-label="레버리지"
+            />
+            <div className="htsOrderLeverageMeta">
+              <span>1x</span>
+              <span>
+                최대 수량{' '}
+                <strong>{mobileMaxQty != null ? mobileMaxQty.toLocaleString('ko-KR') : '—'}</strong>
+              </span>
+              <span>125x</span>
+            </div>
+            <div className="htsOrderPresetRow">
+              {[1, 10, 25, 50, 125].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`htsOrderPresetBtn${mobileLeverage === value ? ' htsOrderPresetBtn--active' : ''}`}
+                  onClick={() => applyMobileLeverage(value)}
+                >
+                  x{value}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="htsOrderGrid">
             <div className="htsOrderRow">
               <label htmlFor="fc-order-kind">주문유형</label>
@@ -1579,6 +1660,9 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
               />
             </div>
           </div>
+          {orderKind === 'limit' ? (
+            <p className="htsMuted htsOrderHint">오더북 가격을 클릭하면 지정가 입력란에 바로 채워집니다.</p>
+          ) : null}
           <div className="htsOrderActions">
             <button
               type="button"
@@ -1597,6 +1681,57 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
               매도
             </button>
           </div>
+          {positionSnapshot.side !== 'flat' ? (
+            <div className={`htsPositionCard htsPositionCard--${positionSnapshot.side}`}>
+              <div className="htsPositionCardHead">
+                <strong>{positionSnapshot.side === 'long' ? 'LONG 포지션' : 'SHORT 포지션'}</strong>
+                <button type="button" className="htsPositionActionBtn" onClick={fillPositionQty}>
+                  전량 청산 수량 채우기
+                </button>
+              </div>
+              <div className="htsPositionGrid">
+                <div className="htsPositionMetric">
+                  <span>수량</span>
+                  <strong>{Math.abs(positionSnapshot.netQty).toLocaleString('ko-KR')}</strong>
+                </div>
+                <div className="htsPositionMetric">
+                  <span>평단</span>
+                  <strong>
+                    {positionSnapshot.avgPrice != null ? formatLivePrice(positionSnapshot.avgPrice, obPriceDecimals) : '—'}
+                  </strong>
+                </div>
+                <div className="htsPositionMetric">
+                  <span>평가금액</span>
+                  <strong>
+                    {positionSnapshot.markValue != null
+                      ? `${Math.round(positionSnapshot.markValue).toLocaleString('ko-KR')}원`
+                      : '—'}
+                  </strong>
+                </div>
+                <div className="htsPositionMetric">
+                  <span>미실현손익</span>
+                  <strong
+                    className={
+                      positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
+                        ? 'wlNum--up'
+                        : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
+                          ? 'wlNum--down'
+                          : 'wlNum--flat'
+                    }
+                  >
+                    {positionSnapshot.unrealized != null
+                      ? `${positionSnapshot.unrealized > 0 ? '+' : ''}${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원`
+                      : '—'}
+                  </strong>
+                </div>
+              </div>
+              <p className="htsMuted htsPositionHint">
+                {positionSnapshot.side === 'long'
+                  ? '현재 보유는 롱입니다. 청산하려면 매도 버튼을 누르세요.'
+                  : '현재 보유는 숏입니다. 청산하려면 매수 버튼을 누르세요.'}
+              </p>
+            </div>
+          ) : null}
           {tradeMsg ? <p className="htsOrderTradeMsg">{tradeMsg}</p> : null}
           <p className="htsMuted" style={{ marginTop: '0.45rem' }}>
             {tradingApiEnabled

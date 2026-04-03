@@ -371,6 +371,81 @@
   gap: 0.45rem;
 }
 
+.htsOrderLeverage {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem 0.55rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--bg-panel) 86%, var(--bg-soft));
+}
+
+.htsOrderLeverageHead,
+.htsMobileSliderHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  font-size: 0.72rem;
+}
+
+.htsOrderLeverageHead span,
+.htsMobileSliderHead span {
+  color: var(--text-muted);
+}
+
+.htsOrderLeverageHead strong,
+.htsMobileSliderHead strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsLeverageSlider {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.htsOrderLeverageMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.64rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.htsOrderLeverageMeta strong {
+  color: var(--text);
+}
+
+.htsOrderPresetRow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.htsOrderPresetBtn {
+  min-height: 1.95rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-toolbar);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.htsOrderPresetBtn--active {
+  border-color: color-mix(in oklab, var(--accent) 65%, var(--border));
+  background: color-mix(in oklab, var(--accent) 15%, var(--bg-toolbar));
+  color: var(--accent);
+}
+
 .htsOrderRow {
   display: flex;
   align-items: center;
@@ -463,6 +538,82 @@
   font-size: 0.75rem;
   color: var(--text);
   line-height: 1.35;
+}
+
+.htsOrderHint {
+  margin: 0.45rem 0 0;
+  font-size: 0.68rem;
+}
+
+.htsPositionCard {
+  margin-top: 0.55rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg-panel) 88%, var(--bg-soft));
+}
+
+.htsPositionCard--long {
+  box-shadow: inset 0 0 0 1px rgba(63, 182, 139, 0.14);
+}
+
+.htsPositionCard--short {
+  box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.14);
+}
+
+.htsPositionCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.htsPositionCardHead strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.htsPositionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.htsPositionMetric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+  padding: 0.42rem 0.48rem;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--bg-toolbar) 88%, transparent);
+}
+
+.htsPositionMetric span {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.htsPositionMetric strong {
+  color: var(--text);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.htsPositionHint {
+  margin: 0.5rem 0 0;
+  font-size: 0.68rem;
+}
+
+.htsPositionActionBtn {
+  padding: 0.24rem 0.48rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--accent) 50%, var(--border));
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-toolbar));
+  color: var(--text);
+  font-size: 0.66rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .htsOrderChargeOpen {
@@ -772,7 +923,7 @@
 
 .htsMobileSegmentRow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(3rem, 1fr));
   gap: 0.35rem;
 }
 
@@ -896,6 +1047,19 @@
   padding: 0.75rem 0.8rem;
 }
 
+.htsMobilePositionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+}
+
+.htsMobilePositionHead strong {
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
 .htsMobilePositionCard--long {
   box-shadow: inset 0 0 0 1px rgba(63, 182, 139, 0.16);
 }
@@ -916,6 +1080,11 @@
 .htsMobilePositionRow strong {
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.htsMobilePositionHint {
+  margin: 0.25rem 0 0;
+  font-size: 0.67rem;
 }
 
 .htsMobileOrderList,
@@ -1115,6 +1284,11 @@
   }
 
   .htsMobileTradeButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .htsPositionGrid,
+  .htsOrderPresetRow {
     grid-template-columns: 1fr;
   }
 
