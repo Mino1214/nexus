@@ -1908,6 +1908,35 @@
   flex-shrink: 0;
 }
 
+.htsFeedModeToggle {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.htsFeedModeBtn {
+  min-width: 4.1rem;
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(17, 17, 17, 0.5);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.htsFeedModeBtn--active {
+  background: #111111;
+  color: #ffffff;
+}
+
 .htsDeskInfoChip {
   display: inline-flex;
   align-items: center;
@@ -2343,6 +2372,177 @@
   padding: 0.95rem;
 }
 
+/* ── 새 계정 잔고 리스트 ── */
+.htsAccList {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.95rem 0.75rem;
+}
+
+.htsAccRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.38rem 0;
+}
+
+.htsAccRow--sub {
+  padding: 0.24rem 0 0.24rem 0.85rem;
+}
+
+.htsAccLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(17,17,17,0.48);
+  letter-spacing: 0.01em;
+}
+
+.htsAccVal {
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #111111;
+}
+
+.htsAccVal--up  { color: #00915a; }
+.htsAccVal--down { color: #d63850; }
+
+.htsAccDivider {
+  height: 1px;
+  margin: 0.35rem 0;
+  background: rgba(17,17,17,0.07);
+}
+
+.htsAccSectionLabel {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17,17,17,0.38);
+  padding: 0.3rem 0 0.1rem;
+}
+
+/* 헤더 인라인 충전 버튼 */
+.htsAccChargeBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.22rem 0.65rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent, #5ce1e6);
+  color: #111111;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+
+.htsAccChargeBtn:hover { opacity: 0.82; }
+.htsAccChargeBtn:active { opacity: 0.65; }
+
+.htsFeedLogPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.95rem;
+  border-top: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.htsFeedLogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.htsFeedLogHead strong {
+  color: #111111;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.htsFeedLogHead span {
+  color: rgba(17, 17, 17, 0.48);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.htsFeedLogList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.htsFeedLogItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.68rem 0.75rem;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: #ffffff;
+}
+
+.htsFeedLogItem--demo {
+  border-color: color-mix(in oklab, var(--hts-buy) 45%, rgba(17, 17, 17, 0.08));
+}
+
+.htsFeedLogItem--live {
+  border-color: color-mix(in oklab, var(--hts-sell) 30%, rgba(17, 17, 17, 0.08));
+}
+
+.htsFeedLogMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  font-size: 0.66rem;
+  color: rgba(17, 17, 17, 0.48);
+  font-weight: 800;
+}
+
+.htsFeedLogMode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.45rem;
+  padding: 0 0.48rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.htsFeedLogMode--demo {
+  background: color-mix(in oklab, var(--hts-buy) 22%, #ffffff);
+  color: #111111;
+}
+
+.htsFeedLogMode--live {
+  background: color-mix(in oklab, var(--hts-sell) 18%, #ffffff);
+  color: #111111;
+}
+
+.htsFeedLogItem p {
+  margin: 0;
+  color: #111111;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.htsFeedLogEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 5rem;
+  border: 1px dashed rgba(17, 17, 17, 0.12);
+  color: rgba(17, 17, 17, 0.5);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .htsInfoRow {
   display: flex;
   align-items: center;
@@ -2405,6 +2605,21 @@
 .htsMobileTickerChange {
   font-size: 0.9rem;
   font-weight: 800;
+}
+
+.htsWorkspace--mobile .htsMobileTickerPrice.wlNum--up,
+.htsWorkspace--mobile .htsMobileTickerChange.wlNum--up {
+  color: var(--hts-buy);
+}
+
+.htsWorkspace--mobile .htsMobileTickerPrice.wlNum--down,
+.htsWorkspace--mobile .htsMobileTickerChange.wlNum--down {
+  color: var(--hts-sell);
+}
+
+.htsWorkspace--mobile .htsMobileTickerPrice.wlNum--flat,
+.htsWorkspace--mobile .htsMobileTickerChange.wlNum--flat {
+  color: var(--hts-ink);
 }
 
 .htsMobileTickerName {
@@ -2562,8 +2777,7 @@
 }
 
 /* mobile workspace → 하단 nav 높이만큼 하단 공간 확보 */
-.htsMobilePosRow,
-.htsMobileChartTab,
+/* htsMobileChartTab, htsMobilePosRow는 height 자체로 nav를 제외하므로 스킵 */
 .htsMobileNoticeTab,
 .htsMobileAccountTab {
   padding-bottom: calc(3.4rem + env(safe-area-inset-bottom) + 0.5rem);
@@ -2592,6 +2806,8 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  /* 뷰포트 - 헤더 - 하단 nav 를 꽉 채우고, nav 아래로 넘치지 않게 */
+  height: calc(100dvh - var(--mob-header-h, 7.5rem) - 3.4rem - env(safe-area-inset-bottom));
   min-height: 0;
   overflow: hidden;
   box-sizing: border-box;
@@ -3000,7 +3216,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
-  padding: 0.6rem 0.75rem;
+  padding: 0.65rem 0.75rem calc(0.9rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(17,17,17,0.08);
   background: #ffffff;
 }

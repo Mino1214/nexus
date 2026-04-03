@@ -118,6 +118,16 @@ type TapeTrade = {
   side: TapeSide;
 };
 
+type FeedMode = 'demo' | 'live';
+type FeedLogKind = 'tick' | 'orderbook' | 'history' | 'mode';
+type FeedLogEntry = {
+  id: string;
+  mode: FeedMode;
+  kind: FeedLogKind;
+  text: string;
+  at: number;
+};
+
 type RecordTab = 'positions' | 'openOrders' | 'fills';
 type OrderKind = 'limit' | 'market';
 
@@ -241,6 +251,78 @@ function formatLivePrice(n: number, decimals: number) {
 function formatOrderInputPrice(n: number, decimals: number) {
   const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
   return d <= 0 ? String(Math.round(n)) : n.toFixed(d).replace(/\.?0+$/, '');
+}
+
+function quantizePrice(n: number, decimals: number) {
+  const d = Number.isFinite(decimals) ? Math.min(8, Math.max(0, Math.floor(decimals))) : 2;
+  const factor = 10 ** d;
+  return Math.round(n * factor) / factor;
+}
+
+function chartStepSecondsForTf(tf: ChartTf) {
+  const mult = TF_MINUTES[tf];
+  if (mult != null) return mult * 60;
+  if (tf === 'D') return 86400;
+  return 7 * 86400;
+}
+
+function generateSyntheticHistoryBars(
+  anchorPrice: number,
+  decimals: number,
+  tf: ChartTf,
+  provider: KisFeedProvider,
+): CandlestickData<UTCTimestamp>[] {
+  const minPrice = 10 ** -Math.max(0, decimals);
+  const safeAnchor = Math.max(anchorPrice, minPrice);
+  const stepSec = chartStepSecondsForTf(tf);
+  const nowMs = Date.now();
+  const endBucket = bucketUtcSecForTf(provider === 'kis-overseas' ? nowMs : nowMs + KST_OFFSET_MS, tf);
+  const bars: CandlestickData<UTCTimestamp>[] = [];
+  let prevClose = quantizePrice(safeAnchor * 0.996, decimals);
+
+  for (let offset = 79; offset >= 0; offset -= 1) {
+    const idx = 79 - offset;
+    const wave = Math.sin(idx / 5.3) * safeAnchor * 0.0011;
+    const drift = Math.cos(idx / 9.4) * safeAnchor * 0.0007;
+    const noise = (Math.random() - 0.5) * safeAnchor * 0.00045;
+    const open = prevClose;
+    const close = quantizePrice(Math.max(minPrice, open + wave + drift + noise), decimals);
+    const high = quantizePrice(Math.max(open, close) + Math.abs(Math.sin(idx * 1.2)) * safeAnchor * 0.00065, decimals);
+    const low = quantizePrice(
+      Math.max(minPrice, Math.min(open, close) - Math.abs(Math.cos(idx * 1.05)) * safeAnchor * 0.00065),
+      decimals,
+    );
+    bars.push({
+      time: (endBucket - stepSec * offset) as UTCTimestamp,
+      open: quantizePrice(open, decimals),
+      high: Math.max(high, open, close),
+      low: Math.min(low, open, close),
+      close,
+    });
+    prevClose = close;
+  }
+
+  return bars;
+}
+
+function generateSyntheticOrderbook(price: number, decimals: number, ts: number) {
+  const step = decimals > 0 ? 1 / 10 ** decimals : 1;
+  const asks: BookLevel[] = [];
+  const bids: BookLevel[] = [];
+
+  for (let depth = 0; depth < 7; depth += 1) {
+    const wave = (Math.sin(ts / 1400 + depth * 0.7) + 1) / 2;
+    asks.push({
+      price: quantizePrice(price + step * (depth + 1), decimals),
+      qty: Math.max(1, Math.round((depth === 0 ? 42 : 18) * (1 + wave * 2.2))),
+    });
+    bids.push({
+      price: quantizePrice(Math.max(step, price - step * (depth + 1)), decimals),
+      qty: Math.max(1, Math.round((depth === 0 ? 39 : 16) * (1 + (1 - wave) * 2.2))),
+    });
+  }
+
+  return { asks, bids };
 }
 
 function OrderKindToggle({ value, onChange }: { value: OrderKind; onChange: (kind: OrderKind) => void }) {
@@ -390,6 +472,11 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const lastObReceivedAtRef = useRef<number>(0);
   const liveBookRef = useRef<{ asks: BookLevel[]; bids: BookLevel[] }>({ asks: [], bids: [] });
   const tapeRef = useRef<{ lastPrice: number | null; lastSide: TapeSide }>({ lastPrice: null, lastSide: 'buy' });
+  const focusRequestedAtRef = useRef<number>(Date.now());
+  const lastFocusedTickAtRef = useRef<number>(0);
+  const lastFocusedOrderbookAtRef = useRef<number>(0);
+  const simPriceRef = useRef<number | null>(null);
+  const simPhaseRef = useRef<number>(Math.random() * Math.PI * 2);
 
   const [feedProvider, setFeedProvider] = useState<KisFeedProvider>(DEFAULT_FEED.provider);
   const [feedSymbol, setFeedSymbol] = useState(DEFAULT_FEED.symbol);
@@ -434,9 +521,12 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const [mobileSizePct, setMobileSizePct] = useState(50);
   const [mobileTab, setMobileTab] = useState<'trade' | 'chart' | 'notice' | 'account'>('trade');
   const [leverageModalOpen, setLeverageModalOpen] = useState(false);
+  const [feedMode, setFeedMode] = useState<FeedMode>('demo');
+  const [feedLogs, setFeedLogs] = useState<FeedLogEntry[]>([]);
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 960px)').matches,
   );
+  const [simFeedActive, setSimFeedActive] = useState(false);
 
   const wsUrl = getBrokerWebSocketUrl();
 
@@ -467,12 +557,17 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     barRef.current = null;
     seriesRef.current?.setData([]);
     markersPluginRef.current?.setMarkers([]);
+    focusRequestedAtRef.current = Date.now();
+    lastFocusedTickAtRef.current = 0;
+    lastFocusedOrderbookAtRef.current = 0;
+    simPriceRef.current = null;
     lastObReceivedAtRef.current = 0;
     setBookAsks([]);
     setBookBids([]);
     setLastTradePx(null);
     setLastTick(null);
     setObIsSynthetic(false);
+    setSimFeedActive(false);
     obIsSyntheticRef.current = false;
     setBuyTape([]);
     setSellTape([]);
@@ -512,8 +607,143 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     // 마지막 봉을 ref에 저장 → 같은 분에 오는 첫 틱이 새 봉 대신 이어서 업데이트됨
     bucketRef.current = out.length > 0 ? (out[out.length - 1].time as number) : null;
     barRef.current = out.length > 0 ? out[out.length - 1] : null;
+    simPriceRef.current = out.length > 0 ? out[out.length - 1].close : null;
     chartRef.current?.timeScale().fitContent();
   }, []);
+
+  const pushFeedLog = useCallback((entry: Omit<FeedLogEntry, 'id' | 'at'>) => {
+    setFeedLogs((prev) => {
+      const nowAt = Date.now();
+      const head = prev[0];
+      if (head && head.mode === entry.mode && head.kind === entry.kind && nowAt - head.at < 1400) {
+        return [{ ...head, text: entry.text, at: nowAt }, ...prev.slice(1)];
+      }
+      return [{ id: `${nowAt}-${Math.random().toString(36).slice(2, 7)}`, at: nowAt, ...entry }, ...prev].slice(0, 18);
+    });
+  }, []);
+
+  const syncWatchRowsFromPrice = useCallback((provider: BrokerSyncFeed['provider'], symbol: string, price: number, volume: number) => {
+    const ids = watchInstrumentIdsForBrokerTick(FUTURES_WATCHLIST, provider, symbol);
+    if (ids.length === 0) return;
+    setLiveById((prev) => {
+      const next = { ...prev };
+      for (const id of ids) {
+        const row = FUTURES_WATCHLIST.find((item) => item.id === id);
+        const ref = row?.lastPrice ?? price;
+        const changePct = ref !== 0 && Number.isFinite(ref) ? ((price - ref) / ref) * 100 : 0;
+        next[id] = { lastPrice: price, volume, changePct };
+      }
+      return next;
+    });
+  }, []);
+
+  const applyTickFeed = useCallback(
+    (t: TickPayload, options?: { simulated?: boolean }) => {
+      const series = seriesRef.current;
+      const isSimulated = options?.simulated === true;
+      const isOverseas = feedRef.current.provider === 'kis-overseas';
+      const bucket = bucketUtcSecForTf(isOverseas ? t.ts : t.ts + KST_OFFSET_MS, tfRef.current);
+      const time = bucket as UTCTimestamp;
+      const price = t.price;
+
+      if (series) {
+        if (bucketRef.current !== bucket) {
+          bucketRef.current = bucket;
+          const bar: CandlestickData<UTCTimestamp> = {
+            time,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+          };
+          barRef.current = bar;
+          series.update(bar);
+        } else {
+          const prev = barRef.current;
+          if (prev) {
+            const bar: CandlestickData<UTCTimestamp> = {
+              time,
+              open: prev.open,
+              high: Math.max(prev.high, price),
+              low: Math.min(prev.low, price),
+              close: price,
+            };
+            barRef.current = bar;
+            series.update(bar);
+          }
+        }
+      }
+
+      setLastTick(`${t.symbol} ${price.toLocaleString('ko-KR')} · ${isSimulated ? '시뮬레이션' : '체결'}`);
+      setLastTradePx(price);
+      setTickRev((r) => r + 1);
+      simPriceRef.current = price;
+      pushFeedLog({
+        mode: isSimulated ? 'demo' : 'live',
+        kind: 'tick',
+        text: `${t.symbol} ${price.toLocaleString('ko-KR')} · ${isSimulated ? 'demo tick' : 'live tick'}`,
+      });
+
+      if (!isSimulated) {
+        lastFocusedTickAtRef.current = Date.now();
+        setSimFeedActive(false);
+      }
+
+      const inferredSide = inferTapeSide(
+        price,
+        tapeRef.current.lastPrice,
+        liveBookRef.current.asks,
+        liveBookRef.current.bids,
+        tapeRef.current.lastSide,
+      );
+      tapeRef.current = { lastPrice: price, lastSide: inferredSide };
+      const tapeTrade: TapeTrade = {
+        id: `${t.ts}-${Math.random().toString(36).slice(2, 8)}`,
+        price,
+        volume: Number.isFinite(t.volume) ? t.volume : 0,
+        ts: t.ts,
+        side: inferredSide,
+      };
+      if (inferredSide === 'buy') {
+        setBuyTape((prev) => appendTapeTrade(prev, tapeTrade));
+      } else {
+        setSellTape((prev) => appendTapeTrade(prev, tapeTrade));
+      }
+    },
+    [pushFeedLog],
+  );
+
+  const applyOrderbookFeed = useCallback(
+    (ob: OrderbookPayload, options?: { simulated?: boolean }) => {
+      const isSimulated = options?.simulated === true;
+      const isSynth = ob.synthetic === true;
+      const hasLiveBook = !obIsSyntheticRef.current && (liveBookRef.current.asks.length > 0 || liveBookRef.current.bids.length > 0);
+      if (isSynth && hasLiveBook && !isSimulated) return;
+
+      lastObReceivedAtRef.current = isSynth ? 0 : Date.now();
+      setBookAsks(ob.asks);
+      setBookBids(ob.bids);
+      liveBookRef.current = { asks: ob.asks, bids: ob.bids };
+      obIsSyntheticRef.current = isSynth;
+      setObIsSynthetic(isSynth);
+      setObRev((r) => r + 1);
+      pushFeedLog({
+        mode: isSimulated ? 'demo' : 'live',
+        kind: 'orderbook',
+        text: `${ob.symbol} 호가 ${ob.asks.length}/${ob.bids.length} · ${isSimulated || isSynth ? 'demo book' : 'live book'}`,
+      });
+
+      if (!isSynth) {
+        lastBookRef.current[`${feedRef.current.provider}:${feedRef.current.symbol}`] = { asks: ob.asks, bids: ob.bids };
+      }
+
+      if (!isSimulated && !isSynth) {
+        lastFocusedOrderbookAtRef.current = Date.now();
+        setSimFeedActive(false);
+      }
+    },
+    [pushFeedLog],
+  );
 
   const refreshBalance = useCallback(async () => {
     if (!session?.accessToken || !getMarketApiBase()) return;
@@ -578,6 +808,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     if (!el) return;
 
     const th = chartLayoutTheme();
+    let rafId = 0;
 
     const chart = createChart(el, {
       layout: {
@@ -605,17 +836,25 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
       detach: () => void;
     };
 
-    const ro = new ResizeObserver(() => {
+    const syncChartSize = () => {
       if (!wrapRef.current) return;
       chart.applyOptions({
-        width: wrapRef.current.clientWidth,
-        height: wrapRef.current.clientHeight,
+        width: Math.max(wrapRef.current.clientWidth, 1),
+        height: Math.max(wrapRef.current.clientHeight, 1),
       });
+      chart.timeScale().fitContent();
+    };
+
+    rafId = window.requestAnimationFrame(syncChartSize);
+
+    const ro = new ResizeObserver(() => {
+      syncChartSize();
     });
     ro.observe(el);
 
     return () => {
       ro.disconnect();
+      window.cancelAnimationFrame(rafId);
       markersPluginRef.current?.detach();
       markersPluginRef.current = null;
       chart.remove();
@@ -624,78 +863,37 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
       bucketRef.current = null;
       barRef.current = null;
     };
-  }, []);
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const el = wrapRef.current;
+    if (!chart || !el) return;
+
+    let rafId = 0;
+    rafId = window.requestAnimationFrame(() => {
+      if (!wrapRef.current) return;
+      chart.applyOptions({
+        width: Math.max(wrapRef.current.clientWidth, 1),
+        height: Math.max(wrapRef.current.clientHeight, 1),
+      });
+      chart.timeScale().fitContent();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [isMobileViewport, mobileTab]);
 
   useEffect(() => {
     hardReset();
   }, [timeframe, hardReset]);
 
   useEffect(() => {
-    const series = seriesRef.current;
-    if (!series) return;
     let stopped = false;
     let retry = 0;
     let timer: number | null = null;
     let ws: WebSocket | null = null;
-
-    const onTick = (t: TickPayload) => {
-      // 해외선물(kis-overseas)은 Yahoo Finance 타임스탬프와 동일하게 진짜 UTC 사용
-      // 국내주식(kis)·지수선물(kis-index)은 KST fake-UTC 유지
-      const isOverseas = feedRef.current.provider === 'kis-overseas';
-      const bucket = bucketUtcSecForTf(isOverseas ? t.ts : t.ts + KST_OFFSET_MS, tfRef.current);
-      const time = bucket as UTCTimestamp;
-      const price = t.price;
-
-      if (bucketRef.current !== bucket) {
-        bucketRef.current = bucket;
-        const bar: CandlestickData<UTCTimestamp> = {
-          time,
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-        };
-        barRef.current = bar;
-        series.update(bar);
-      } else {
-        const prev = barRef.current;
-        if (!prev) return;
-        const bar: CandlestickData<UTCTimestamp> = {
-          time,
-          open: prev.open,
-          high: Math.max(prev.high, price),
-          low: Math.min(prev.low, price),
-          close: price,
-        };
-        barRef.current = bar;
-        series.update(bar);
-      }
-
-      setLastTick(`${t.symbol} ${price.toLocaleString('ko-KR')} · 체결`);
-      setLastTradePx(price);
-      setTickRev((r) => r + 1);
-
-      const inferredSide = inferTapeSide(
-        price,
-        tapeRef.current.lastPrice,
-        liveBookRef.current.asks,
-        liveBookRef.current.bids,
-        tapeRef.current.lastSide,
-      );
-      tapeRef.current = { lastPrice: price, lastSide: inferredSide };
-      const tapeTrade: TapeTrade = {
-        id: `${t.ts}-${Math.random().toString(36).slice(2, 8)}`,
-        price,
-        volume: Number.isFinite(t.volume) ? t.volume : 0,
-        ts: t.ts,
-        side: inferredSide,
-      };
-      if (inferredSide === 'buy') {
-        setBuyTape((prev) => appendTapeTrade(prev, tapeTrade));
-      } else {
-        setSellTape((prev) => appendTapeTrade(prev, tapeTrade));
-      }
-    };
 
     const schedule = (ms: number) => {
       if (timer != null) window.clearTimeout(timer);
@@ -724,8 +922,10 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         retry = 0;
         setWsState('open');
         ws?.send(JSON.stringify({ op: 'sync_watchlist', feeds: DEFAULT_BROKER_SYNC_FEEDS }));
-        const cur = feedRef.current;
-        ws?.send(JSON.stringify({ op: 'subscribe', provider: cur.provider, symbol: cur.symbol }));
+        if (feedMode === 'live') {
+          const cur = feedRef.current;
+          ws?.send(JSON.stringify({ op: 'subscribe', provider: cur.provider, symbol: cur.symbol }));
+        }
       };
 
       ws.onclose = () => {
@@ -757,28 +957,16 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           const isForCurrent =
             !!msgSymbol && messageMatchesFeed(msgProvider, msgSymbol, cur.provider, cur.symbol);
 
-          if (msg.type === 'tick' && 'price' in msg && msgSymbol) {
+          if (feedMode === 'live' && msg.type === 'tick' && 'price' in msg && msgSymbol) {
             const t = msg as TickPayload;
             const p = (t.provider ?? 'kis') as BrokerSyncFeed['provider'];
             if (p === 'kis' || p === 'kis-index' || p === 'kis-overseas') {
-              const ids = watchInstrumentIdsForBrokerTick(FUTURES_WATCHLIST, p, t.symbol);
-              if (ids.length > 0) {
-                setLiveById((prev) => {
-                  const next = { ...prev };
-                  for (const id of ids) {
-                    const row = FUTURES_WATCHLIST.find((w) => w.id === id);
-                    const ref = row?.lastPrice ?? t.price;
-                    const changePct = ref !== 0 && Number.isFinite(ref) ? ((t.price - ref) / ref) * 100 : 0;
-                    next[id] = { lastPrice: t.price, volume: t.volume, changePct };
-                  }
-                  return next;
-                });
-              }
+              syncWatchRowsFromPrice(p, t.symbol, t.price, t.volume);
             }
           }
 
           // Yahoo Finance 30초 주기 시세 배치 (해외선물 마켓워치 업데이트)
-          if (msg.type === 'quote_batch' && 'quotes' in msg) {
+          if (feedMode === 'live' && msg.type === 'quote_batch' && 'quotes' in msg) {
             const quotes = (msg as any).quotes as Array<{
               provider: string;
               symbol: string;
@@ -807,30 +995,19 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
             }
           }
 
-          if (msg.type === 'history' && 'bars' in msg && isForCurrent) {
+          if (feedMode === 'live' && msg.type === 'history' && 'bars' in msg && isForCurrent) {
             applyHistory((msg as HistoryPayload).bars);
+            pushFeedLog({
+              mode: 'live',
+              kind: 'history',
+              text: `${msgSymbol} 히스토리 ${((msg as HistoryPayload).bars ?? []).length}개`,
+            });
           }
-          if (msg.type === 'tick' && 'price' in msg && isForCurrent) {
-            onTick(msg as TickPayload);
+          if (feedMode === 'live' && msg.type === 'tick' && 'price' in msg && isForCurrent) {
+            applyTickFeed(msg as TickPayload);
           }
-          if (msg.type === 'orderbook' && 'asks' in msg && isForCurrent) {
-            const ob = msg as OrderbookPayload;
-            const isSynth = ob.synthetic === true;
-            // 합성 호가는 현재 실시간 호가가 없을 때만 폴백으로 사용
-            // 실시간 호가가 도착하면 합성 호가를 덮어씀
-            const hasLiveBook = !obIsSyntheticRef.current && (bookAsks.length > 0 || bookBids.length > 0);
-            if (isSynth && hasLiveBook) return; // 실시간 있으면 합성으로 덮어쓰지 않음
-
-            lastObReceivedAtRef.current = isSynth ? 0 : Date.now();
-            setBookAsks(ob.asks);
-            setBookBids(ob.bids);
-            liveBookRef.current = { asks: ob.asks, bids: ob.bids };
-            obIsSyntheticRef.current = isSynth;
-            setObIsSynthetic(isSynth);
-            setObRev((r) => r + 1);
-            if (!isSynth) {
-              lastBookRef.current[`${cur.provider}:${cur.symbol}`] = { asks: ob.asks, bids: ob.bids };
-            }
+          if (feedMode === 'live' && msg.type === 'orderbook' && 'asks' in msg && isForCurrent) {
+            applyOrderbookFeed(msg as OrderbookPayload);
           }
           if (msg.type === 'status' && 'state' in msg) {
             setKisState((msg as StatusPayload).state);
@@ -861,15 +1038,15 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         /* ignore */
       }
     };
-  }, [wsUrl]);
+  }, [applyHistory, applyOrderbookFeed, applyTickFeed, feedMode, pushFeedLog, syncWatchRowsFromPrice, wsUrl]);
 
   useEffect(() => {
     const w = wsRef.current;
-    if (w?.readyState === 1) {
+    if (feedMode === 'live' && w?.readyState === 1) {
       w.send(JSON.stringify({ op: 'subscribe', provider: feedProvider, symbol: feedSymbol }));
     }
     hardReset();
-  }, [feedProvider, feedSymbol, hardReset]);
+  }, [feedMode, feedProvider, feedSymbol, hardReset]);
 
   const handleWatchSelect = useCallback((item: WatchInstrument) => {
     setSelectedWatchId(item.id);
@@ -945,7 +1122,14 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const displaySymbolCode = selectedWatchInstrument?.code ?? obSymbol ?? '—';
   const displaySymbolName = selectedWatchInstrument?.name ?? '선택 종목';
   const displayPriceText = obLastPx != null ? formatLivePrice(obLastPx, obPriceDecimals) : '—';
-  const statusText = kisState ? `KIS ${kisState}` : `WS ${wsState}`;
+  const statusText =
+    feedMode === 'demo'
+      ? simFeedActive
+        ? 'DEMO 수신중'
+        : 'DEMO 준비중'
+      : kisState
+        ? `LIVE · KIS ${kisState}`
+        : `LIVE · WS ${wsState}`;
   const parsedOrderQty = useMemo(() => {
     const qty = parseInt(orderQtyStr.replace(/\D/g, ''), 10);
     return Number.isFinite(qty) && qty > 0 ? qty : 0;
@@ -956,6 +1140,122 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     const qty = Math.floor((cashBalance * mobileLeverage) / obLastPx);
     return Number.isFinite(qty) && qty > 0 ? qty : null;
   }, [tradingApiEnabled, cashBalance, obLastPx, mobileLeverage]);
+
+  useEffect(() => {
+    pushFeedLog({
+      mode: feedMode,
+      kind: 'mode',
+      text: feedMode === 'demo' ? '데모 수신 모드로 전환' : '라이브 수신 모드로 전환',
+    });
+  }, [feedMode, pushFeedLog]);
+
+  useEffect(() => {
+    const SIM_START_DELAY_MS = 700;
+    const TICK_INTERVAL_MS = 1100;
+    if (feedMode !== 'demo') {
+      setSimFeedActive(false);
+      return;
+    }
+
+    let simTimer: number | null = null;
+
+    const clearSimTimer = () => {
+      if (simTimer != null) {
+        window.clearInterval(simTimer);
+        simTimer = null;
+      }
+    };
+
+    const seedSimulationHistory = (anchorPrice: number) => {
+      if (barRef.current != null) return;
+      const series = seriesRef.current;
+      if (!series) return;
+      const bars = generateSyntheticHistoryBars(anchorPrice, obPriceDecimals, timeframe, feedProvider);
+      series.setData(bars);
+      bucketRef.current = bars.length > 0 ? (bars[bars.length - 1].time as number) : null;
+      barRef.current = bars.length > 0 ? bars[bars.length - 1] : null;
+      simPriceRef.current = bars.length > 0 ? bars[bars.length - 1].close : anchorPrice;
+      chartRef.current?.timeScale().fitContent();
+      pushFeedLog({
+        mode: 'demo',
+        kind: 'history',
+        text: `${feedSymbol} 데모 히스토리 ${bars.length}개`,
+      });
+    };
+
+    const emitSimulationFrame = () => {
+      const anchorFromWatch = liveRow?.lastPrice ?? selectedWatchInstrument?.lastPrice ?? 100;
+      const anchor = simPriceRef.current ?? barRef.current?.close ?? lastTradePx ?? anchorFromWatch;
+      const step = obPriceDecimals > 0 ? 1 / 10 ** obPriceDecimals : 1;
+      const ceiling = Math.max(anchorFromWatch * 0.018, step * 12);
+      simPhaseRef.current += 0.42;
+      const drift = Math.sin(simPhaseRef.current) * ceiling * 0.12;
+      const jitter = (Math.random() - 0.5) * ceiling * 0.08;
+      const nextPrice = quantizePrice(
+        Math.max(step, Math.min(anchorFromWatch + ceiling, Math.max(anchorFromWatch - ceiling, anchor + drift + jitter))),
+        obPriceDecimals,
+      );
+      const ts = Date.now();
+      const volume = Math.max(1, Math.round(4 + Math.abs(Math.sin(simPhaseRef.current * 1.7)) * 18));
+      const syntheticBook = generateSyntheticOrderbook(nextPrice, obPriceDecimals, ts);
+      syncWatchRowsFromPrice(feedProvider, feedSymbol, nextPrice, volume);
+      applyOrderbookFeed(
+        {
+          type: 'orderbook',
+          provider: feedProvider,
+          symbol: feedSymbol,
+          asks: syntheticBook.asks,
+          bids: syntheticBook.bids,
+          ts,
+          synthetic: true,
+        },
+        { simulated: true },
+      );
+      applyTickFeed(
+        {
+          type: 'tick',
+          provider: feedProvider,
+          symbol: feedSymbol,
+          price: nextPrice,
+          volume,
+          hour: null,
+          ts,
+        },
+        { simulated: true },
+      );
+    };
+
+    const startSimulation = () => {
+      if (simTimer != null) return;
+      const anchorPrice = lastTradePx ?? barRef.current?.close ?? liveRow?.lastPrice ?? selectedWatchInstrument?.lastPrice ?? 100;
+      seedSimulationHistory(anchorPrice);
+      simPriceRef.current = anchorPrice;
+      setSimFeedActive(true);
+      emitSimulationFrame();
+      simTimer = window.setInterval(emitSimulationFrame, TICK_INTERVAL_MS);
+    };
+
+    focusRequestedAtRef.current = Date.now();
+    const bootTimer = window.setTimeout(startSimulation, SIM_START_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(bootTimer);
+      clearSimTimer();
+    };
+  }, [
+    applyOrderbookFeed,
+    applyTickFeed,
+    feedMode,
+    feedProvider,
+    feedSymbol,
+    lastTradePx,
+    liveRow?.lastPrice,
+    obPriceDecimals,
+    pushFeedLog,
+    selectedWatchInstrument?.lastPrice,
+    syncWatchRowsFromPrice,
+    timeframe,
+  ]);
 
   const applyOrderSizing = useCallback(
     (pct: number) => {
@@ -1164,6 +1464,53 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     </div>
   ) : null;
 
+  const renderFeedModeToggle = () => (
+    <div className="htsFeedModeToggle" role="tablist" aria-label="수신 모드">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={feedMode === 'demo'}
+        className={`htsFeedModeBtn${feedMode === 'demo' ? ' htsFeedModeBtn--active' : ''}`}
+        onClick={() => setFeedMode('demo')}
+      >
+        DEMO
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={feedMode === 'live'}
+        className={`htsFeedModeBtn${feedMode === 'live' ? ' htsFeedModeBtn--active' : ''}`}
+        onClick={() => setFeedMode('live')}
+      >
+        LIVE
+      </button>
+    </div>
+  );
+
+  const renderFeedLogPanel = () => (
+    <div className="htsFeedLogPanel">
+      <div className="htsFeedLogHead">
+        <strong>수신 기록</strong>
+        <span>{feedMode === 'demo' ? '데모 기록' : '라이브 기록'}</span>
+      </div>
+      {feedLogs.length > 0 ? (
+        <div className="htsFeedLogList">
+          {feedLogs.map((entry) => (
+            <article key={entry.id} className={`htsFeedLogItem htsFeedLogItem--${entry.mode}`}>
+              <div className="htsFeedLogMeta">
+                <span className={`htsFeedLogMode htsFeedLogMode--${entry.mode}`}>{entry.mode.toUpperCase()}</span>
+                <span>{new Date(entry.at).toLocaleTimeString('ko-KR', { hour12: false })}</span>
+              </div>
+              <p>{entry.text}</p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="htsFeedLogEmpty">수신 기록을 준비 중입니다.</div>
+      )}
+    </div>
+  );
+
   const symbolTabs =
     FUTURES_WATCHLIST.length > 1 ? (
       <div className="htsSymbolTabs" role="tablist" aria-label="심볼 선택">
@@ -1349,8 +1696,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
             <div className="htsMobileStatusBadge" aria-hidden="true" style={{ display: 'none' }} />
           </div>
           <div className="htsMobileActionRow">
-            {/* 레버리지 버튼 → 모달 오픈 (시그니처 색 버튼) */}
-            <div style={{flex:1}} />
+            {renderFeedModeToggle()}
             <button type="button" className="htsMobileLevBtnNew" onClick={() => setLeverageModalOpen(true)}>
               <Lightning size={14} weight="fill" />
               레버리지 {mobileLeverage}x
@@ -1523,10 +1869,10 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           {/* 차트 탭 하단 — 주문 탭 바로가기 */}
           <div className="htsMobileChartOrderBar">
             <button type="button" className="htsOrderBtn htsOrderBtn--buy htsMobileChartOrderBtn" onClick={() => setMobileTab('trade')}>
-              매수
+              매수 / Long
             </button>
             <button type="button" className="htsOrderBtn htsOrderBtn--sell htsMobileChartOrderBtn" onClick={() => setMobileTab('trade')}>
-              매도
+              매도 / Short
             </button>
           </div>
         </div>
@@ -1543,6 +1889,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
               <div className="htsInfoRow"><span>최근 체결</span><strong>{lastTick ?? '체결 대기'}</strong></div>
               <div className="htsInfoRow"><span>실시간 누적</span><strong>{liveTapeCount.toLocaleString('ko-KR')}건</strong></div>
             </div>
+            {renderFeedLogPanel()}
           </div>
         )}
 
@@ -1626,6 +1973,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           </span>
         </div>
         <div className="htsDeskTopbarMeta">
+          {renderFeedModeToggle()}
           {/*<span className="htsDeskInfoChip">오더북 {Math.max(obAsks.length, obBids.length)}단</span>*/}
           <span className="htsDeskInfoChip">{currentTfLabel}</span>
           <button type="button" className="htsDeskInfoChip htsDeskInfoChip--action" onClick={cycleLeverage}>
@@ -1827,49 +2175,57 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         <aside className="htsDeskAccountPane" aria-label="계정 상태 및 잔고">
           <div className="htsSectionHead">
             <strong><Wallet size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>잔고 / 계정</strong>
-            <span>{statusText}</span>
+            {tradingApiEnabled ? (
+              <button type="button" className="htsAccChargeBtn" onClick={() => setChargeOpen(true)}>
+                <CreditCard size={12} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>충전
+              </button>
+            ) : null}
           </div>
-          <div className="htsAccountGrid">
-            <div className="htsAccountMetric">
-              <span>잔고</span>
-              <strong>{tradingApiEnabled ? (cashBalance != null ? `${cashBalance.toLocaleString('ko-KR')}원` : '…') : '—'}</strong>
-            </div>
-            <div className="htsAccountMetric">
-              <span>레버리지</span>
-              <strong>{mobileLeverage}x</strong>
-            </div>
-            <div className="htsAccountMetric">
-              <span>추정 Max</span>
-              <strong>{mobileMaxQty != null ? mobileMaxQty.toLocaleString('ko-KR') : '—'}</strong>
-            </div>
-            <div className="htsAccountMetric">
-              <span>실시간 체결</span>
-              <strong>{liveTapeCount.toLocaleString('ko-KR')}건</strong>
-            </div>
-            <div className="htsAccountMetric">
-              <span>미실현손익</span>
-              <strong
-                className={
-                  positionSnapshot.unrealized != null && positionSnapshot.unrealized > 0
-                    ? 'wlNum--up'
-                    : positionSnapshot.unrealized != null && positionSnapshot.unrealized < 0
-                      ? 'wlNum--down'
-                      : 'wlNum--flat'
-                }
-              >
-                {positionSnapshot.unrealized != null ? `${Math.round(positionSnapshot.unrealized).toLocaleString('ko-KR')}원` : '—'}
-              </strong>
-            </div>
-            <div className="htsAccountMetric">
-              <span>최근 시간</span>
-              <strong>{timeStr}</strong>
-            </div>
-          </div>
-          {tradingApiEnabled ? (
-            <button type="button" className="htsOrderChargeOpen htsOrderChargeOpen--account" onClick={() => setChargeOpen(true)}>
-              <CreditCard size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>충전 신청
-            </button>
-          ) : null}
+
+          {/* ── 잔고 항목 ── */}
+          {(() => {
+            const KRW_RATE = 1380; // 참고 환율 (표시용)
+            const bal = tradingApiEnabled ? cashBalance : 999999;
+            const usdtBal = bal != null ? (bal / KRW_RATE) : 999999;
+            const pnl = positionSnapshot.unrealized;
+            const usdtPnl = pnl != null ? pnl / KRW_RATE : null;
+            const withdrawable = bal != null ? Math.max(0, bal - (pnl != null && pnl < 0 ? Math.abs(pnl) : 0)) : null;
+            const pnlClass = pnl == null ? '' : pnl > 0 ? ' htsAccVal--up' : pnl < 0 ? ' htsAccVal--down' : '';
+            const fmt = (n: number | null, decimals = 0) =>
+              n != null ? n.toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : '—';
+            return (
+              <div className="htsAccList">
+                <div className="htsAccRow">
+                  <span className="htsAccLabel">USDT</span>
+                  <span className="htsAccVal">{usdtBal != null ? fmt(usdtBal, 2) : '—'}</span>
+                </div>
+                <div className="htsAccRow">
+                  <span className="htsAccLabel">₩</span>
+                  <span className="htsAccVal">{bal != null ? fmt(bal) : '—'}</span>
+                </div>
+
+                <div className="htsAccDivider" />
+
+                <div className="htsAccSectionLabel">미실현손익</div>
+                <div className="htsAccRow htsAccRow--sub">
+                  <span className="htsAccLabel">USDT</span>
+                  <span className={`htsAccVal${pnlClass}`}>{usdtPnl != null ? `${usdtPnl > 0 ? '+' : ''}${fmt(usdtPnl, 2)}` : '—'}</span>
+                </div>
+                <div className="htsAccRow htsAccRow--sub">
+                  <span className="htsAccLabel">₩</span>
+                  <span className={`htsAccVal${pnlClass}`}>{pnl != null ? `${pnl > 0 ? '+' : ''}${fmt(Math.round(pnl))}` : '—'}</span>
+                </div>
+
+                <div className="htsAccDivider" />
+
+                <div className="htsAccRow">
+                  <span className="htsAccLabel">출금 가능액</span>
+                  <span className="htsAccVal">{withdrawable != null ? `₩ ${fmt(Math.round(withdrawable))}` : '—'}</span>
+                </div>
+              </div>
+            );
+          })()}
+
         </aside>
       </div>
 
