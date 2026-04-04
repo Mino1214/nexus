@@ -29,10 +29,13 @@ import {
 } from 'lightweight-charts';
 import type { AdminSession } from './admin/types';
 import {
+  chartConvertBalance,
+  chartFetchBalance,
   chartFetchUserMe,
   chartListPaperTrades,
   chartPaperOrder,
   chartSubmitChargeRequest,
+  type ConvertResult,
   type HtsPaperTradeRow,
 } from './chartTradingApi';
 import { getMarketApiBase } from './config/marketApiEnv';
@@ -505,6 +508,14 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
 
   const tradingApiEnabled = Boolean(session?.accessToken && getMarketApiBase());
   const [cashBalance, setCashBalance] = useState<number | null>(null);
+  const [usdtBalance, setUsdtBalance] = useState<number | null>(null);
+  const [usdKrw, setUsdKrw] = useState<number>(1380);
+  // 전환 모달
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertFrom, setConvertFrom] = useState<'KRW' | 'USDT'>('KRW');
+  const [convertAmtStr, setConvertAmtStr] = useState('');
+  const [convertBusy, setConvertBusy] = useState(false);
+  const [convertMsg, setConvertMsg] = useState<string | null>(null);
   const [paperTrades, setPaperTrades] = useState<HtsPaperTradeRow[]>([]);
   const [tradeMsg, setTradeMsg] = useState<string | null>(null);
   const [tradeBusy, setTradeBusy] = useState(false);
@@ -748,10 +759,18 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
   const refreshBalance = useCallback(async () => {
     if (!session?.accessToken || !getMarketApiBase()) return;
     try {
-      const me = await chartFetchUserMe(session);
-      setCashBalance(me.cashBalance);
+      const bal = await chartFetchBalance(session);
+      setCashBalance(bal.krw);
+      setUsdtBalance(bal.usdt);
+      setUsdKrw(bal.usdKrw);
     } catch {
-      setCashBalance(null);
+      // /hts/balance 없으면 기존 /user/me 폴백
+      try {
+        const me = await chartFetchUserMe(session);
+        setCashBalance(me.cashBalance);
+      } catch {
+        setCashBalance(null);
+      }
     }
   }, [session]);
 
@@ -1390,9 +1409,16 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     }
   };
 
+  const [chargeCurrency, setChargeCurrency] = useState<'KRW' | 'USDT'>('KRW');
+
   const submitCharge = async () => {
     if (!session?.accessToken || !getMarketApiBase()) return;
-    const n = parseInt(chargeAmountStr.replace(/\D/g, ''), 10);
+    let n: number;
+    if (chargeCurrency === 'USDT') {
+      n = parseFloat(chargeAmountStr);
+    } else {
+      n = parseInt(chargeAmountStr.replace(/\D/g, ''), 10);
+    }
     if (!Number.isFinite(n) || n <= 0) {
       setChargeErr('충전 금액을 입력하세요.');
       return;
@@ -1400,7 +1426,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     setChargeBusy(true);
     setChargeErr(null);
     try {
-      await chartSubmitChargeRequest(session, n, chargeMemo.trim());
+      await chartSubmitChargeRequest(session, n, chargeMemo.trim(), chargeCurrency);
       setChargeOpen(false);
       setChargeMemo('');
       setChargeAmountStr('');
@@ -1430,17 +1456,28 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         <p className="htsMuted">
           신청 후 마스터·운영자가 HTS 운영 화면에서 승인하면 동일 계정의 캐시 잔고에 반영됩니다.
         </p>
+        {/* 통화 선택 */}
+        <div className="fcCurrencyTabs">
+          <button type="button" className={`fcCurrencyTab${chargeCurrency === 'KRW' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('KRW'); setChargeAmountStr(''); }}>₩ KRW</button>
+          <button type="button" className={`fcCurrencyTab${chargeCurrency === 'USDT' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('USDT'); setChargeAmountStr(''); }}>$ USDT</button>
+        </div>
         <label className="fcChargeLabel" htmlFor="fc-charge-amt">
-          금액 (원)
+          금액 {chargeCurrency === 'USDT' ? '(USDT)' : '(원)'}
         </label>
         <input
           id="fc-charge-amt"
           className="fcChargeInput"
-          inputMode="numeric"
+          inputMode={chargeCurrency === 'USDT' ? 'decimal' : 'numeric'}
           value={chargeAmountStr}
           onChange={(e) => setChargeAmountStr(e.target.value)}
-          placeholder="예: 100000"
+          placeholder={chargeCurrency === 'USDT' ? '예: 100.00' : '예: 100000'}
         />
+        {chargeCurrency === 'KRW' && chargeAmountStr && Number(chargeAmountStr.replace(/\D/g, '')) > 0 && (
+          <p className="fcChargeHint">≈ {(Number(chargeAmountStr.replace(/\D/g, '')) / usdKrw).toFixed(2)} USDT (참고)</p>
+        )}
+        {chargeCurrency === 'USDT' && chargeAmountStr && parseFloat(chargeAmountStr) > 0 && (
+          <p className="fcChargeHint">≈ ₩{Math.round(parseFloat(chargeAmountStr) * usdKrw).toLocaleString('ko-KR')} (참고)</p>
+        )}
         <label className="fcChargeLabel" htmlFor="fc-charge-memo">
           메모 (선택)
         </label>
@@ -1458,6 +1495,79 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           </button>
           <button type="button" className="symBtn" disabled={chargeBusy} onClick={() => void submitCharge()}>
             {chargeBusy ? '전송 중…' : '신청'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  /* ── 전환 모달 ── */
+  const convertModal = convertOpen ? (
+    <div
+      className="fcChargeModalRoot"
+      role="dialog"
+      aria-modal="true"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) { setConvertOpen(false); setConvertMsg(null); } }}
+    >
+      <div className="fcChargeModal">
+        <h2 className="fcChargeModalTitle">잔액 전환</h2>
+        <p className="htsMuted">현재 환율 <strong>1 USD = ₩{usdKrw.toLocaleString('ko-KR')}</strong> (Frankfurter)</p>
+        <div className="fcCurrencyTabs" style={{ marginBottom: '0.85rem' }}>
+          <button type="button" className={`fcCurrencyTab${convertFrom === 'KRW' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setConvertFrom('KRW'); setConvertAmtStr(''); setConvertMsg(null); }}>₩ → USDT</button>
+          <button type="button" className={`fcCurrencyTab${convertFrom === 'USDT' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setConvertFrom('USDT'); setConvertAmtStr(''); setConvertMsg(null); }}>USDT → ₩</button>
+        </div>
+        <div className="fcConvertBalRow">
+          <span>{convertFrom === 'KRW' ? '₩ 잔액' : 'USDT 잔액'}</span>
+          <strong>{convertFrom === 'KRW' ? `₩${(cashBalance ?? 0).toLocaleString('ko-KR')}` : `${(usdtBalance ?? 0).toFixed(4)} USDT`}</strong>
+        </div>
+        <label className="fcChargeLabel" htmlFor="fc-conv-amt">
+          전환 금액 {convertFrom === 'KRW' ? '(원)' : '(USDT)'}
+        </label>
+        <input
+          id="fc-conv-amt"
+          className="fcChargeInput"
+          inputMode={convertFrom === 'USDT' ? 'decimal' : 'numeric'}
+          value={convertAmtStr}
+          onChange={(e) => { setConvertAmtStr(e.target.value); setConvertMsg(null); }}
+          placeholder={convertFrom === 'KRW' ? '예: 100000' : '예: 100.00'}
+        />
+        {/* 환산 미리보기 */}
+        {(() => {
+          const v = parseFloat(convertAmtStr);
+          if (!v || v <= 0) return null;
+          if (convertFrom === 'KRW') {
+            return <p className="fcChargeHint">→ ≈ {(v / usdKrw).toFixed(4)} USDT</p>;
+          } else {
+            return <p className="fcChargeHint">→ ≈ ₩{Math.round(v * usdKrw).toLocaleString('ko-KR')}</p>;
+          }
+        })()}
+        {convertMsg ? <p className={convertMsg.startsWith('✓') ? 'fcChargeHint fcChargeHint--ok' : 'fcChargeErr'}>{convertMsg}</p> : null}
+        <div className="fcChargeActions">
+          <button type="button" className="btn-ghost btn-sm" onClick={() => { setConvertOpen(false); setConvertMsg(null); }}>취소</button>
+          <button
+            type="button"
+            className="symBtn"
+            disabled={convertBusy}
+            onClick={async () => {
+              if (!session?.accessToken) return;
+              const v = parseFloat(convertAmtStr);
+              if (!v || v <= 0) { setConvertMsg('금액을 입력하세요.'); return; }
+              setConvertBusy(true);
+              setConvertMsg(null);
+              try {
+                const r: ConvertResult = await chartConvertBalance(session, convertFrom, v);
+                setCashBalance(r.krw);
+                setUsdtBalance(r.usdt);
+                setConvertAmtStr('');
+                setConvertMsg(`✓ 전환 완료 · ₩${r.krw.toLocaleString('ko-KR')} / ${r.usdt.toFixed(4)} USDT`);
+              } catch (e) {
+                setConvertMsg(e instanceof Error ? e.message : String(e));
+              } finally {
+                setConvertBusy(false);
+              }
+            }}
+          >
+            {convertBusy ? '처리 중…' : '전환'}
           </button>
         </div>
       </div>
@@ -1956,6 +2066,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
         </nav>
 
         {chargeModal}
+        {convertModal}
         {leverageModal}
       </section>
     );
@@ -2176,19 +2287,23 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
           <div className="htsSectionHead">
             <strong><Wallet size={14} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.3rem'}}/>잔고 / 계정</strong>
             {tradingApiEnabled ? (
-              <button type="button" className="htsAccChargeBtn" onClick={() => setChargeOpen(true)}>
-                <CreditCard size={12} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>충전
-              </button>
+              <div style={{marginLeft:'auto',display:'flex',gap:'0.35rem'}}>
+                <button type="button" className="htsAccChargeBtn htsAccChargeBtn--ghost" onClick={() => { setConvertOpen(true); setConvertMsg(null); }}>
+                  전환
+                </button>
+                <button type="button" className="htsAccChargeBtn" onClick={() => setChargeOpen(true)}>
+                  <CreditCard size={12} weight="duotone" style={{verticalAlign:'middle',marginRight:'0.2rem'}}/>충전
+                </button>
+              </div>
             ) : null}
           </div>
 
           {/* ── 잔고 항목 ── */}
           {(() => {
-            const KRW_RATE = 1380; // 참고 환율 (표시용)
-            const bal = tradingApiEnabled ? cashBalance : 999999;
-            const usdtBal = bal != null ? (bal / KRW_RATE) : 999999;
+            const bal = tradingApiEnabled ? cashBalance : null;
+            const usdtBal = tradingApiEnabled ? usdtBalance : null;
             const pnl = positionSnapshot.unrealized;
-            const usdtPnl = pnl != null ? pnl / KRW_RATE : null;
+            const usdtPnl = pnl != null ? pnl / usdKrw : null;
             const withdrawable = bal != null ? Math.max(0, bal - (pnl != null && pnl < 0 ? Math.abs(pnl) : 0)) : null;
             const pnlClass = pnl == null ? '' : pnl > 0 ? ' htsAccVal--up' : pnl < 0 ? ' htsAccVal--down' : '';
             const fmt = (n: number | null, decimals = 0) =>
@@ -2256,6 +2371,7 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
       </footer>
 
       {chargeModal}
+      {convertModal}
     </section>
   );
 }

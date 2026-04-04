@@ -641,9 +641,45 @@ async function runMarketMigrations(pool) {
     if (htsIx.length === 0) {
       await pool.query('CREATE INDEX idx_hts_cr_module ON hts_charge_requests (module_code)');
     }
+    // currency 컬럼 (KRW / USDT 구분)
+    if (!(await columnExists(pool, 'hts_charge_requests', 'currency'))) {
+      await pool.query(
+        `ALTER TABLE hts_charge_requests ADD COLUMN currency ENUM('KRW','USDT') NOT NULL DEFAULT 'KRW' AFTER amount`,
+      );
+      console.log('[market DB] hts_charge_requests.currency 추가');
+    }
   } catch (e) {
     console.warn('[market DB] hts_charge_requests 컬럼 보강:', e.message);
   }
+
+  /** market_cash_balance — usdt_balance 컬럼 추가 */
+  try {
+    if (!(await columnExists(pool, 'market_cash_balance', 'usdt_balance'))) {
+      await pool.query(
+        `ALTER TABLE market_cash_balance ADD COLUMN usdt_balance DECIMAL(18,6) NOT NULL DEFAULT 0.000000 AFTER balance`,
+      );
+      console.log('[market DB] market_cash_balance.usdt_balance 추가');
+    }
+  } catch (e) {
+    console.warn('[market DB] market_cash_balance.usdt_balance 추가 실패:', e.message);
+  }
+
+  /** 환전 이력 */
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_exchange_conversions (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      from_currency ENUM('KRW','USDT') NOT NULL,
+      from_amount DECIMAL(18,6) NOT NULL,
+      to_currency ENUM('KRW','USDT') NOT NULL,
+      to_amount DECIMAL(18,6) NOT NULL,
+      rate DECIMAL(12,4) NOT NULL COMMENT 'KRW per 1 USD at time of conversion',
+      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_hec_user (user_id),
+      INDEX idx_hec_time (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
 
   /** 동일 DB·다른 서비스(FutureTrade HTS 등) 구분용 — 조회 시 module_code 로 필터 */
   const moduleCols = [

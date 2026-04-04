@@ -278,4 +278,147 @@ router.get('/positions', requireHtsConsole, (_req, res) => {
   res.json({ positions: [] });
 });
 
+/* ─────────────────────────────────────────────
+   환율 / 잔액 / 전환 API
+───────────────────────────────────────────── */
+
+/** 환율 캐시 (10분) */
+let _rateCache = { rate: null, at: 0 };
+
+async function getKrwPerUsd() {
+  if (_rateCache.rate && Date.now() - _rateCache.at < 10 * 60 * 1000) return _rateCache.rate;
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+    const j = await r.json();
+    const rate = j?.rates?.KRW;
+    if (rate && rate > 0) {
+      _rateCache = { rate, at: Date.now() };
+      return rate;
+    }
+  } catch (_) {}
+  // fallback: 캐시 값 있으면 재사용, 없으면 기본값
+  return _rateCache.rate || 1380;
+}
+
+/** GET /hts/exchange-rate — 현재 USD/KRW 환율 */
+router.get('/exchange-rate', needRole('user', 'operator', 'master'), async (_req, res) => {
+  try {
+    const rate = await getKrwPerUsd();
+    res.json({ usdKrw: rate, at: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** 잔액 조회 헬퍼 */
+async function getFullBalance(uid) {
+  const [[row]] = await db.pool.query(
+    `SELECT balance, usdt_balance FROM market_cash_balance WHERE user_id = ? LIMIT 1`,
+    [uid],
+  );
+  return { krw: row ? Number(row.balance) : 0, usdt: row ? Number(row.usdt_balance || 0) : 0 };
+}
+
+/** GET /hts/balance — KRW + USDT 잔액 */
+router.get('/balance', needRole('user'), async (req, res) => {
+  try {
+    const uid = req.marketAuth.sub;
+    const bal = await getFullBalance(uid);
+    const rate = await getKrwPerUsd();
+    res.json({ ...bal, usdKrw: rate });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** POST /hts/convert — KRW ↔ USDT 전환 */
+router.post('/convert', needRole('user'), async (req, res) => {
+  const { from, amount } = req.body || {};
+  if (!['KRW', 'USDT'].includes(from)) return res.status(400).json({ error: 'from은 KRW 또는 USDT' });
+  const n = parseFloat(amount);
+  if (!n || n <= 0) return res.status(400).json({ error: '금액 오류' });
+
+  const uid = req.marketAuth.sub;
+  const rate = await getKrwPerUsd();
+  const conn = await db.pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 잔액 row 없으면 생성
+    await conn.query(
+      `INSERT INTO market_cash_balance (user_id, balance, usdt_balance) VALUES (?, 0, 0)
+       ON DUPLICATE KEY UPDATE user_id = user_id`,
+      [uid],
+    );
+    const [[bal]] = await conn.query(
+      `SELECT balance, usdt_balance FROM market_cash_balance WHERE user_id = ? FOR UPDATE`,
+      [uid],
+    );
+
+    let fromAmt, toAmt, toCurrency;
+    if (from === 'KRW') {
+      fromAmt = Math.round(n);
+      if (Number(bal.balance) < fromAmt) throw Object.assign(new Error('KRW 잔액 부족'), { status: 400 });
+      toAmt = parseFloat((fromAmt / rate).toFixed(6));
+      toCurrency = 'USDT';
+      await conn.query(
+        `UPDATE market_cash_balance SET balance = balance - ?, usdt_balance = usdt_balance + ? WHERE user_id = ?`,
+        [fromAmt, toAmt, uid],
+      );
+    } else {
+      fromAmt = parseFloat(n.toFixed(6));
+      if (Number(bal.usdt_balance) < fromAmt) throw Object.assign(new Error('USDT 잔액 부족'), { status: 400 });
+      toAmt = Math.round(fromAmt * rate);
+      toCurrency = 'KRW';
+      await conn.query(
+        `UPDATE market_cash_balance SET usdt_balance = usdt_balance - ?, balance = balance + ? WHERE user_id = ?`,
+        [fromAmt, toAmt, uid],
+      );
+    }
+
+    await conn.query(
+      `INSERT INTO hts_exchange_conversions (user_id, from_currency, from_amount, to_currency, to_amount, rate)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [uid, from, fromAmt, toCurrency, toAmt, rate],
+    );
+
+    await conn.commit();
+    const newBal = await getFullBalance(uid);
+    res.json({ ok: true, from, fromAmt, toCurrency, toAmt, rate, ...newBal });
+  } catch (e) {
+    await conn.rollback();
+    res.status(e.status || 500).json({ error: e.message });
+  } finally {
+    conn.release();
+  }
+});
+
+/** POST /hts/charge-request — currency 지원 (KRW / USDT) */
+// 기존 라우트에 currency 필드 추가를 위해 패치
+router.post('/charge-request-v2', needRole('user'), async (req, res) => {
+  try {
+    const { amount, memo, currency = 'KRW' } = req.body || {};
+    if (!['KRW', 'USDT'].includes(currency)) return res.status(400).json({ error: '통화 오류' });
+    const n = currency === 'USDT' ? parseFloat(parseFloat(amount).toFixed(6)) : parseInt(amount, 10);
+    if (!n || n <= 0) return res.status(400).json({ error: '충전 금액이 필요합니다.' });
+    const uid = req.marketAuth.sub;
+    const [[u]] = await db.pool.query(
+      `SELECT operator_mu_user_id, market_status FROM users WHERE id = ? LIMIT 1`,
+      [uid],
+    );
+    if (!u) return res.status(404).json({ error: '유저 없음' });
+    if (u.market_status === 'suspended') return res.status(403).json({ error: '정지된 계정입니다.' });
+    const mod = htsModuleSlug(req) || null;
+    const [ins] = await db.pool.query(
+      `INSERT INTO hts_charge_requests (user_id, amount, currency, memo, status, module_code, operator_mu_user_id)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
+      [uid, n, currency, memo?.trim() || null, mod, u.operator_mu_user_id],
+    );
+    res.status(201).json({ ok: true, id: ins.insertId });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

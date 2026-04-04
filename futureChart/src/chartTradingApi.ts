@@ -32,6 +32,68 @@ export async function chartFetchUserMe(session: AdminSession): Promise<ChartUser
   };
 }
 
+/* ── 환율 + 잔액 ── */
+
+export type HtsBalance = { krw: number; usdt: number; usdKrw: number };
+
+export async function chartFetchBalance(session: AdminSession): Promise<HtsBalance> {
+  const base = getMarketApiBase();
+  if (!base) throw new Error('API 베이스 없음');
+  const res = await fetch(marketApiUrl(base, '/hts/balance'), { headers: headers(session, false) });
+  const j = (await res.json().catch(() => ({}))) as HtsBalance & { error?: string };
+  if (!res.ok) throw new Error(j.error || res.statusText);
+  return { krw: Number(j.krw ?? 0), usdt: Number(j.usdt ?? 0), usdKrw: Number(j.usdKrw ?? 1380) };
+}
+
+export async function chartFetchExchangeRate(session: AdminSession): Promise<number> {
+  const base = getMarketApiBase();
+  if (!base) return 1380;
+  try {
+    const res = await fetch(marketApiUrl(base, '/hts/exchange-rate'), { headers: headers(session, false) });
+    const j = (await res.json().catch(() => ({}))) as { usdKrw?: number };
+    return Number(j.usdKrw ?? 1380);
+  } catch {
+    return 1380;
+  }
+}
+
+export type ConvertResult = { ok: boolean; krw: number; usdt: number; rate: number };
+
+export async function chartConvertBalance(
+  session: AdminSession,
+  from: 'KRW' | 'USDT',
+  amount: number,
+): Promise<ConvertResult> {
+  const base = getMarketApiBase();
+  if (!base) throw new Error('API 베이스 없음');
+  const res = await fetch(marketApiUrl(base, '/hts/convert'), {
+    method: 'POST',
+    headers: headers(session),
+    body: JSON.stringify({ from, amount }),
+  });
+  const j = (await res.json().catch(() => ({}))) as ConvertResult & { error?: string };
+  if (!res.ok) throw new Error(j.error || res.statusText);
+  return j;
+}
+
+export async function chartSubmitChargeRequest(
+  session: AdminSession,
+  amount: number,
+  memo: string,
+  currency: 'KRW' | 'USDT' = 'KRW',
+): Promise<void> {
+  const base = getMarketApiBase();
+  if (!base) throw new Error('API 베이스 없음');
+  const endpoint = currency === 'USDT' ? '/hts/charge-request-v2' : '/hts/charge-request';
+  const res = await fetch(marketApiUrl(base, endpoint), {
+    method: 'POST',
+    headers: headers(session),
+    body: JSON.stringify({ amount, memo: memo || undefined, currency }),
+  });
+  const j = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) throw new Error(j.error || res.statusText);
+}
+
 export type HtsPaperTradeRow = {
   id: number;
   side: string;
@@ -100,20 +162,4 @@ export async function chartPaperOrder(
     throw err;
   }
   return j as PaperOrderResult;
-}
-
-export async function chartSubmitChargeRequest(
-  session: AdminSession,
-  amount: number,
-  memo: string,
-): Promise<void> {
-  const base = getMarketApiBase();
-  if (!base) throw new Error('API 베이스 없음');
-  const res = await fetch(marketApiUrl(base, '/hts/charge-request'), {
-    method: 'POST',
-    headers: headers(session),
-    body: JSON.stringify({ amount, memo: memo || undefined }),
-  });
-  const j = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new Error(j.error || res.statusText);
 }
