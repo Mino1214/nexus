@@ -11,22 +11,36 @@ function fmt(dt: string | undefined) {
 
 /** 거래 유형 → 한글 표시 + 배지 색 */
 const TYPE_META: Record<string, { label: string; color: string }> = {
-  charge:          { label: '충전',       color: 'hub-badge--green'  },
-  deposit:         { label: '충전',       color: 'hub-badge--green'  },
-  withdraw:        { label: '출금',       color: 'hub-badge--red'    },
-  withdrawal:      { label: '출금',       color: 'hub-badge--red'    },
-  convert:         { label: '환전',       color: 'hub-badge--blue'   },
-  conversion:      { label: '환전',       color: 'hub-badge--blue'   },
-  fee:             { label: '수수료',     color: 'hub-badge--gray'   },
-  commission:      { label: '수수료',     color: 'hub-badge--gray'   },
-  pnl:             { label: 'P&L',        color: 'hub-badge--blue'   },
-  position_close:  { label: '포지션 종료', color: 'hub-badge--blue'  },
-  position_open:   { label: '포지션 개설', color: 'hub-badge--gray'  },
-  trade:           { label: '거래',       color: 'hub-badge--blue'   },
-  settlement:      { label: '정산',       color: 'hub-badge--green'  },
-  bonus:           { label: '보너스',     color: 'hub-badge--green'  },
-  refund:          { label: '환불',       color: 'hub-badge--blue'   },
-  adjustment:      { label: '조정',       color: 'hub-badge--gray'   },
+  /* 충전·출금 */
+  charge:              { label: '충전',        color: 'hub-badge--green'  },
+  deposit:             { label: '충전',        color: 'hub-badge--green'  },
+  withdraw:            { label: '출금',        color: 'hub-badge--red'    },
+  withdrawal:          { label: '출금',        color: 'hub-badge--red'    },
+  /* 환전 */
+  convert:             { label: '환전',        color: 'hub-badge--blue'   },
+  conversion:          { label: '환전',        color: 'hub-badge--blue'   },
+  /* 수수료 */
+  fee:                 { label: '수수료',      color: 'hub-badge--gray'   },
+  commission:          { label: '수수료',      color: 'hub-badge--gray'   },
+  /* HTS 포지션 */
+  hts_paper_buy:       { label: '매수',        color: 'hub-badge--green'  },
+  hts_paper_sell:      { label: '매도',        color: 'hub-badge--red'    },
+  hts_paper_open:      { label: '포지션 진입', color: 'hub-badge--blue'   },
+  hts_paper_close:     { label: '포지션 청산', color: 'hub-badge--blue'   },
+  hts_paper_pnl:       { label: '포지션 손익', color: 'hub-badge--blue'   },
+  hts_paper_fee:       { label: '거래 수수료', color: 'hub-badge--gray'   },
+  hts_paper_liquidate: { label: '강제 청산',   color: 'hub-badge--red'    },
+  /* 일반 포지션 (paper prefix 없는 버전) */
+  pnl:                 { label: '포지션 손익', color: 'hub-badge--blue'   },
+  position_close:      { label: '포지션 청산', color: 'hub-badge--blue'   },
+  position_open:       { label: '포지션 진입', color: 'hub-badge--blue'   },
+  liquidation:         { label: '강제 청산',   color: 'hub-badge--red'    },
+  trade:               { label: '거래',        color: 'hub-badge--blue'   },
+  /* 정산·기타 */
+  settlement:          { label: '정산',        color: 'hub-badge--green'  },
+  bonus:               { label: '보너스',      color: 'hub-badge--green'  },
+  refund:              { label: '환불',        color: 'hub-badge--blue'   },
+  adjustment:          { label: '조정',        color: 'hub-badge--gray'   },
 };
 
 function typeMeta(t: string) {
