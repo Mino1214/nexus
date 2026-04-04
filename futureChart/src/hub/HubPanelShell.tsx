@@ -14,32 +14,26 @@ export function HubPanelShell({ title, subtitle, actions, children }: Props) {
 
   return (
     <div className="hub-console-root">
-      <div className="glass-card hub-console-card">
+      <div className="hub-console-card">
         <header className="hub-console-header">
           <div className="hub-console-headerText">
-            <h2 className="tab-panel-title hub-console-title">{title}</h2>
-            {subtitle ? <p className="tab-panel-muted hub-console-subtitle">{subtitle}</p> : null}
+            <h2 className="hub-console-title">{title}</h2>
+            {subtitle ? <p className="hub-console-subtitle">{subtitle}</p> : null}
           </div>
-          {actions ? <div className="hub-console-actions">{actions}</div> : null}
-        </header>
-        <p className="hub-console-scope tab-panel-muted">
-          이 화면은 <strong>FX 운영 콘솔</strong> 네이티브 UI입니다. API는 <code>nexus-market-api</code>·
-          masterAdmin 정책에 맞춰 여기서만 연동합니다 (iframe·레거시 HTML 래핑 없음).
-        </p>
-        {ma || tm ? (
-          <div className="hub-console-external">
+          <div className="hub-console-actions">
             {ma ? (
-              <a href={ma} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
-                masterAdmin
+              <a href={ma} target="_blank" rel="noreferrer" className="hub-ext-link">
+                masterAdmin ↗
               </a>
             ) : null}
             {tm ? (
-              <a href={tm} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
-                총마켓
+              <a href={tm} target="_blank" rel="noreferrer" className="hub-ext-link">
+                총마켓 ↗
               </a>
             ) : null}
+            {actions}
           </div>
-        ) : null}
+        </header>
         <div className="hub-console-body">{children}</div>
       </div>
     </div>
@@ -70,5 +64,5 @@ export function HubTablePlaceholder({ cols, emptyText }: { cols: string[]; empty
 }
 
 export function HubDevHint({ children }: { children: ReactNode }) {
-  return <div className="hub-dev-hint tab-panel-muted">{children}</div>;
+  return <div className="hub-dev-hint">{children}</div>;
 }

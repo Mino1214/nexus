@@ -23,13 +23,12 @@ export default function App() {
     if (meta) meta.setAttribute('content', theme === 'light' ? '#f2f3f9' : '#061a1c');
   }, [theme]);
 
-  /** 유저는 #/fx/console 접근 불가. 마스터는 HTS 운영 탭으로만 연결 */
+  /** 유저는 #/fx/console 접근 불가 */
   useEffect(() => {
     if (session?.role === 'user' && route === 'console') {
       goMain();
     }
     if (session?.role === 'master' && route === 'console') {
-      sessionStorage.setItem('fx_initial_tab', 'sectionHtsOps');
       goMain();
     }
   }, [session?.role, route, goMain]);

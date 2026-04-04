@@ -1,8 +1,7 @@
 import type { PandoraTabId } from './pandoraNav';
 
-export type PandoraProductLayer = 'hts' | 'hub';
+export type PandoraProductLayer = 'hub';
 
-export function tabProductLayer(tab: PandoraTabId): PandoraProductLayer {
-  if (tab === 'sectionHtsOps') return 'hts';
+export function tabProductLayer(_tab: PandoraTabId): PandoraProductLayer {
   return 'hub';
 }

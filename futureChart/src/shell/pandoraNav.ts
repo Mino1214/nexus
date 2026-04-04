@@ -1,11 +1,6 @@
 import type { AdminRole } from '../admin/types';
 
-/**
- * macroServer admin.html `data-tab` / 섹션과 맞춤 (지갑·시드·시드지급 제외).
- * HTS 본편: sectionHtsOps 만 유지 (거래·차트 단독 탭 제거).
- */
 export type PandoraTabId =
-  | 'sectionHtsOps'
   | 'sectionMemberDesk'
   | 'sectionMyTgBot'
   | 'sectionMySettlement'
@@ -27,7 +22,6 @@ export type NavItemDef = {
 };
 
 export const PANDORA_NAV: NavItemDef[] = [
-  { id: 'sectionHtsOps', label: 'HTS 운영', icon: '⚙️', section: 'hts', tier: 'master' },
   { id: 'sectionMemberDesk', label: '회원·승인', icon: '🗂️', section: 'hub', tier: 'all' },
   { id: 'sectionMyTgBot', label: '알림봇', icon: '📣', section: 'hub', tier: 'all' },
   { id: 'sectionMySettlement', label: '정산내역', icon: '💵', section: 'hub', tier: 'manager' },
@@ -53,12 +47,10 @@ export function isNavItemVisible(item: NavItemDef, role: AdminRole): boolean {
   return false;
 }
 
-export function defaultTabForRole(role: AdminRole): PandoraTabId {
-  if (role === 'master') return 'sectionHtsOps';
+export function defaultTabForRole(_role: AdminRole): PandoraTabId {
   return 'sectionMemberDesk';
 }
 
-export function sectionLabel(s: NavSection): string {
-  if (s === 'hts') return 'FX · HTS';
+export function sectionLabel(_s: NavSection): string {
   return 'FX · 운영';
 }

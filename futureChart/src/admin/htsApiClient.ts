@@ -26,6 +26,7 @@ export type HtsChargeRequestRow = {
   id: number;
   user_id: string;
   amount: number;
+  currency: 'KRW' | 'USDT';
   memo: string | null;
   status: string;
   module_code: string | null;
