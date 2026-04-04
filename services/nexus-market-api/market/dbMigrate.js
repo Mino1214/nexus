@@ -30,7 +30,7 @@ async function seedNexusHubDemo(pool) {
       const [ins] = await pool.query(
         `INSERT INTO master_market_customers (display_name, contact_email, site_domain, notes, status, macro_user_id, market_user_id)
          VALUES (?, ?, ?, ?, 'active', NULL, NULL)`,
-        ['데모 테넌트 (Pandora·FutureChart)', MARKER_EMAIL, 'demo-tenant.nexus.local', SEED_NOTE],
+        ['FX', MARKER_EMAIL, 'demo-tenant.nexus.local', SEED_NOTE],
       );
       customerId = ins.insertId;
       console.log('[market DB] nexus 허브 데모 고객 생성 id=', customerId);

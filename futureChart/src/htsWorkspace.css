@@ -2588,7 +2588,42 @@
 }
 [data-theme='dark'] .htsAccChargeBtn--ghost { background: rgba(255,255,255,0.10); color: #fff; }
 
-/* 충전/전환 모달 — (통화 탭·힌트 등은 위 토스 모달 섹션에서 정의) */
+/* 충전 성공 화면 */
+.fcChargeSuccess {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 0 0.5rem;
+  gap: 0.55rem;
+  text-align: center;
+}
+
+.fcChargeSuccessIcon {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  background: #00915a;
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fcChargeSuccessTitle {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #111111;
+  margin: 0;
+}
+
+.fcChargeSuccessDesc {
+  font-size: 0.78rem;
+  color: rgba(17,17,17,0.48);
+  margin: 0;
+  line-height: 1.5;
+}
 
 .htsFeedLogPanel {
   display: flex;

@@ -71,41 +71,45 @@ router.post('/charge-request', needRole('user'), async (req, res) => {
   }
 });
 
-/** GET /hts/charge-requests — user: 본인만 / 그 외: 콘솔(마스터·운영자·can_admin) */
+/** GET /hts/charge-requests — user(canAdmin 없음): 본인만 / 그 외: 콘솔 전체 */
 router.get('/charge-requests', async (req, res) => {
   try {
     const a = req.marketAuth;
     const mod = htsModuleSlug(req);
 
     if (a.role === 'user') {
-      let where = 'WHERE cr.user_id = ?';
-      const params = [a.sub];
-      if (mod) {
-        where += ' AND (cr.module_code <=> ? OR cr.module_code IS NULL)';
-        params.push(mod);
+      // canAdmin 권한이 있으면 master/operator 와 동일하게 전체 목록을 반환
+      const ent = await fetchHtsEntitlementForMarketUser(a.sub, mod);
+      if (!ent?.canAdmin) {
+        let where = 'WHERE cr.user_id = ?';
+        const params = [a.sub];
+        if (mod) {
+          where += ' AND (cr.module_code <=> ? OR cr.module_code IS NULL)';
+          params.push(mod);
+        }
+        const [rows] = await db.pool.query(
+          `SELECT cr.*, u.telegram AS user_telegram,
+                  op.name AS operator_name, op.login_id AS operator_login
+           FROM hts_charge_requests cr
+           LEFT JOIN users u ON u.id = cr.user_id
+           LEFT JOIN mu_users op ON op.id = cr.operator_mu_user_id
+           ${where}
+           ORDER BY cr.id DESC
+           LIMIT 200`,
+          params,
+        );
+        return res.json({ requests: rows });
       }
-      const [rows] = await db.pool.query(
-        `SELECT cr.*, u.telegram AS user_telegram,
-                op.name AS operator_name, op.login_id AS operator_login
-         FROM hts_charge_requests cr
-         LEFT JOIN users u ON u.id = cr.user_id
-         LEFT JOIN mu_users op ON op.id = cr.operator_mu_user_id
-         ${where}
-         ORDER BY cr.id DESC
-         LIMIT 200`,
-        params,
-      );
-      return res.json({ requests: rows });
-    }
-
-    if (a.role !== 'master' && a.role !== 'operator') {
+      // canAdmin=true → 아래 전체 목록 쿼리로 fall-through
+    } else if (a.role !== 'master' && a.role !== 'operator') {
       const ent = await fetchHtsEntitlementForMarketUser(a.sub, mod);
       if (!ent?.canAdmin) {
         return res.status(403).json({ error: 'HTS 콘솔(can_admin) 권한이 없습니다.' });
       }
     }
 
-    const op = scopedOperatorId(req);
+    // canAdmin 유저는 master 처럼 전체 조회 (operator 필터 없음)
+    const op = a.role === 'user' ? null : scopedOperatorId(req);
     let where = 'WHERE 1=1';
     const params = [];
     if (mod) {
@@ -137,7 +141,9 @@ router.get('/charge-requests', async (req, res) => {
 async function approveOrReject(req, res, status) {
   const id = parseInt(req.params.id, 10);
   if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID' });
-  const op = scopedOperatorId(req);
+  // canAdmin 유저(role=user + canAdmin)는 master처럼 operator 제한 없이 처리
+  const a = req.marketAuth;
+  const op = a.role === 'user' ? null : scopedOperatorId(req);
   const conn = await db.pool.getConnection();
   try {
     await conn.beginTransaction();

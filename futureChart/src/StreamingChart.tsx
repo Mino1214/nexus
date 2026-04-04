@@ -1411,8 +1411,17 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
 
   const [chargeCurrency, setChargeCurrency] = useState<'KRW' | 'USDT'>('KRW');
 
+  const [chargeSuccess, setChargeSuccess] = useState(false);
+
   const submitCharge = async () => {
-    if (!session?.accessToken || !getMarketApiBase()) return;
+    if (!session?.accessToken) {
+      setChargeErr('로그인이 필요합니다.');
+      return;
+    }
+    if (!getMarketApiBase()) {
+      setChargeErr('API 서버 주소가 설정되지 않았습니다. (.env VITE_MARKET_API_URL 확인)');
+      return;
+    }
     let n: number;
     if (chargeCurrency === 'USDT') {
       n = parseFloat(chargeAmountStr);
@@ -1427,12 +1436,17 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
     setChargeErr(null);
     try {
       await chartSubmitChargeRequest(session, n, chargeMemo.trim(), chargeCurrency);
-      setChargeOpen(false);
+      setChargeSuccess(true);
       setChargeMemo('');
       setChargeAmountStr('');
-      setTradeMsg('충전 신청이 접수되었습니다. 운영자(마스터) 승인 후 잔고에 반영됩니다.');
       await refreshBalance();
+      // 2초 후 자동 닫기
+      setTimeout(() => {
+        setChargeOpen(false);
+        setChargeSuccess(false);
+      }, 2000);
     } catch (e) {
+      console.error('[submitCharge]', e);
       setChargeErr(e instanceof Error ? e.message : String(e));
     } finally {
       setChargeBusy(false);
@@ -1446,57 +1460,68 @@ export function StreamingChart({ session = null }: { session?: AdminSession | nu
       aria-modal="true"
       aria-labelledby="fc-charge-title"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) setChargeOpen(false);
+        if (e.target === e.currentTarget) { setChargeOpen(false); setChargeSuccess(false); setChargeErr(null); }
       }}
     >
       <div className="fcChargeModal">
-        <h2 id="fc-charge-title" className="fcChargeModalTitle">
-          거래 자금 충전 신청
-        </h2>
-        <p className="htsMuted">
-          신청 후 마스터·운영자가 HTS 운영 화면에서 승인하면 동일 계정의 캐시 잔고에 반영됩니다.
-        </p>
-        {/* 통화 선택 */}
-        <div className="fcCurrencyTabs">
-          <button type="button" className={`fcCurrencyTab${chargeCurrency === 'KRW' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('KRW'); setChargeAmountStr(''); }}>₩ KRW</button>
-          <button type="button" className={`fcCurrencyTab${chargeCurrency === 'USDT' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('USDT'); setChargeAmountStr(''); }}>$ USDT</button>
-        </div>
-        <label className="fcChargeLabel" htmlFor="fc-charge-amt">
-          금액 {chargeCurrency === 'USDT' ? '(USDT)' : '(원)'}
-        </label>
-        <input
-          id="fc-charge-amt"
-          className="fcChargeInput"
-          inputMode={chargeCurrency === 'USDT' ? 'decimal' : 'numeric'}
-          value={chargeAmountStr}
-          onChange={(e) => setChargeAmountStr(e.target.value)}
-          placeholder={chargeCurrency === 'USDT' ? '예: 100.00' : '예: 100000'}
-        />
-        {chargeCurrency === 'KRW' && chargeAmountStr && Number(chargeAmountStr.replace(/\D/g, '')) > 0 && (
-          <p className="fcChargeHint">≈ {(Number(chargeAmountStr.replace(/\D/g, '')) / usdKrw).toFixed(2)} USDT (참고)</p>
+        {chargeSuccess ? (
+          /* ── 성공 화면 ── */
+          <div className="fcChargeSuccess">
+            <div className="fcChargeSuccessIcon">✓</div>
+            <p className="fcChargeSuccessTitle">신청 완료</p>
+            <p className="fcChargeSuccessDesc">운영자 승인 후 잔고에 반영됩니다.</p>
+          </div>
+        ) : (
+          <>
+            <h2 id="fc-charge-title" className="fcChargeModalTitle">
+              거래 자금 충전 신청
+            </h2>
+            <p className="htsMuted">
+              신청 후 마스터·운영자가 HTS 운영 화면에서 승인하면 동일 계정의 캐시 잔고에 반영됩니다.
+            </p>
+            {/* 통화 선택 */}
+            <div className="fcCurrencyTabs">
+              <button type="button" className={`fcCurrencyTab${chargeCurrency === 'KRW' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('KRW'); setChargeAmountStr(''); }}>₩ KRW</button>
+              <button type="button" className={`fcCurrencyTab${chargeCurrency === 'USDT' ? ' fcCurrencyTab--active' : ''}`} onClick={() => { setChargeCurrency('USDT'); setChargeAmountStr(''); }}>$ USDT</button>
+            </div>
+            <label className="fcChargeLabel" htmlFor="fc-charge-amt">
+              금액 {chargeCurrency === 'USDT' ? '(USDT)' : '(원)'}
+            </label>
+            <input
+              id="fc-charge-amt"
+              className="fcChargeInput"
+              inputMode={chargeCurrency === 'USDT' ? 'decimal' : 'numeric'}
+              value={chargeAmountStr}
+              onChange={(e) => setChargeAmountStr(e.target.value)}
+              placeholder={chargeCurrency === 'USDT' ? '예: 100.00' : '예: 100000'}
+            />
+            {chargeCurrency === 'KRW' && chargeAmountStr && Number(chargeAmountStr.replace(/\D/g, '')) > 0 && (
+              <p className="fcChargeHint">≈ {(Number(chargeAmountStr.replace(/\D/g, '')) / usdKrw).toFixed(2)} USDT (참고)</p>
+            )}
+            {chargeCurrency === 'USDT' && chargeAmountStr && parseFloat(chargeAmountStr) > 0 && (
+              <p className="fcChargeHint">≈ ₩{Math.round(parseFloat(chargeAmountStr) * usdKrw).toLocaleString('ko-KR')} (참고)</p>
+            )}
+            <label className="fcChargeLabel" htmlFor="fc-charge-memo">
+              메모 (선택)
+            </label>
+            <input
+              id="fc-charge-memo"
+              className="fcChargeInput"
+              value={chargeMemo}
+              onChange={(e) => setChargeMemo(e.target.value)}
+              placeholder="입금자명 등"
+            />
+            {chargeErr ? <p className="fcChargeErr">{chargeErr}</p> : null}
+            <div className="fcChargeActions">
+              <button type="button" className="btn-ghost btn-sm" onClick={() => { setChargeOpen(false); setChargeErr(null); }}>
+                취소
+              </button>
+              <button type="button" className="symBtn" disabled={chargeBusy} onClick={() => void submitCharge()}>
+                {chargeBusy ? '전송 중…' : '신청'}
+              </button>
+            </div>
+          </>
         )}
-        {chargeCurrency === 'USDT' && chargeAmountStr && parseFloat(chargeAmountStr) > 0 && (
-          <p className="fcChargeHint">≈ ₩{Math.round(parseFloat(chargeAmountStr) * usdKrw).toLocaleString('ko-KR')} (참고)</p>
-        )}
-        <label className="fcChargeLabel" htmlFor="fc-charge-memo">
-          메모 (선택)
-        </label>
-        <input
-          id="fc-charge-memo"
-          className="fcChargeInput"
-          value={chargeMemo}
-          onChange={(e) => setChargeMemo(e.target.value)}
-          placeholder="입금자명 등"
-        />
-        {chargeErr ? <p className="fcChargeErr">{chargeErr}</p> : null}
-        <div className="fcChargeActions">
-          <button type="button" className="btn-ghost btn-sm" onClick={() => setChargeOpen(false)}>
-            취소
-          </button>
-          <button type="button" className="symBtn" disabled={chargeBusy} onClick={() => void submitCharge()}>
-            {chargeBusy ? '전송 중…' : '신청'}
-          </button>
-        </div>
       </div>
     </div>
   ) : null;
