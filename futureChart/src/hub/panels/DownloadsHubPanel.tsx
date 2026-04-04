@@ -122,7 +122,7 @@ export function DownloadsHubPanel({ session }: { session: AdminSession }) {
             {rows.map((r) => (
               <div key={r.id} className={`hub-charge-card${!r.is_active ? ' hub-charge-card--done' : ''}`}>
                 <div className="hub-charge-top">
-                  <div style={{ display: 'flex', align: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 18 }}>{PLATFORM_ICON[r.platform] ?? '📦'}</span>
                     <div>
                       <span className="hub-charge-user">{r.name}</span>
