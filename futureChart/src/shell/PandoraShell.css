@@ -800,6 +800,140 @@
   min-height: 0;
 }
 
+/* ── 통계 카드 */
+.hub-stat-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.hub-stat-card {
+  flex: 1;
+  min-width: 100px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.hub-stat-card--sm { flex: 0 0 auto; }
+.hub-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+}
+.hub-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.hub-stat-value--green { color: #4ade80; }
+.hub-stat-value--red   { color: #f87171; }
+
+/* ── 알림봇 / 폼 카드 */
+.hub-notify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 500px;
+}
+.hub-notify-scope {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--surface-2);
+  padding: 6px 10px;
+  border-radius: 6px;
+  width: fit-content;
+}
+.hub-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.hub-field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.hub-field-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hub-input--full { flex: 1; width: 100%; min-width: 0; }
+.hub-notify-tip {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  line-height: 1.6;
+}
+.hub-notify-tip strong { color: var(--text-secondary); }
+.hub-notify-tip ol { margin: 4px 0 0 16px; padding: 0; }
+
+/* ── 가격 설정 */
+.hub-pricing-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+}
+.hub-pricing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hub-pricing-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 140px;
+  flex-shrink: 0;
+}
+.hub-pricing-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ── 팝업 / 다운로드 폼 */
+.hub-popup-form {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hub-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+.hub-charge-card--done {
+  opacity: 0.55;
+}
+
+/* ── 배지 추가 색상 */
+.hub-badge--blue { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+.hub-badge--gray { background: var(--surface-2); color: var(--text-tertiary); border: 1px solid var(--border); }
+
+/* ── 출금 폼 */
+.hub-withdraw-form {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.hub-withdraw-form .hub-section-title { margin-bottom: 10px; }
+
 @media (max-width: 900px) {
   .hamburger {
     display: flex;

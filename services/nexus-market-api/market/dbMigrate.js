@@ -801,6 +801,58 @@ async function runMarketMigrations(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_hub_pricing_settings (
+      scope_key VARCHAR(96) NOT NULL PRIMARY KEY,
+      charge_fee_rate   DECIMAL(5,2) NOT NULL DEFAULT 0,
+      withdraw_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+      min_charge_krw    INT          NOT NULL DEFAULT 10000,
+      min_withdraw_krw  INT          NOT NULL DEFAULT 10000,
+      usdt_markup_rate  DECIMAL(5,2) NOT NULL DEFAULT 0,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_hub_telegram_settings (
+      scope_key             VARCHAR(96) NOT NULL PRIMARY KEY,
+      channel_url           VARCHAR(300) DEFAULT NULL,
+      support_username      VARCHAR(100) DEFAULT NULL,
+      announcement_chat_id  VARCHAR(64)  DEFAULT NULL,
+      trade_alert_chat_id   VARCHAR(64)  DEFAULT NULL,
+      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_hub_popups (
+      id          INT AUTO_INCREMENT PRIMARY KEY,
+      module_code VARCHAR(100) NOT NULL,
+      title       VARCHAR(300) NOT NULL,
+      body        TEXT DEFAULT NULL,
+      is_active   TINYINT(1) NOT NULL DEFAULT 1,
+      starts_at   DATETIME DEFAULT NULL,
+      ends_at     DATETIME DEFAULT NULL,
+      created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_popups_module (module_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hts_hub_downloads (
+      id          INT AUTO_INCREMENT PRIMARY KEY,
+      module_code VARCHAR(100) NOT NULL,
+      name        VARCHAR(200) NOT NULL,
+      version     VARCHAR(50)  DEFAULT NULL,
+      platform    VARCHAR(30)  NOT NULL DEFAULT 'other',
+      url         VARCHAR(1000) NOT NULL,
+      note        TEXT DEFAULT NULL,
+      is_active   TINYINT(1) NOT NULL DEFAULT 1,
+      created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_downloads_module (module_code)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
   await seedNexusHubDemo(pool);
 
   try {

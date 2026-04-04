@@ -367,9 +367,205 @@ router.put('/notify-settings', async (req, res) => {
   }
 });
 
-/** POST /notify-settings/test — 자리만 (실제 텔레그램은 추후) */
+/** POST /notify-settings/test */
 router.post('/notify-settings/test', async (req, res) => {
   res.json({ ok: true, message: '테스트 전송은 추후 봇 서비스와 연동합니다.' });
+});
+
+/* ─────────────────── 가격 설정 ─────────────────── */
+
+/** GET /pricing-settings */
+router.get('/pricing-settings', async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const [[row]] = await db.pool.query(
+      `SELECT charge_fee_rate, withdraw_fee_rate, min_charge_krw, min_withdraw_krw, usdt_markup_rate
+       FROM hts_hub_pricing_settings WHERE scope_key = ? LIMIT 1`,
+      [`m:${mod}`],
+    );
+    res.json({
+      settings: {
+        charge_fee_rate:   Number(row?.charge_fee_rate ?? 0),
+        withdraw_fee_rate: Number(row?.withdraw_fee_rate ?? 0),
+        min_charge_krw:    Number(row?.min_charge_krw ?? 10000),
+        min_withdraw_krw:  Number(row?.min_withdraw_krw ?? 10000),
+        usdt_markup_rate:  Number(row?.usdt_markup_rate ?? 0),
+      },
+    });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** PUT /pricing-settings */
+router.put('/pricing-settings', requireHubMaster, async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const { charge_fee_rate, withdraw_fee_rate, min_charge_krw, min_withdraw_krw, usdt_markup_rate } = req.body || {};
+    await db.pool.query(
+      `INSERT INTO hts_hub_pricing_settings (scope_key, charge_fee_rate, withdraw_fee_rate, min_charge_krw, min_withdraw_krw, usdt_markup_rate)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         charge_fee_rate = VALUES(charge_fee_rate),
+         withdraw_fee_rate = VALUES(withdraw_fee_rate),
+         min_charge_krw = VALUES(min_charge_krw),
+         min_withdraw_krw = VALUES(min_withdraw_krw),
+         usdt_markup_rate = VALUES(usdt_markup_rate)`,
+      [`m:${mod}`, charge_fee_rate ?? 0, withdraw_fee_rate ?? 0, min_charge_krw ?? 10000, min_withdraw_krw ?? 10000, usdt_markup_rate ?? 0],
+    );
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/* ─────────────────── 텔레그램 설정 ─────────────── */
+
+/** GET /telegram-settings */
+router.get('/telegram-settings', async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const [[row]] = await db.pool.query(
+      `SELECT channel_url, support_username, announcement_chat_id, trade_alert_chat_id
+       FROM hts_hub_telegram_settings WHERE scope_key = ? LIMIT 1`,
+      [`m:${mod}`],
+    );
+    res.json({
+      settings: {
+        channel_url:           row?.channel_url || '',
+        support_username:      row?.support_username || '',
+        announcement_chat_id:  row?.announcement_chat_id || '',
+        trade_alert_chat_id:   row?.trade_alert_chat_id || '',
+      },
+    });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** PUT /telegram-settings */
+router.put('/telegram-settings', requireHubMaster, async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const { channel_url, support_username, announcement_chat_id, trade_alert_chat_id } = req.body || {};
+    await db.pool.query(
+      `INSERT INTO hts_hub_telegram_settings (scope_key, channel_url, support_username, announcement_chat_id, trade_alert_chat_id)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         channel_url = VALUES(channel_url),
+         support_username = VALUES(support_username),
+         announcement_chat_id = VALUES(announcement_chat_id),
+         trade_alert_chat_id = VALUES(trade_alert_chat_id)`,
+      [`m:${mod}`, channel_url?.trim() || null, support_username?.trim() || null, announcement_chat_id?.trim() || null, trade_alert_chat_id?.trim() || null],
+    );
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/* ─────────────────── 공지 팝업 ──────────────────── */
+
+/** GET /popups */
+router.get('/popups', async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const [rows] = await db.pool.query(
+      `SELECT id, title, body, is_active, starts_at, ends_at, created_at
+       FROM hts_hub_popups WHERE module_code = ? ORDER BY id DESC LIMIT 200`,
+      [mod],
+    );
+    res.json({ popups: rows });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** POST /popups */
+router.post('/popups', requireHubMaster, async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const { title, body, starts_at, ends_at } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: '제목이 필요합니다.' });
+    const [r] = await db.pool.query(
+      `INSERT INTO hts_hub_popups (module_code, title, body, starts_at, ends_at) VALUES (?, ?, ?, ?, ?)`,
+      [mod, title.trim(), body?.trim() || null, starts_at || null, ends_at || null],
+    );
+    res.status(201).json({ ok: true, id: r.insertId });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** PATCH /popups/:id */
+router.patch('/popups/:id', requireHubMaster, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID' });
+    const { is_active, title, body } = req.body || {};
+    const fields = []; const vals = [];
+    if (typeof is_active === 'boolean') { fields.push('is_active = ?'); vals.push(is_active ? 1 : 0); }
+    if (title?.trim()) { fields.push('title = ?'); vals.push(title.trim()); }
+    if (body !== undefined) { fields.push('body = ?'); vals.push(body?.trim() || null); }
+    if (!fields.length) return res.status(400).json({ error: '수정할 필드가 없습니다.' });
+    vals.push(id);
+    await db.pool.query(`UPDATE hts_hub_popups SET ${fields.join(', ')} WHERE id = ?`, vals);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** DELETE /popups/:id */
+router.delete('/popups/:id', requireHubMaster, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID' });
+    await db.pool.query(`DELETE FROM hts_hub_popups WHERE id = ?`, [id]);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/* ─────────────────── 다운로드 ───────────────────── */
+
+/** GET /downloads */
+router.get('/downloads', async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const [rows] = await db.pool.query(
+      `SELECT id, name, version, platform, url, note, is_active, created_at
+       FROM hts_hub_downloads WHERE module_code = ? ORDER BY id DESC LIMIT 200`,
+      [mod],
+    );
+    res.json({ downloads: rows });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** POST /downloads */
+router.post('/downloads', requireHubMaster, async (req, res) => {
+  try {
+    const mod = htsModuleSlug(req);
+    const { name, version, platform, url, note } = req.body || {};
+    if (!name?.trim() || !url?.trim()) return res.status(400).json({ error: '이름과 URL이 필요합니다.' });
+    const [r] = await db.pool.query(
+      `INSERT INTO hts_hub_downloads (module_code, name, version, platform, url, note) VALUES (?, ?, ?, ?, ?, ?)`,
+      [mod, name.trim(), version?.trim() || null, platform?.trim() || 'other', url.trim(), note?.trim() || null],
+    );
+    res.status(201).json({ ok: true, id: r.insertId });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** PATCH /downloads/:id */
+router.patch('/downloads/:id', requireHubMaster, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID' });
+    const { is_active, name, url } = req.body || {};
+    const fields = []; const vals = [];
+    if (typeof is_active === 'boolean') { fields.push('is_active = ?'); vals.push(is_active ? 1 : 0); }
+    if (name?.trim()) { fields.push('name = ?'); vals.push(name.trim()); }
+    if (url?.trim()) { fields.push('url = ?'); vals.push(url.trim()); }
+    if (!fields.length) return res.status(400).json({ error: '수정할 필드가 없습니다.' });
+    vals.push(id);
+    await db.pool.query(`UPDATE hts_hub_downloads SET ${fields.join(', ')} WHERE id = ?`, vals);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
+});
+
+/** DELETE /downloads/:id */
+router.delete('/downloads/:id', requireHubMaster, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: '잘못된 ID' });
+    await db.pool.query(`DELETE FROM hts_hub_downloads WHERE id = ?`, [id]);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
 /** GET /withdrawals */
