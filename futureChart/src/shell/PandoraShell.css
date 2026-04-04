@@ -934,6 +934,127 @@
 }
 .hub-withdraw-form .hub-section-title { margin-bottom: 10px; }
 
+/* ── 레저 툴바 (필터 + 검색) */
+.hub-ledger-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.hub-tabs--scroll {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+  max-width: calc(100% - 180px);
+}
+.hub-tabs--scroll::-webkit-scrollbar { display: none; }
+.hub-search-input {
+  width: 180px;
+  flex-shrink: 0;
+}
+.hub-cell-time {
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.hub-cell-desc {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-table--ledger td { vertical-align: middle; }
+
+/* ── 총판 필터 칩 */
+.hub-op-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.hub-op-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hub-op-chip:hover { background: var(--surface-3); }
+.hub-op-chip--active {
+  background: rgba(92, 225, 230, 0.15);
+  border-color: var(--ac, #5ce1e6);
+  color: var(--ac, #5ce1e6);
+  font-weight: 700;
+}
+.hub-op-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+.hub-op-chip--active .hub-op-chip-count {
+  background: var(--ac, #5ce1e6);
+  color: #000;
+}
+
+/* ── 총판 카드 */
+.hub-op-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hub-op-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hub-op-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hub-op-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.hub-op-card-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hub-op-card-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hub-tabs--sm .hub-tab {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
 @media (max-width: 900px) {
   .hamburger {
     display: flex;

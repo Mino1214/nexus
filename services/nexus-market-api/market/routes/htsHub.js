@@ -300,6 +300,9 @@ router.get('/cash-ledger', async (req, res) => {
   try {
     const op = scopedOperatorId(req);
     const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 200));
+    const typeFilter = req.query.type ? String(req.query.type).trim() : null;
+    const userSearch = req.query.user ? String(req.query.user).trim() : null;
+
     let where = 'WHERE 1=1';
     const params = [];
     if (op != null && !Number.isNaN(op)) {
@@ -311,17 +314,37 @@ router.get('/cash-ledger', async (req, res) => {
       where += ' AND (t.module_code <=> ? OR t.module_code IS NULL)';
       params.push(mod);
     }
+    if (typeFilter) {
+      where += ' AND t.type = ?';
+      params.push(typeFilter);
+    }
+    if (userSearch) {
+      where += ' AND t.user_id LIKE ?';
+      params.push(`%${userSearch}%`);
+    }
     const [rows] = await db.pool.query(
       `SELECT t.id, t.user_id, t.amount, t.type, t.description, t.module_code, t.created_at,
-              u.operator_mu_user_id
+              u.operator_mu_user_id,
+              mu.name  AS operator_name,
+              mu.login_id AS operator_login
        FROM market_cash_transactions t
        INNER JOIN users u ON u.id = t.user_id
+       LEFT  JOIN mu_users mu ON mu.id = u.operator_mu_user_id
        ${where}
        ORDER BY t.created_at DESC, t.id DESC
        LIMIT ${limit}`,
       params,
     );
-    res.json({ transactions: rows });
+    /* 타입 목록도 함께 반환 */
+    const [typeRows] = await db.pool.query(
+      `SELECT DISTINCT t.type
+       FROM market_cash_transactions t
+       INNER JOIN users u ON u.id = t.user_id
+       ${op != null && !Number.isNaN(op) ? 'WHERE u.operator_mu_user_id = ?' : ''}
+       ORDER BY t.type`,
+      op != null && !Number.isNaN(op) ? [op] : [],
+    );
+    res.json({ transactions: rows, types: typeRows.map((r) => r.type) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });

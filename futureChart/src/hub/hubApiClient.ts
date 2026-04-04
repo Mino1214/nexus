@@ -130,14 +130,24 @@ export type HubCashTx = {
   module_code: string | null;
   created_at: string;
   operator_mu_user_id: number | null;
+  operator_name: string | null;
+  operator_login: string | null;
 };
 
 export async function hubListCashLedger(session: AdminSession, limit = 200): Promise<HubCashTx[]> {
-  const j = await hubFetchJson<{ transactions: HubCashTx[] }>(
+  const j = await hubFetchJson<{ transactions: HubCashTx[]; types?: string[] }>(
     session,
     `/hts/hub/cash-ledger?limit=${encodeURIComponent(String(limit))}`,
   );
   return j.transactions ?? [];
+}
+
+export async function hubListCashLedgerTypes(session: AdminSession): Promise<string[]> {
+  const j = await hubFetchJson<{ transactions: HubCashTx[]; types?: string[] }>(
+    session,
+    `/hts/hub/cash-ledger?limit=1`,
+  );
+  return j.types ?? [];
 }
 
 export type HubNotifySettings = {

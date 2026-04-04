@@ -98,7 +98,10 @@ export type HtsManagedUserRow = {
   telegram: string | null;
   status: string;
   operator_mu_user_id: number | null;
+  operator_name: string | null;
+  operator_login: string | null;
   market_status: string;
+  created_at?: string;
 };
 
 export async function htsListManagedUsers(session: AdminSession): Promise<HtsManagedUserRow[]> {

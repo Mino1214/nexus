@@ -233,17 +233,29 @@ router.get('/operators', requireHtsConsole, async (req, res) => {
 router.get('/managed-users', requireHtsConsole, async (req, res) => {
   try {
     const op = scopedOperatorId(req);
+    const search = req.query.search ? String(req.query.search).trim() : null;
+    const opFilter = req.query.operator_id ? parseInt(req.query.operator_id, 10) : null;
+
     let where = 'WHERE u.operator_mu_user_id IS NOT NULL';
     const params = [];
     if (op != null && !Number.isNaN(op)) {
       where += ' AND u.operator_mu_user_id = ?';
       params.push(op);
+    } else if (opFilter != null && !Number.isNaN(opFilter)) {
+      where += ' AND u.operator_mu_user_id = ?';
+      params.push(opFilter);
+    }
+    if (search) {
+      where += ' AND u.id LIKE ?';
+      params.push(`%${search}%`);
     }
     const [rows] = await db.pool.query(
-      `SELECT u.id, u.telegram, u.status, u.operator_mu_user_id, u.market_status
+      `SELECT u.id, u.telegram, u.status, u.operator_mu_user_id, u.market_status, u.created_at,
+              mu.name AS operator_name, mu.login_id AS operator_login
        FROM users u
+       LEFT JOIN mu_users mu ON mu.id = u.operator_mu_user_id
        ${where}
-       ORDER BY u.id DESC
+       ORDER BY u.operator_mu_user_id ASC, u.id ASC
        LIMIT 2000`,
       params,
     );

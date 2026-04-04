@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminSession } from '../../admin/types';
 import {
   htsApproveCharge,
@@ -36,11 +36,11 @@ function fmtAmount(row: HtsChargeRequestRow) {
   return `₩${n.toLocaleString('ko-KR')}`;
 }
 
-type DeskSub = 'charge' | 'signup' | 'roster';
+type MainTab = 'charge' | 'signup' | 'roster';
 
 export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
   const isMaster = session.role === 'master';
-  const [sub, setSub] = useState<DeskSub>('charge');
+  const [sub, setSub] = useState<MainTab>('charge');
   const [charges, setCharges] = useState<HtsChargeRequestRow[]>([]);
   const [pendingUsers, setPendingUsers] = useState<HubPendingUser[]>([]);
   const [ops, setOps] = useState<HubOperatorRow[]>([]);
@@ -48,7 +48,7 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null); // id of row being processed
+  const [busy, setBusy] = useState<string | null>(null);
 
   // 총판 생성 폼
   const [opName, setOpName] = useState('');
@@ -56,11 +56,17 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
   const [opPw, setOpPw] = useState('');
   const [opDomain, setOpDomain] = useState('');
   const [opSettle, setOpSettle] = useState(10);
+  const [showOpForm, setShowOpForm] = useState(false);
 
   // 회원 생성 폼
   const [nuId, setNuId] = useState('');
   const [nuPw, setNuPw] = useState('');
   const [nuOp, setNuOp] = useState<number | ''>('');
+
+  // 회원·총판 탭 내 상태
+  const [selectedOpId, setSelectedOpId] = useState<number | null>(null); // null = 전체
+  const [userSearch, setUserSearch] = useState('');
+  const [rosterSub, setRosterSub] = useState<'users' | 'ops'>('users');
 
   const flash = (msg: string) => { setOk(msg); setTimeout(() => setOk(null), 2500); };
 
@@ -97,6 +103,7 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
     );
   };
 
+  /* ── 충전 처리 */
   const handleApproveCharge = async (id: number) => {
     setBusy(`charge-${id}`);
     try { await htsApproveCharge(session, String(id)); flash('충전 승인 완료'); await reload(); }
@@ -110,6 +117,8 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
   };
+
+  /* ── 가입 처리 */
   const handleApproveSignup = async (uid: string) => {
     setBusy(`signup-${uid}`);
     try { await hubApprovePendingSignup(session, uid); flash(`${uid} 가입 승인 완료`); await reload(); }
@@ -123,13 +132,35 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(null); }
   };
+
+  /* ── 회원 상태 토글 */
   const handleToggleStatus = async (u: HtsManagedUserRow) => {
     const next = u.market_status === 'suspended' ? 'active' : 'suspended';
     try { await hubPatchManagedUser(session, u.id, { market_status: next }); await reload(); }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
   };
 
-  const TABS: { id: DeskSub; label: string; badge?: number }[] = [
+  /* ── 필터된 회원 목록 */
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      if (selectedOpId !== null && u.operator_mu_user_id !== selectedOpId) return false;
+      if (userSearch.trim() && !u.id.toLowerCase().includes(userSearch.trim().toLowerCase())) return false;
+      return true;
+    });
+  }, [users, selectedOpId, userSearch]);
+
+  /* ── 총판별 회원 수 */
+  const userCountByOp = useMemo(() => {
+    const map: Record<number, number> = {};
+    for (const u of users) {
+      if (u.operator_mu_user_id != null) {
+        map[u.operator_mu_user_id] = (map[u.operator_mu_user_id] ?? 0) + 1;
+      }
+    }
+    return map;
+  }, [users]);
+
+  const TABS: { id: MainTab; label: string; badge?: number }[] = [
     { id: 'charge', label: '충전 확인', badge: charges.length || undefined },
     { id: 'signup', label: '가입 승인', badge: pendingUsers.length || undefined },
     { id: 'roster', label: '회원·총판' },
@@ -145,7 +176,7 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
           </button>
         }
       >
-        {/* 레퍼럴 코드 */}
+        {/* 레퍼럴 */}
         {session.referralCode ? (
           <div className="hub-referral-strip">
             <span className="hub-referral-label">{isMaster ? '마스터 레퍼럴' : '내 레퍼럴'}</span>
@@ -154,15 +185,10 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
           </div>
         ) : null}
 
-        {/* 탭 */}
+        {/* 메인 탭 */}
         <div className="hub-tabs">
           {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`hub-tab${sub === t.id ? ' hub-tab--active' : ''}`}
-              onClick={() => setSub(t.id)}
-            >
+            <button key={t.id} type="button" className={`hub-tab${sub === t.id ? ' hub-tab--active' : ''}`} onClick={() => setSub(t.id)}>
               {t.label}
               {t.badge ? <span className="hub-tab-badge">{t.badge}</span> : null}
             </button>
@@ -173,13 +199,10 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
         {err ? <div className="hub-msg hub-msg--err">{err}<button type="button" onClick={() => setErr(null)}>×</button></div> : null}
         {ok  ? <div className="hub-msg hub-msg--ok">{ok}</div> : null}
 
-        {/* ── 충전 확인 ── */}
+        {/* ══ 충전 확인 ══ */}
         {sub === 'charge' && (
           charges.length === 0 && !loading ? (
-            <div className="hub-empty">
-              <span className="hub-empty-icon">💳</span>
-              <p>대기 중인 충전 신청이 없습니다</p>
-            </div>
+            <div className="hub-empty"><span className="hub-empty-icon">💳</span><p>대기 중인 충전 신청이 없습니다</p></div>
           ) : (
             <div className="hub-card-list">
               {charges.map((r) => (
@@ -198,22 +221,8 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
                     {r.memo ? <span className="hub-charge-memo">{r.memo}</span> : null}
                   </div>
                   <div className="hub-charge-actions">
-                    <button
-                      type="button"
-                      className="hub-btn hub-btn--approve"
-                      disabled={busy === `charge-${r.id}`}
-                      onClick={() => void handleApproveCharge(r.id)}
-                    >
-                      승인
-                    </button>
-                    <button
-                      type="button"
-                      className="hub-btn hub-btn--reject"
-                      disabled={busy === `charge-${r.id}`}
-                      onClick={() => void handleRejectCharge(r.id)}
-                    >
-                      거절
-                    </button>
+                    <button type="button" className="hub-btn hub-btn--approve" disabled={busy === `charge-${r.id}`} onClick={() => void handleApproveCharge(r.id)}>승인</button>
+                    <button type="button" className="hub-btn hub-btn--reject"  disabled={busy === `charge-${r.id}`} onClick={() => void handleRejectCharge(r.id)}>거절</button>
                   </div>
                 </div>
               ))}
@@ -221,13 +230,10 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
           )
         )}
 
-        {/* ── 가입 승인 ── */}
+        {/* ══ 가입 승인 ══ */}
         {sub === 'signup' && (
           pendingUsers.length === 0 && !loading ? (
-            <div className="hub-empty">
-              <span className="hub-empty-icon">👤</span>
-              <p>승인 대기 가입이 없습니다</p>
-            </div>
+            <div className="hub-empty"><span className="hub-empty-icon">👤</span><p>승인 대기 가입이 없습니다</p></div>
           ) : (
             <div className="hub-card-list">
               {pendingUsers.map((u) => (
@@ -240,22 +246,8 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
                     <span className="hub-charge-memo">총판: {u.operator_login || u.operator_name || u.operator_mu_user_id || '—'}</span>
                   </div>
                   <div className="hub-charge-actions">
-                    <button
-                      type="button"
-                      className="hub-btn hub-btn--approve"
-                      disabled={busy === `signup-${u.id}`}
-                      onClick={() => void handleApproveSignup(u.id)}
-                    >
-                      승인
-                    </button>
-                    <button
-                      type="button"
-                      className="hub-btn hub-btn--reject"
-                      disabled={busy === `signup-${u.id}`}
-                      onClick={() => void handleRejectSignup(u.id)}
-                    >
-                      거절
-                    </button>
+                    <button type="button" className="hub-btn hub-btn--approve" disabled={busy === `signup-${u.id}`} onClick={() => void handleApproveSignup(u.id)}>승인</button>
+                    <button type="button" className="hub-btn hub-btn--reject"  disabled={busy === `signup-${u.id}`} onClick={() => void handleRejectSignup(u.id)}>거절</button>
                   </div>
                 </div>
               ))}
@@ -263,115 +255,130 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
           )
         )}
 
-        {/* ── 회원·총판 ── */}
+        {/* ══ 회원·총판 ══ */}
         {sub === 'roster' && (
           <>
-            {/* 총판 영역 (마스터만) */}
-            {isMaster && (
-              <section className="hub-section">
-                <div className="hub-section-head">
-                  <h3 className="hub-section-title">총판</h3>
-                </div>
-                <div className="hub-inline-form hub-form-compact">
-                  <input
-                    className="hub-input"
-                    value={opName}
-                    onChange={(e) => setOpName(e.target.value)}
-                    placeholder="이름"
-                  />
-                  <input
-                    className="hub-input"
-                    value={opLogin}
-                    onChange={(e) => setOpLogin(e.target.value)}
-                    placeholder="로그인 ID"
-                  />
-                  <input
-                    className="hub-input"
-                    type="password"
-                    value={opPw}
-                    onChange={(e) => setOpPw(e.target.value)}
-                    placeholder="비밀번호"
-                  />
-                  <input
-                    className="hub-input hub-input--narrow"
-                    value={opDomain}
-                    onChange={(e) => setOpDomain(e.target.value)}
-                    placeholder="도메인 (선택)"
-                  />
-                  <input
-                    className="hub-input hub-input--xs"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.1}
-                    value={opSettle}
-                    onChange={(e) => setOpSettle(Number(e.target.value))}
-                    placeholder="정산%"
-                  />
+            {/* 서브 탭 */}
+            <div className="hub-tabs hub-tabs--sm" style={{ marginBottom: 12 }}>
+              <button type="button" className={`hub-tab${rosterSub === 'users' ? ' hub-tab--active' : ''}`} onClick={() => setRosterSub('users')}>
+                회원 목록
+                {users.length > 0 ? <span className="hub-tab-badge">{users.length}</span> : null}
+              </button>
+              {isMaster ? (
+                <button type="button" className={`hub-tab${rosterSub === 'ops' ? ' hub-tab--active' : ''}`} onClick={() => setRosterSub('ops')}>
+                  총판 관리
+                  {ops.length > 0 ? <span className="hub-tab-badge">{ops.length}</span> : null}
+                </button>
+              ) : null}
+            </div>
+
+            {/* ── 회원 목록 ── */}
+            {rosterSub === 'users' && (
+              <>
+                {/* 총판 필터 칩 */}
+                <div className="hub-op-filter-row">
                   <button
                     type="button"
-                    className="hub-btn hub-btn--primary"
-                    onClick={async () => {
-                      try {
-                        const created = await hubCreateOperator(session, {
-                          name: opName, login_id: opLogin, password: opPw,
-                          site_domain: opDomain || undefined, settlement_rate: opSettle,
-                        });
-                        flash(`총판 등록 완료 · 레퍼럴: ${created.referral_code}`);
-                        setOpName(''); setOpLogin(''); setOpPw(''); setOpDomain(''); setOpSettle(10);
-                        await reload();
-                      } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                    }}
+                    className={`hub-op-chip${selectedOpId === null ? ' hub-op-chip--active' : ''}`}
+                    onClick={() => setSelectedOpId(null)}
                   >
-                    + 총판 등록
+                    전체 <span className="hub-op-chip-count">{users.length}</span>
                   </button>
+                  {ops.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      className={`hub-op-chip${selectedOpId === o.id ? ' hub-op-chip--active' : ''}`}
+                      onClick={() => setSelectedOpId((prev) => prev === o.id ? null : o.id)}
+                    >
+                      {o.name || o.login_id}
+                      <span className="hub-op-chip-count">{userCountByOp[o.id] ?? 0}</span>
+                    </button>
+                  ))}
                 </div>
 
-                {ops.length > 0 && (
+                {/* 검색 */}
+                <div style={{ marginBottom: 12 }}>
+                  <input
+                    className="hub-input hub-search-input"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    placeholder="유저 아이디 검색…"
+                  />
+                </div>
+
+                {/* 회원 생성 폼 (마스터) */}
+                {isMaster ? (
+                  <div className="hub-inline-form hub-form-compact" style={{ marginBottom: 14 }}>
+                    <input className="hub-input" value={nuId} onChange={(e) => setNuId(e.target.value)} placeholder="아이디" />
+                    <input className="hub-input" type="password" value={nuPw} onChange={(e) => setNuPw(e.target.value)} placeholder="비밀번호" />
+                    <select className="hub-input" value={nuOp === '' ? '' : String(nuOp)} onChange={(e) => setNuOp(e.target.value ? Number(e.target.value) : '')}>
+                      <option value="">총판 선택</option>
+                      {ops.map((o) => <option key={o.id} value={o.id}>{o.name} ({o.login_id})</option>)}
+                    </select>
+                    <button type="button" className="hub-btn hub-btn--primary" onClick={async () => {
+                      if (!nuId.trim() || !nuPw.trim() || nuOp === '') { setErr('아이디·비밀번호·총판을 입력하세요.'); return; }
+                      try {
+                        await htsRegisterUser(session, nuId, nuPw, nuOp as number);
+                        flash(`${nuId} 생성 완료`); setNuId(''); setNuPw(''); await reload();
+                      } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                    }}>+ 회원 생성</button>
+                  </div>
+                ) : null}
+
+                {filteredUsers.length === 0 && !loading ? (
+                  <div className="hub-empty hub-empty--sm">
+                    <p>{userSearch ? `'${userSearch}' 검색 결과가 없습니다` : '소속 회원이 없습니다'}</p>
+                  </div>
+                ) : (
                   <div className="hub-table-wrap">
                     <table className="hub-table">
                       <thead>
                         <tr>
-                          <th>이름 / ID</th>
-                          <th>레퍼럴</th>
-                          <th>정산%</th>
-                          <th>도메인</th>
+                          <th>아이디</th>
+                          <th>총판</th>
+                          <th>텔레그램</th>
+                          <th>상태</th>
                           <th></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {ops.map((o) => (
-                          <tr key={o.id}>
+                        {filteredUsers.map((u) => (
+                          <tr key={u.id}>
+                            <td className="hub-cell-primary">{u.id}</td>
                             <td>
-                              <div className="hub-cell-primary">{o.name}</div>
-                              <div className="hub-cell-sub">{o.login_id}</div>
+                              {u.operator_name || u.operator_login ? (
+                                <div>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{u.operator_name || '—'}</div>
+                                  <div className="hub-cell-sub">{u.operator_login}</div>
+                                </div>
+                              ) : <span className="hub-cell-sub">—</span>}
                             </td>
-                            <td><code className="hub-code">{o.referral_code || '—'}</code></td>
-                            <td>{o.settlement_rate != null ? `${Number(o.settlement_rate)}%` : '—'}</td>
-                            <td className="hub-cell-sub">{o.site_domain || '—'}</td>
+                            <td>
+                              <input
+                                className="hub-input-inline"
+                                defaultValue={u.telegram || ''}
+                                placeholder="@username"
+                                onBlur={async (ev) => {
+                                  const v = ev.target.value.trim();
+                                  if (v === (u.telegram || '').trim()) return;
+                                  try { await hubPatchManagedUser(session, u.id, { telegram: v || undefined }); }
+                                  catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                                }}
+                              />
+                            </td>
+                            <td>
+                              <span className={`hub-badge ${u.market_status === 'suspended' ? 'hub-badge--red' : 'hub-badge--green'}`}>
+                                {u.market_status === 'suspended' ? '정지' : '활성'}
+                              </span>
+                            </td>
                             <td className="hub-row-actions">
                               <button
                                 type="button"
-                                className="hub-btn hub-btn--sm hub-btn--ghost"
-                                onClick={async () => {
-                                  const pw = window.prompt('새 비밀번호');
-                                  if (!pw?.trim()) return;
-                                  try { await hubPatchOperator(session, o.id, { password: pw.trim() }); flash('비밀번호 변경 완료'); }
-                                  catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                                }}
+                                className={`hub-btn hub-btn--sm ${u.market_status === 'suspended' ? 'hub-btn--approve' : 'hub-btn--danger'}`}
+                                onClick={() => void handleToggleStatus(u)}
                               >
-                                비번 변경
-                              </button>
-                              <button
-                                type="button"
-                                className="hub-btn hub-btn--sm hub-btn--danger"
-                                onClick={async () => {
-                                  if (!confirm(`총판 ${o.login_id} 삭제?`)) return;
-                                  try { await hubDeleteOperator(session, o.id); await reload(); }
-                                  catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                                }}
-                              >
-                                삭제
+                                {u.market_status === 'suspended' ? '해제' : '정지'}
                               </button>
                             </td>
                           </tr>
@@ -380,111 +387,85 @@ export function MemberDeskHubPanel({ session }: { session: AdminSession }) {
                     </table>
                   </div>
                 )}
-              </section>
+              </>
             )}
 
-            {/* 회원 영역 */}
-            <section className="hub-section">
-              <div className="hub-section-head">
-                <h3 className="hub-section-title">소속 회원</h3>
-              </div>
-
-              {isMaster && (
-                <div className="hub-inline-form hub-form-compact">
-                  <input
-                    className="hub-input"
-                    value={nuId}
-                    onChange={(e) => setNuId(e.target.value)}
-                    placeholder="아이디"
-                  />
-                  <input
-                    className="hub-input"
-                    type="password"
-                    value={nuPw}
-                    onChange={(e) => setNuPw(e.target.value)}
-                    placeholder="비밀번호"
-                  />
-                  <select
-                    className="hub-input"
-                    value={nuOp === '' ? '' : String(nuOp)}
-                    onChange={(e) => setNuOp(e.target.value ? Number(e.target.value) : '')}
-                  >
-                    <option value="">총판 선택</option>
-                    {ops.map((o) => (
-                      <option key={o.id} value={o.id}>{o.name} ({o.login_id})</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="hub-btn hub-btn--primary"
-                    onClick={async () => {
-                      if (!nuId.trim() || !nuPw.trim() || nuOp === '') { setErr('아이디·비밀번호·총판을 입력하세요.'); return; }
-                      try {
-                        await htsRegisterUser(session, nuId, nuPw, nuOp as number);
-                        flash(`${nuId} 생성 완료`); setNuId(''); setNuPw(''); await reload();
-                      } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                    }}
-                  >
-                    + 회원 생성
+            {/* ── 총판 관리 (마스터 전용) ── */}
+            {rosterSub === 'ops' && isMaster && (
+              <>
+                {/* 총판 생성 */}
+                <div style={{ marginBottom: 12 }}>
+                  <button type="button" className="hub-btn hub-btn--primary hub-btn--sm" onClick={() => setShowOpForm((v) => !v)}>
+                    {showOpForm ? '취소' : '+ 총판 등록'}
                   </button>
                 </div>
-              )}
+                {showOpForm && (
+                  <div className="hub-popup-form" style={{ marginBottom: 16 }}>
+                    <div className="hub-inline-form hub-form-compact">
+                      <input className="hub-input" value={opName} onChange={(e) => setOpName(e.target.value)} placeholder="이름" />
+                      <input className="hub-input" value={opLogin} onChange={(e) => setOpLogin(e.target.value)} placeholder="로그인 ID" />
+                      <input className="hub-input" type="password" value={opPw} onChange={(e) => setOpPw(e.target.value)} placeholder="비밀번호" />
+                      <input className="hub-input hub-input--narrow" value={opDomain} onChange={(e) => setOpDomain(e.target.value)} placeholder="도메인 (선택)" />
+                      <input className="hub-input hub-input--xs" type="number" min={0} max={100} step={0.1} value={opSettle} onChange={(e) => setOpSettle(Number(e.target.value))} placeholder="정산%" />
+                      <button type="button" className="hub-btn hub-btn--primary" onClick={async () => {
+                        try {
+                          const created = await hubCreateOperator(session, { name: opName, login_id: opLogin, password: opPw, site_domain: opDomain || undefined, settlement_rate: opSettle });
+                          flash(`총판 등록 완료 · 레퍼럴: ${created.referral_code}`);
+                          setOpName(''); setOpLogin(''); setOpPw(''); setOpDomain(''); setOpSettle(10);
+                          setShowOpForm(false);
+                          await reload();
+                        } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                      }}>등록</button>
+                    </div>
+                  </div>
+                )}
 
-              {users.length === 0 && !loading ? (
-                <div className="hub-empty hub-empty--sm">
-                  <p>소속 회원이 없습니다</p>
-                </div>
-              ) : (
-                <div className="hub-table-wrap">
-                  <table className="hub-table">
-                    <thead>
-                      <tr>
-                        <th>아이디</th>
-                        <th>텔레그램</th>
-                        <th>총판</th>
-                        <th>상태</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u) => (
-                        <tr key={u.id}>
-                          <td className="hub-cell-primary">{u.id}</td>
-                          <td>
-                            <input
-                              className="hub-input-inline"
-                              defaultValue={u.telegram || ''}
-                              placeholder="@username"
-                              onBlur={async (ev) => {
-                                const v = ev.target.value.trim();
-                                if (v === (u.telegram || '').trim()) return;
-                                try { await hubPatchManagedUser(session, u.id, { telegram: v || undefined }); }
-                                catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
-                              }}
-                            />
-                          </td>
-                          <td className="hub-cell-sub">{u.operator_mu_user_id ?? '—'}</td>
-                          <td>
-                            <span className={`hub-badge ${u.market_status === 'suspended' ? 'hub-badge--red' : 'hub-badge--green'}`}>
-                              {u.market_status === 'suspended' ? '정지' : '활성'}
-                            </span>
-                          </td>
-                          <td className="hub-row-actions">
-                            <button
-                              type="button"
-                              className={`hub-btn hub-btn--sm ${u.market_status === 'suspended' ? 'hub-btn--approve' : 'hub-btn--danger'}`}
-                              onClick={() => void handleToggleStatus(u)}
-                            >
-                              {u.market_status === 'suspended' ? '해제' : '정지'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                {/* 총판 목록 */}
+                {ops.length === 0 && !loading ? (
+                  <div className="hub-empty hub-empty--sm"><p>등록된 총판이 없습니다</p></div>
+                ) : (
+                  <div className="hub-op-card-list">
+                    {ops.map((o) => (
+                      <div key={o.id} className="hub-op-card">
+                        <div className="hub-op-card-header">
+                          <div>
+                            <div className="hub-op-card-name">{o.name}</div>
+                            <div className="hub-cell-sub">{o.login_id}</div>
+                          </div>
+                          <div className="hub-op-card-meta">
+                            <span className="hub-badge hub-badge--blue">{userCountByOp[o.id] ?? 0}명</span>
+                            {o.settlement_rate != null ? <span className="hub-badge hub-badge--gray">{Number(o.settlement_rate)}%</span> : null}
+                          </div>
+                        </div>
+                        <div className="hub-op-card-info">
+                          {o.referral_code ? <><span className="hub-cell-sub">레퍼럴 </span><code className="hub-code">{o.referral_code}</code></> : null}
+                          {o.site_domain ? <span className="hub-cell-sub">{o.site_domain}</span> : null}
+                        </div>
+                        <div className="hub-charge-actions">
+                          <button type="button" className="hub-btn hub-btn--sm hub-btn--ghost"
+                            onClick={async () => {
+                              const pw = window.prompt('새 비밀번호');
+                              if (!pw?.trim()) return;
+                              try { await hubPatchOperator(session, o.id, { password: pw.trim() }); flash('비밀번호 변경 완료'); }
+                              catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                            }}>비번 변경</button>
+                          <button type="button" className="hub-btn hub-btn--sm hub-btn--ghost"
+                            onClick={() => { setRosterSub('users'); setSelectedOpId(o.id); }}>
+                            소속 회원 보기 →
+                          </button>
+                          <button type="button" className="hub-btn hub-btn--sm hub-btn--danger"
+                            onClick={async () => {
+                              if (!confirm(`총판 ${o.login_id} 삭제?`)) return;
+                              try { await hubDeleteOperator(session, o.id); await reload(); }
+                              catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+                            }}>삭제</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
       </HubPanelShell>
